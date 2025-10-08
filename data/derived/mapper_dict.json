@@ -1,0 +1,240 @@
+{
+  "Strip Till": {
+    "SWAT/RUSLE2 Implement": "Coulter-Chisel",
+    "Tillage Code": "CCHPLOW",
+    "Mixing Depth (mm)": 150,
+    "Mixing Efficiency": 0.5,
+    "Type / Note": "Tillage (banded; use AreaFraction = strip_width/row_spacing)"
+  },
+  "Strip Till + Fertilize": {
+    "SWAT/RUSLE2 Implement": "Coulter-Chisel",
+    "Tillage Code": "CCHPLOW",
+    "Mixing Depth (mm)": 150,
+    "Mixing Efficiency": 0.5,
+    "Type / Note": "Tillage (same as Strip Till; nutrients tracked separately)"
+  },
+  "Vertical Till": {
+    "SWAT/RUSLE2 Implement": "One-Way (Disk Tiller)",
+    "Tillage Code": "ONE-WAYT",
+    "Mixing Depth (mm)": 100,
+    "Mixing Efficiency": 0.6,
+    "Type / Note": "Tillage (VT proxy; use OFFSETLT 100/0.55 if very light)"
+  },
+  "Vertical Disc": {
+    "SWAT/RUSLE2 Implement": "One-Way (Disk Tiller)",
+    "Tillage Code": "ONE-WAYT",
+    "Mixing Depth (mm)": 100,
+    "Mixing Efficiency": 0.6,
+    "Type / Note": "Tillage (vertical-disc proxy)"
+  },
+  "Disc": {
+    "SWAT/RUSLE2 Implement": "Tandem Disk (Reg)",
+    "Tillage Code": "TANDEMRG",
+    "Mixing Depth (mm)": 75,
+    "Mixing Efficiency": 0.6,
+    "Type / Note": "Tillage"
+  },
+  "Moldboard Plow": {
+    "SWAT/RUSLE2 Implement": "Moldboard Plow (Reg)",
+    "Tillage Code": "MLDBOARD",
+    "Mixing Depth (mm)": 150,
+    "Mixing Efficiency": 0.95,
+    "Type / Note": "Tillage"
+  },
+  "Deep Ripper": {
+    "SWAT/RUSLE2 Implement": "Deep Ripper–Subsoiler",
+    "Tillage Code": "RIPRSUBS",
+    "Mixing Depth (mm)": 350,
+    "Mixing Efficiency": 0.25,
+    "Type / Note": "Tillage (use VRIPPER 350/0.25 if V-ripper specified)"
+  },
+  "Subsoil Rip": {
+    "SWAT/RUSLE2 Implement": "Deep Ripper–Subsoiler",
+    "Tillage Code": "RIPRSUBS",
+    "Mixing Depth (mm)": 350,
+    "Mixing Efficiency": 0.25,
+    "Type / Note": "Tillage"
+  },
+  "Vertical Ripper": {
+    "SWAT/RUSLE2 Implement": "V-Ripper",
+    "Tillage Code": "VRIPPER",
+    "Mixing Depth (mm)": 350,
+    "Mixing Efficiency": 0.25,
+    "Type / Note": "Tillage"
+  },
+  "Cultivate": {
+    "SWAT/RUSLE2 Implement": "Row Cultivator",
+    "Tillage Code": "ROWCULT",
+    "Mixing Depth (mm)": 25,
+    "Mixing Efficiency": 0.25,
+    "Type / Note": "Tillage (between rows)"
+  },
+  "Field Cultivator": {
+    "SWAT/RUSLE2 Implement": "Field Cultivator",
+    "Tillage Code": "FLDCULT",
+    "Mixing Depth (mm)": 100,
+    "Mixing Efficiency": 0.3,
+    "Type / Note": "Tillage (use when “Perfecta/field cultivator”)"
+  },
+  "Harrow": {
+    "SWAT/RUSLE2 Implement": "Harrow (Tines)",
+    "Tillage Code": "HARROW",
+    "Mixing Depth (mm)": 25,
+    "Mixing Efficiency": 0.2,
+    "Type / Note": "Tillage (light)"
+  },
+  "Cultimulch": {
+    "SWAT/RUSLE2 Implement": "Culti-mulch Roller",
+    "Tillage Code": "CULMULCH",
+    "Mixing Depth (mm)": 25,
+    "Mixing Efficiency": 0.25,
+    "Type / Note": "Tillage (Brillion/Dunham/Schmeiser)"
+  },
+  "Cultipack": {
+    "SWAT/RUSLE2 Implement": "Culti-packer Pulverizer",
+    "Tillage Code": "CULPKPUL",
+    "Mixing Depth (mm)": 40,
+    "Mixing Efficiency": 0.35,
+    "Type / Note": "Tillage/firming pass"
+  },
+  "Landplane": {
+    "SWAT/RUSLE2 Implement": "Land Plane–Leveler",
+    "Tillage Code": "LANDLEVL",
+    "Mixing Depth (mm)": 75,
+    "Mixing Efficiency": 0.5,
+    "Type / Note": "Tillage (leveling/seedbed)"
+  },
+  "Seedbed Conditioner": {
+    "SWAT/RUSLE2 Implement": "Soil Finisher",
+    "Tillage Code": "SOILFINS",
+    "Mixing Depth (mm)": 75,
+    "Mixing Efficiency": 0.55,
+    "Type / Note": "Tillage (Hawkins bedder when conditioning, not shaping beds)"
+  },
+  "Condition Seedbeds": {
+    "SWAT/RUSLE2 Implement": "Soil Finisher",
+    "Tillage Code": "SOILFINS",
+    "Mixing Depth (mm)": 75,
+    "Mixing Efficiency": 0.55,
+    "Type / Note": "Tillage"
+  },
+  "Clean Rows": {
+    "SWAT/RUSLE2 Implement": "Row Conditioner",
+    "Tillage Code": "ROWCOND",
+    "Mixing Depth (mm)": 25,
+    "Mixing Efficiency": 0.5,
+    "Type / Note": "Tillage (trash whips/row cleaners)"
+  },
+  "Row Clean": {
+    "SWAT/RUSLE2 Implement": "Row Conditioner",
+    "Tillage Code": "ROWCOND",
+    "Mixing Depth (mm)": 25,
+    "Mixing Efficiency": 0.5,
+    "Type / Note": "Tillage"
+  },
+  "Clean Furrows": {
+    "SWAT/RUSLE2 Implement": "Furrow-out Cultivator",
+    "Tillage Code": "FUROWOUT",
+    "Mixing Depth (mm)": 25,
+    "Mixing Efficiency": 0.75,
+    "Type / Note": "Tillage"
+  },
+  "Pipe Ditch / Ditch": {
+    "SWAT/RUSLE2 Implement": "Furrow Diker",
+    "Tillage Code": "FURWDIKE",
+    "Mixing Depth (mm)": 100,
+    "Mixing Efficiency": 0.7,
+    "Type / Note": "Tillage (corrugating/ditching)"
+  },
+  "Pack Furrows": {
+    "SWAT/RUSLE2 Implement": "Roller Packer (Flat Roller)",
+    "Tillage Code": "ROLPKRFT",
+    "Mixing Depth (mm)": 40,
+    "Mixing Efficiency": 0.35,
+    "Type / Note": "Tillage (packing/firming furrows)"
+  },
+  "Corrugator": {
+    "SWAT/RUSLE2 Implement": "Furrow Diker",
+    "Tillage Code": "FURWDIKE",
+    "Mixing Depth (mm)": 100,
+    "Mixing Efficiency": 0.7,
+    "Type / Note": "Tillage"
+  },
+  "Plant / Drill (any crop)": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage (no soil mixing)"
+  },
+  "Fertilizer Application (surface/broadcast)": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage (unless knife/coulter inject—then map that implement)"
+  },
+  "Pre-Plant Fertilizer (surface)": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage"
+  },
+  "Sidedress Fertilizer (surface)": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage"
+  },
+  "Pesticide Application": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage"
+  },
+  "Harvest / Harvest (grain/silage)": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage"
+  },
+  "Shred Stalks / Shred & Chop / Shred & Windrow": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage (residue management only)"
+  },
+  "Chop and Windrow": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage"
+  },
+  "Bale / Bale Stalks / Chop + Bale Straw": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage"
+  },
+  "Knife Dry Beans": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Non-tillage (undercutter/knife pre-harvest; treat as zero mixing)"
+  },
+  "Severe Hail Damage": {
+    "SWAT/RUSLE2 Implement": "—",
+    "Tillage Code": "—",
+    "Mixing Depth (mm)": 0,
+    "Mixing Efficiency": 0.0,
+    "Type / Note": "Event marker (no operation)"
+  }
+}
