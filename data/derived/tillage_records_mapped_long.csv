@@ -1,0 +1,551 @@
+Date,Tractor Model,Horsepower,Implement Model,Implement Size,Notes,Operation,SWAT Implement,Tillage Code,Mixing Depth (mm),Mixing Efficiency,Area Fraction,Type / Note,Op System
+1/1/2011,JD 8310,205.0,JD 915 V Ripper,~ 18.75 - 22.5 ft,https://www.sunequip.com/new-equipment/farming-equipment/tillage/rippers/915-v-ripper/,Deep Ripper,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage (use VRIPPER 350/0.25 if V-ripper specified),CT
+1/1/2011,JD 8310,205.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+3/3/2011,JD 7820,180.0,6 row Orthman Cultivator 8375,6 row,"For 2011 and 2012, we don't have super detailed records of tools, so I'll just use what we used for later years",Harrow,Harrow (Tines),HARROW,25.0,0.2,1.0,Tillage (light),CT
+3/3/2011,JD 7820,180.0,6 row Orthman Cultivator 8375,6 row,,Harrow,Harrow (Tines),HARROW,25.0,0.2,1.0,Tillage (light),CT
+3/15/2011,JD 7820,189.0,Eversman 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+3/15/2011,JD 7820,189.0,Eversman 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+4/2/2011,JD 4455,156.0,Pipe Ditcher,6 row,,Ditch,,,,,,,CT
+4/5/2011,JD 4455,156.0,JD 970 Cultipacker,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+5/4/2011,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant,,,,,,,CT
+5/4/2011,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Fertilizer Application,,,,,,,CT
+5/16/2011,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/23/2011,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+6/27/2011,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+11/15/2011,1660 Combine,,,,,Harvest,,,,,,,CT
+11/29/2011,,,Alloway Flail Shredder,,,Chop and Windrow,—,—,0.0,0.0,0.0,Non-tillage,CT
+11/29/2011,,,JD 568 Round Baler 5x6,,,Bail,,,,,,,CT
+11/30/2011,JD 7820,189.0,JD 640 Disc,15',,Disc,Tandem Disk (Reg),TANDEMRG,75.0,0.6,1.0,Tillage,CT
+3/5/2012,JD 8310,205.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+3/8/2012,JD 7820,180.0,6 row Orthman Cultivator 8375,6 row,,Harrow,Harrow (Tines),HARROW,25.0,0.2,1.0,Tillage (light),CT
+3/8/2012,JD 7820,180.0,6 row Orthman Cultivator 8375,6 row,,Harrow,Harrow (Tines),HARROW,25.0,0.2,1.0,Tillage (light),CT
+3/14/2012,JD 7820,189.0,Eversman 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+3/14/2012,JD 7820,189.0,Eversman 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+4/13/2012,JD 4455,156.0,Pipe Ditcher,6 row,,Ditch,,,,,,,CT
+4/13/2012,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+5/3/2012,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant,,,,,,,CT
+5/3/2012,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+5/10/2012,JD 4455,156.0,Pipe Ditcher,6 row,,Pack Furrows,Roller Packer (Flat Roller),ROLPKRFT,40.0,0.35,0.3,Tillage (packing/firming furrows),CT
+5/10/2012,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/4/2012,JD 4455,156.0,Pipe Ditcher,6 row,,Pack Furrows,Roller Packer (Flat Roller),ROLPKRFT,40.0,0.35,0.3,Tillage (packing/firming furrows),CT
+6/20/2012,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/26/2012,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+6/26/2012,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+11/1/2012,1660 Combine,,,,,Harvest,,,,,,,CT
+11/15/2012,,,Alloway Flail Shredder,,,Chop and Windrow,—,—,0.0,0.0,0.0,Non-tillage,CT
+11/15/2012,,,JD 568 Round Baler 5x6,,,Bail,,,,,,,CT
+12/8/2012,JD 8310,205.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+3/11/2013,JD 7820,189.0,Eversman 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+3/29/2013,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+3/29/2013,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+5/13/2013,JD 7820,189.0,7300 6 Row,6 row,,Fertilizer Application,,,,,,,CT
+5/14/2013,JD 7820,189.0,7300 6 Row,6 row,"I believe these operations are combined, planter with liquid UAN (NOT UREA) put down behind at 5 lbs/acre",Plant Silage Corn,,,,,,,CT
+6/2/2013,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/19/2013,JD 7820,189.0,6 row Orthman Cultivator 8375,6 row,,Fertilizer Application/Cultivate,,,,,,,CT
+7/24/2013,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+9/30/2013,JD 7980 Forage Harvester,,Kraft,,,Harvest Silage Corn,,,,,,,CT
+10/2/2013,JD 7820,189.0,JD 640 Disc,15',,Vertical Disc,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (vertical-disc proxy),CT
+10/9/2013,JD 8310,205.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+11/18/2013,JD 8310,205.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/20/2014,JD 4455,156.0,Dunham Lehr Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/27/2014,JD 8310,205.0,Eversman 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+4/3/2014,JD 8310,205.0,JD 915 V Ripper,~ 18.75 - 22.5 ft,,Vertical Ripper,V-Ripper,VRIPPER,350.0,0.25,1.0,Tillage,CT
+4/11/2014,JD 8310,205.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/11/2014,JD 7820,189.0,Hawkins 6 Row Bedder,6 rows,,Seedbed Conditioner,Soil Finisher,SOILFINS,75.0,0.55,1.0,"Tillage (Hawkins bedder when conditioning, not shaping beds)",CT
+4/11/2014,JD 4440,144.0,Schmizer,,,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+5/6/2014,JD 7820,189.0,7300 6 row,6 row,,Plant Grain Corn,,,,,,,CT
+6/3/2014,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/25/2014,JD 7820,180.0,6 row Orthman Cultivator 8375,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+12/2/2014,1660 Combine,,,,"Maybe custom this? Or say a combine, the same we use the next year",Harvest Grain Corn,,,,,,,CT
+12/2/2014,,,Alloway Flail Shredder,,,Shred Stalks,,,,,,,CT
+12/2/2014,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,CT
+3/23/2015,JD 7820,180.0,JD 640 Disc,15',,Disc,Tandem Disk (Reg),TANDEMRG,75.0,0.6,1.0,Tillage,CT
+3/23/2015,JD 8310,205.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+3/27/2015,JD 4440,144.0,Dunham Lehr Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/14/2015,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Seedbed condition,,,,,,,CT
+4/14/2015,JD 4440,144.0,Dunham Lehr Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/14/2015,JD 6400,100.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+4/30/2015,JD 7820,189.0,7300 6 row,6 row,,Plant Grain Corn,,,,,,,CT
+6/9/2015,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/24/2015,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+11/16/2015,1660 Combine,,,,,Harvest Grain Corn,,,,,,,CT
+11/23/2015,,,Alloway Flail Shredder,,,Shred Stalks,,,,,,,CT
+11/23/2015,,,JD 568 Round Baler 5x6,,,Bale Stalks,,,,,,,CT
+11/25/215,Case Magnum 350 Trimble,350.0,Kuhn Disc,,Looks like a custom job?,Disc,Tandem Disk (Reg),TANDEMRG,75.0,0.6,1.0,Tillage,CT
+12/11/2015,JD 4455,156.0,2 Shank Deep Ripper,,,Deep Ripper,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage (use VRIPPER 350/0.25 if V-ripper specified),CT
+12/11/2015,JD 8345R,345.0,Landoll VT - Kraft,,"Don't know the tractor, but I say the one I use later. I'll end up combining implements anyway",Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+12/11/2015,JD 8310,205.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+2/22/2016,JD 8310,205.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+2/24/2016,JD 8310,205.0,Eversman 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+3/1/2016,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,Fertilizer Application,,,,,,,CT
+3/2/2016,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+3/2/2016,JD 4450,158.0,Dunham Lehr Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/2/2016,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+3/3/2016,,,Foundation Seed Drill,,"This wasn't a custom job, but probably makes sense to custom this out",Plant Barley,,,,,,,CT
+5/5/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+7/25/2016,1660 Combine,,,,,Harvest Barley,,,,,,,CT
+7/26/2016,,,JD 568 Round Baler 5x6,,,Bale Straw,,,,,,,CT
+9/2/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+9/3/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+3/10/2017,JD 8295R,295.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+3/10/2017,JD 7820,189.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/14/2017,JD 4455,156.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/14/2017,JD 8245R,245.0,Art's Way 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+4/10/2017,JD 4440,144.0,Brillon Mulcher,15',,Cultimulch w/ Pre-plant Fertilizer,,,,,,,CT
+4/13/2017,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+4/13/2017,JD 4440,144.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/19/2017,JD 7820,189.0,7300 6 row,6 row,,Plant Silage Corn,,,,,,,CT
+6/21/2017,JD 7820,189.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+10/13/2017,JD 7980 Forage Harvester,,Kraft,,,Harvest Silage Corn,,,,,,,CT
+11/21/2017,JD 8245R,245.0,JD 2623VT,~26.5 - 40.67',,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+3/23/2018,JD 8295R,295.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+3/26/2018,JD 6130R,130.0,Brillion Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/3/2018,JD 6130R,130.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/3/2018,JD 8295R,295.0,Art's Way 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+4/18/2018,JD 6130R,130.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+5/1/2018,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+5/15/2018,JD 8295R,295.0,Perfecta Field Cultivator,24',,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+5/15/2018,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+5/17/2018,JD 7820,189.0,Corrugator #1,,,Corrugator #1,,,,,,,CT
+5/18/2018,,,JD 1710 Max Emerge 12 Row ,12 row,,Plant Dry Beans,,,,,,,CT
+6/25/2018,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+6/26/2018,JD 4455,156.0,Red Pipe Ditcher,6 row,,Pipe Ditch,,,,,,,CT
+7/17/2018,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+8/30/2018,Pickett 6030 OneStep 6Row,,,,Probably make sense to custom this out,Knife Dry Beans,—,—,0.0,0.0,0.0,Non-tillage (undercutter/knife pre-harvest; treat as zero mixing),CT
+9/4/2018,Case 1660 Combine,,Case 1660 Combine,,,Harvest Dry Beans,,,,,,,CT
+9/7/2018,New Holland T8.435,380.0,JD 2623 VT,20',,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+9/7/2018,New Holland T8.435,380.0,JD 2623 VT,20',,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+9/10/2018,,,,,,Severe Hail Damage,—,—,0.0,0.0,0.0,Event marker (no operation),CT
+9/14/2018,JD 7820,189.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+9/14/2018,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+9/14/2018,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+9/14/2018,JD 4440,144.0,Simplot Spreader Cart,,,Fertilizer Application,,,,,,,CT
+9/15/2018,,,Great Plains Drill,4 row,Custom this out,Drill Wheat,,,,,,,CT
+4/24/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+5/31/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/26/2019,,,,,,Pesticide Application*,,,,,,,CT
+6/27/2019,,,,,,Pesticide Application*,,,,,,,CT
+7/18/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+7/19/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+7/23/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+8/2/2019,Case 2166 Combine,,,,"Maybe custom this? Or say a combine, the same we use the next year",Harvest Wheat,,,,,,,CT
+8/3/2019,,,JD 568 Round Baler 5x6,,,Chop + Bale Straw,,,,,,,CT
+10/7/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+11/8/2019,JD 8345R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+11/20/2019,New Holland T8.435,380.0,Great Plains Subsoiler,~20',,Subsoil Rip,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage,CT
+11/23/2019,JD 8295R,295.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+11/24/2019,JD 7820,189.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+11/25/2019,JD 8295R,295.0,Art's Way 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+4/1/2020,JD 6125R,125.0,PV COOP Spreader Cart,,Looks to be combined with the strip tiller,Fertilizer Application,,,,,,,CT
+4/9/2020,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+4/9/2020,JD 7820,189.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+4/28/2020,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant Grain Corn,,,,,,,CT
+4/30/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/2/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/17/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/19/2020,JD 7820,189.0,Red Pipe Ditcher,6 row,,Pipe Ditcher,,,,,,,CT
+10/9/2020,Case 2166 Combine,,,,,Harvest Grain Corn,,,,,,,CT
+10/21/2020,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred Stalks,,,,,,,CT
+10/21/2020,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,CT
+10/22/2020,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+3/8/2021,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+3/9/2021,JD 8295R,295.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+3/11/2021,JD 6155R,155.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/11/2021,JD 8295R,295.0,Art's Way 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+3/12/2021,JD 6155R,155.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/7/2021,JD 6155R,155.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/8/2021,JD 6125R,125.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+4/9/2021,JD 6155R,155.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+4/9/2021,JD 8245R,245.0,Perfecta Field Cultivator,24',,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+4/12/2021,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+4/13/2021,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+4/27/2021,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant Grain Corn,,,,,,,CT
+5/25/2021,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/10/2021,,,,,,Fertilizer Application,,,,,,,CT
+6/18/2021,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+6/18/2021,JD 6195R,195.0,Red Pipe Ditcher,6 row,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,CT
+7/23/2021,,,,,,Pesticide and Fertilizer Application,,,,,,,CT
+10/22/2021,Case 2166 Combine,,,,,Harvest Grain,,,,,,,CT
+10/29/2021,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred and Chop,,,,,,,CT
+10/29/2021,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,CT
+11/23/2021,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+11/25/2021,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+11/29/2021,New Holland T8.435,380.0,Great Plains Subsoiler,,,Subsoil Rip,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage,CT
+11/30/2021,JD 8295R,295.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+11/30/2021,JD 6155R,155.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+12/3/2021,JD 8295R,295.0,Art's Way 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+12/3/2021,JD 6195R,195.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/11/2022,JD 6130R,130.0,Perfecta Field Cultivator,15',,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+4/11/2022,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+4/11/2022,JD 6125R,125.0,Loader Agfinity Spreader Cart,,,Fertilizer Application,,,,,,,CT
+4/12/2022,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+4/29/2022,JD 6130R,130.0,Monosem NG+4 6 row,6 row,,Plant Grain Corn w/ Optistart Gold,,,,,,,CT
+6/7/2022,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/13/2022,JD 8295R,295.0,Hiniker 6 row cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+6/13/2022,JD 6125R,125.0,Red Pipe Ditcher,6 row,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,CT
+6/13/2022,JD 6195R,195.0,Yetter 12 row liquid applicator ,12 row,,Fertilizer Application,,,,,,,CT
+10/24/2022,Case 2166 Combine,,,,,Harvest Grain,,,,,,,CT
+11/2/2022,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred and Windrow,,,,,,,CT
+11/2/2022,,,JD 560M Round Baler,,,Chop and Bale,,,,,,,CT
+11/10/2022,JD 8295R,295.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+11/10/2022,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+11/11/2022,JD 6155R,155.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/16/2023,JD 6155R,155.0,Brillon Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/20/2023,JD 8295R,295.0,Art's Way 2400 Landplane,24',,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+4/13/2023,JD 6195R,195.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+4/13/2023,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+4/13/2023,JD 6125R,125.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+4/14/2023,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+5/2/2023,JD 6195R,195.0,JD 7300 6 Row,6 row,,Fertilizer Application,,,,,,,CT
+5/2/2023,JD 6195R,195.0,JD 7300 6 Row,6 row,"This is one operation, planting with an optistart addition",Plant Silage Corn,,,,,,,CT
+5/31/2023,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,CT
+6/26/2023,JD 8245R,245.0,Yetter 12 row liquid applicator ,12 row,"This is labelled pre-plant, but obviously comes quite a bit later. I think we're also putting this on a cultivator",Fertilizer Application,,,,,,,CT
+6/28/2023,JD 6155R,155.0,Hiniker 6 row cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+6/28/2023,JD 6125R,125.0,Red Piper Ditcher 6 Row,6 row,,Pipe Ditch,,,,,,,CT
+9/8/2023,Custom Silage Harvester,,,,,Harvest Silage Corn,,,,,,,CT
+9/12/2023,JD 8295R,295.0,Landoll 7530 VT Plus Disc,~ 26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),CT
+9/12/2023,JD 6125R,125.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,CT
+9/13/2023,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+9/13/2023,JD 6125 R,125.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+9/13/2023,,,Air Seeder APV 20',,Custom this out,Plant Hard Red Winter Wheat,,,,,,,CT
+11/20/2024,New Holland T8.435,,Great Plains Subsoiler,,,Subsoil Rip,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage,CT
+11/21/2024,JD 8295R,295.0,Case 165 6 Bottom Plow,,,Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150.0,0.95,1.0,Tillage,CT
+11/23/2024,JD 6195R,195.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+11/24/2024,JD 6195R,195.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+11/25/2024,JD 8295R,295.0,Schmeiser Varitrak Folding Landplane,,,Landplane,Land Plane–Leveler,LANDLEVL,75.0,0.5,1.0,Tillage (leveling/seedbed),CT
+3/25/2025,JD 6155R,155.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),CT
+3/26/2025,JD 6130R,130.0,"Schmizer / 3""",,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+3/26/2025,JD 6130R,130.0,"Schmizer /1""",,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+3/27/2025,,,PV COOP Spreader Cart,,"11-52-0 MAP, 46-0-0 UREA dry blend",Fertilizer Application,,,,,,,CT
+4/11/2025,JD 8245R,,Hawkins 6 Row Bedder,,"Hawkins 6 Row Bedder / 3.00 """,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,CT
+4/11/2025,JD 6130R,130.0,"Schmizer /1""",,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,CT
+4/24/2025,JD 6130R,130.0,Monosem NG+4 6 row,6 row,,Plant Grain Corn w/ Optistart Gold,,,,,,,CT
+6/23/2025,JD 6195R,,LMC 12 Row Nutrient Applicator,,32-0-0 UAN 50.00 Lbs / Ac,Fertilizer Application,,,,,,,CT
+6/24/2025,JD 6125R,125.0,Red Pipe Ditcher,,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,CT
+6/24/2025,JD 6130R,,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),CT
+6/24/2025,JD 5055E,156.0,Pipe Ditcher,,,Pack Furrows,Roller Packer (Flat Roller),ROLPKRFT,40.0,0.35,0.3,Tillage (packing/firming furrows),CT
+1/1/2011,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till,Coulter-Chisel,CCHPLOW,150.0,0.5,0.27,Tillage (banded; use AreaFraction = strip_width/row_spacing),ST
+5/4/2011,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant,,,,,,,ST
+5/4/2011,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Fertilizer Application,,,,,,,ST
+5/16/2011,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/23/2011,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,ST
+6/27/2011,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+11/15/2011,1660 Combine,,,,,Harvest,,,,,,,ST
+11/29/2011,,,Alloway Flail Shredder,,,Chop and Windrow,—,—,0.0,0.0,0.0,Non-tillage,ST
+11/29/2011,,,JD 568 Round Baler 5x6,,,Bail,,,,,,,ST
+3/14/2012,JD 7820,189.0,Acraplant Trash whips,,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,ST
+3/16/2012,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till,Coulter-Chisel,CCHPLOW,150.0,0.5,0.27,Tillage (banded; use AreaFraction = strip_width/row_spacing),ST
+5/3/2012,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant,,,,,,,ST
+5/3/2012,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,ST
+5/10/2012,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/4/2012,JD 4455,156.0,Pipe Ditcher,6 row,,Pack Furrows,Roller Packer (Flat Roller),ROLPKRFT,40.0,0.35,0.3,Tillage (packing/firming furrows),ST
+6/11/2012,JD 7820,189.0,Acraplant Trash whips,,,Clean Rows,Row Conditioner,ROWCOND,25.0,0.5,0.17,Tillage (trash whips/row cleaners),ST
+6/20/2012,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/26/2012,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,ST
+6/26/2012,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+11/1/2012,1660 Combine,,,,,Harvest,,,,,,,ST
+11/15/2012,,,Alloway Flail Shredder,,,Chop and Windrow,—,—,0.0,0.0,0.0,Non-tillage,ST
+11/15/2012,,,JD 568 Round Baler 5x6,,,Bail,,,,,,,ST
+12/8/2012,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till,Coulter-Chisel,CCHPLOW,150.0,0.5,0.27,Tillage (banded; use AreaFraction = strip_width/row_spacing),ST
+3/29/2013,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+3/29/2013,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+5/13/2013,JD 7820,189.0,7300 6 Row,6 row,,Fertilizer Application,,,,,,,ST
+5/14/2013,JD 7820,189.0,7300 6 Row,6 row,"I believe these operations are combined, planter with liquid UAN (NOT UREA) put down behind at 5 lbs/acre",Plant Silage Corn,,,,,,,ST
+6/2/2013,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/19/2013,JD 7820,189.0,6 row Orthman Cultivator 8375,6 row,,Fertilizer Application/Cultivate,,,,,,,ST
+7/24/2013,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+9/30/2013,JD 7980 Forage Harvester,,Kraft,,,Harvest Silage Corn,,,,,,,ST
+4/3/2014,JD 8310,205.0,JD 915 V Ripper,~ 18.75 - 22.5 ft,,Vertical Ripper,V-Ripper,VRIPPER,350.0,0.25,1.0,Tillage,ST
+5/6/2014,JD 7820,189.0,7300 6 row,6 row,,Plant Grain Corn,,,,,,,ST
+6/3/2014,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/25/2014,JD 7820,180.0,6 row Orthman Cultivator 8375,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+12/2/2014,1660 Combine,,,,"Maybe custom this? Or say a combine, the same we use the next year",Harvest Grain Corn,,,,,,,ST
+12/2/2014,,,Alloway Flail Shredder,,,Shred Stalks,,,,,,,ST
+12/2/2014,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,ST
+3/27/2015,JD 4440,144.0,Dunham Lehr Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),ST
+4/13/2015,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,"""Orthoman 1 tripper (A)"" - Strip Till",,,,,,,ST
+4/13/2015,JD 7820,189.0,Simplot Liquid Shuttle,,,Fertilizer Application w/strip till,,,,,,,ST
+4/30/2015,JD 7820,189.0,7300 6 row,6 row,,Plant Grain Corn,,,,,,,ST
+6/9/2015,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/24/2015,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+6/24/2015,JD 4455,156.0,Pipe Ditcher,6 row,,Pipe Ditch,,,,,,,ST
+11/16/2015,1660 Combine,,,,,Harvest Grain Corn,,,,,,,ST
+11/23/2015,,,Alloway Flail Shredder,,,Shred Stalks,,,,,,,ST
+11/23/2015,,,JD 568 Round Baler 5x6,,,Bale Stalks,,,,,,,ST
+12/11/2015,JD 4455,156.0,2 Shank Deep Ripper,,,Deep Ripper,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage (use VRIPPER 350/0.25 if V-ripper specified),ST
+12/11/2015,JD 8345R,345.0,Landoll VT - Kraft,,"Don't know the tractor, but I say the one I use later. I'll end up combining implements anyway",Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+3/1/2016,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till + Fertilizer Application*,,,,,,,ST
+3/2/2016,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+3/2/2016,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+3/3/2016,,,Foundation Seed Drill,,"This wasn't a custom job, but probably makes sense to custom this out",Plant Barley,,,,,,,ST
+5/5/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+7/25/2016,1660 Combine,,,,,Harvest Barley,,,,,,,ST
+7/26/2016,,,JD 568 Round Baler 5x6,,,Bale Straw,,,,,,,ST
+9/2/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+9/3/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+4/10/2017,,,PV COOP Airflow,,,Pre-Plant Fertilizer,,,,,,,ST
+4/13/2017,JD 8295R,295.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till + Fert,,,,,,,ST
+4/13/2017,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+4/19/2017,JD 7820,189.0,7300 6 row,6 row,,Plant Silage Corn,,,,,,,ST
+6/21/2017,JD 4010,89.0,Schaben 12 row 3pt sprayer,12 row,,Sidedress Fert,,,,,,,ST
+6/21/2017,JD 7820,189.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+10/13/2017,JD 7980 Forage Harvester,,Kraft,,,Harvest Silage Corn,,,,,,,ST
+5/15/2018,JD 8295R,295.0,Perfecta Field Cultivator,24',,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+5/15/2018,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+5/17/2018,JD 7820,189.0,Corrugator #1,,,Corrugator #1,,,,,,,ST
+5/18/2018,JD 8295R,295.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till + Fertilize,Coulter-Chisel,CCHPLOW,150.0,0.5,0.27,Tillage (same as Strip Till; nutrients tracked separately),ST
+5/18/2018,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+5/18/2018,,,JD 1710 Max Emerge 12 Row ,12 row,,Plant Dry Beans,,,,,,,ST
+6/25/2018,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+6/26/2018,JD 4455,156.0,Red Pipe Ditcher,6 row,,Pipe Ditch,,,,,,,ST
+7/17/2018,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+8/30/2018,Pickett 6030 OneStep 6Row,,,,Probably make sense to custom this out,Knife Dry Beans,—,—,0.0,0.0,0.0,Non-tillage (undercutter/knife pre-harvest; treat as zero mixing),ST
+9/4/2018,Case 1660 Combine,,Case 1660 Combine,,,Harvest Dry Beans,,,,,,,ST
+9/7/2018,New Holland T8.435,380.0,JD 2623 VT,20',,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+9/7/2018,New Holland T8.435,380.0,JD 2623 VT,20',,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+9/10/2018,,,,,,Severe Hail Damage,—,—,0.0,0.0,0.0,Event marker (no operation),ST
+9/14/2018,JD 7820,189.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),ST
+9/14/2018,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+9/14/2018,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+9/14/2018,JD 4440,144.0,Simplot Spreader Cart,,,Fertilizer Application,,,,,,,ST
+9/15/2018,,,Great Plains Drill,4 row,Custom this out,Drill Wheat,,,,,,,ST
+4/24/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+5/31/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/26/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/27/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+7/18/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+7/19/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+7/23/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+8/2/2019,Case 2166 Combine,,,,"Maybe custom this? Or say a combine, the same we use the next year",Harvest Wheat,,,,,,,ST
+8/3/2019,,,JD 568 Round Baler 5x6,,,Chop + Bale Straw,,,,,,,ST
+10/7/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+4/1/2020,JD 8295R,295.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till,Coulter-Chisel,CCHPLOW,150.0,0.5,0.27,Tillage (banded; use AreaFraction = strip_width/row_spacing),ST
+4/1/2020,JD 6125R,125.0,PV COOP Spreader Cart,,Looks to be combined with the strip tiller,Fertilizer Application,,,,,,,ST
+4/28/2020,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant Grain Corn,,,,,,,ST
+4/30/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/2/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/17/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/18/2020,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+6/19/2020,JD 7820,189.0,Red Pipe Ditcher,6 row,,Pipe Ditcher,,,,,,,ST
+10/9/2020,Case 2166 Combine,,,,,Harvest Grain Corn,,,,,,,ST
+10/21/2020,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred Stalks,,,,,,,ST
+10/21/2020,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,ST
+10/22/2020,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+3/8/2021,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+4/9/2021,JD 6155R,155.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+4/13/2021,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+4/13/2021,JD 8295R,295.0,Kuhn Gladiator Strip Tiller,,,Strip Till + Fertilizer Application,,,,,,,ST
+4/27/2021,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant Grain Corn,,,,,,,ST
+5/25/2021,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/10/2021,,,,,,Fertilizer Application,,,,,,,ST
+6/18/2021,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+6/18/2021,JD 6195R,195.0,Red Pipe Ditcher,6 row,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,ST
+6/18/2021,JD 6195R,195.0,Yetter 12 row liquid applicator ,12 row,,Fertilizer Application,,,,,,,ST
+7/23/2021,,,,,,Pesticide and Fertilizer Application,,,,,,,ST
+10/22/2021,Case 2166 Combine,,,,,Harvest Grain,,,,,,,ST
+10/29/2021,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred and Chop,,,,,,,ST
+10/29/2021,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,ST
+11/23/2021,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+11/29/2021,New Holland T8.435,380.0,Great Plains Subsoiler,,,Subsoil Rip,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage,ST
+4/11/2022,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+4/11/2022,JD 8245R,245.0,Kuhn Gladiator Strip Tiller,,,Strip Till,Coulter-Chisel,CCHPLOW,150.0,0.5,0.27,Tillage (banded; use AreaFraction = strip_width/row_spacing),ST
+4/11/2022,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+4/11/2022,JD 6125R,125.0,Loader Agfinity Spreader Cart,,,Fertilizer Application,,,,,,,ST
+4/12/2022,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+4/29/2022,JD 6130R,130.0,Monosem NG+4 6 row,6 row,,Plant Grain Corn w/ Optistart Gold,,,,,,,ST
+6/7/2022,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/13/2022,JD 8295R,295.0,Hiniker 6 row cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+6/13/2022,JD 6125R,125.0,Red Pipe Ditcher,6 row,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,ST
+6/13/2022,JD 6195R,195.0,Yetter 12 row liquid applicator ,12 row,,Fertilizer Application,,,,,,,ST
+10/24/2022,Case 2166 Combine,,,,,Harvest Grain,,,,,,,ST
+11/2/2022,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred and Windrow,,,,,,,ST
+11/2/2022,,,JD 560M Round Baler,,,Chop and Bale,,,,,,,ST
+11/10/2022,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+4/14/2023,JD 8295R,295.0,Kuhn Gladiator Strip Tiller,,,Strip Till + Fertilizer Application,,,,,,,ST
+5/2/2023,JD 6195R,195.0,JD 7300 6 Row,6 row,,Fertilizer Application,,,,,,,ST
+5/2/2023,JD 6195R,195.0,JD 7300 6 Row,6 row,"This is one operation, planting with an optistart addition",Plant Silage Corn,,,,,,,ST
+5/31/2023,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,ST
+6/26/2023,JD 8245R,245.0,Yetter 12 row liquid applicator ,12 row,"This is labelled pre-plant, but obviously comes quite a bit later. I think we're also putting this on a cultivator",Fertilizer Application,,,,,,,ST
+6/28/2023,JD 6155R,155.0,Hiniker 6 row cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+6/28/2023,JD 6125R,125.0,Red Piper Ditcher 6 Row,6 row,,Pipe Ditch,,,,,,,ST
+9/8/2023,Custom Silage Harvester,,,,,Harvest Silage Corn,,,,,,,ST
+9/12/2023,JD 8295R,295.0,Landoll 7530 VT Plus Disc,~ 26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+9/12/2023,JD 6125R,125.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,ST
+9/13/2023,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+9/13/2023,JD 6125 R,125.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+9/13/2023,,,Air Seeder APV 20',,Custom this out,Plant Hard Red Winter Wheat,,,,,,,ST
+11/20/2024,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),ST
+3/26/2025,JD 8245R,245.0,Hawkins 6 Row Bedder,,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+3/26/2025,JD 6130R,130.0,"Schmizer /1""",,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+3/27/2025,JD 6125R,125.0,Red Pipe Ditcher,,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,ST
+4/10/2025,JD 6195R,195.0,JD 7300 6 Row,,"10-34-0, 32-0-0 UAN",Fertilizer Application,,,,,,,ST
+4/10/2025,JD 8295R,295.0,Kuhn Gladiator Strip Tiller,,,Strip till,,,,,,,ST
+4/11/2025,JD 8245R,,Hawkins 6 Row Bedder,,"Hawkins 6 Row Bedder / 3.00 """,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,ST
+4/11/2025,JD 6130R,130.0,"Schmizer /1""",,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,ST
+4/24/2025,JD 6130R,130.0,Monosem NG+4 6 row,6 row,,Plant Grain Corn w/ Optistart Gold,,,,,,,ST
+6/23/2025,JD 6195R,,LMC 12 Row Nutrient Applicator,,32-0-0 UAN 50.00 Lbs / Ac,Fertilizer Application,,,,,,,ST
+6/24/2025,JD 6125R,125.0,Red Pipe Ditcher,,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,ST
+6/24/2025,JD 6130R,,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),ST
+6/24/2025,JD 5055E,156.0,Pipe Ditcher,,,Pack Furrows,Roller Packer (Flat Roller),ROLPKRFT,40.0,0.35,0.3,Tillage (packing/firming furrows),ST
+5/4/2011,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant,,,,,,,MT
+5/4/2011,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Fertilizer Application,,,,,,,MT
+5/9/2011,JD 7820,189.0,Acraplant Trash whips,,"No clue what trashwhips actually need, but this looks like a very mild unit, so I'm going with a low horespower tractor",Clean Rows,Row Conditioner,ROWCOND,25.0,0.5,0.17,Tillage (trash whips/row cleaners),MT
+5/16/2011,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/23/2011,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,MT
+6/27/2011,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+11/15/2011,1660 Combine,,,,,Harvest,,,,,,,MT
+11/29/2011,,,Alloway Flail Shredder,,,Chop and Windrow,—,—,0.0,0.0,0.0,Non-tillage,MT
+11/29/2011,,,JD 568 Round Baler 5x6,,,Bail,,,,,,,MT
+5/1/2012,JD 7820,189.0,Acraplant Trash whips,,,Clean Rows,Row Conditioner,ROWCOND,25.0,0.5,0.17,Tillage (trash whips/row cleaners),MT
+5/3/2012,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant,,,,,,,MT
+5/3/2012,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,MT
+5/10/2012,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/11/2012,JD 7820,189.0,Acraplant Trash whips,,,Clean Rows,Row Conditioner,ROWCOND,25.0,0.5,0.17,Tillage (trash whips/row cleaners),MT
+6/20/2012,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/26/2012,JD 4440,144.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,MT
+6/26/2012,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+11/1/2012,1660 Combine,,,,,Harvest,,,,,,,MT
+11/15/2012,,,Alloway Flail Shredder,,,Chop and Windrow,—,—,0.0,0.0,0.0,Non-tillage,MT
+11/15/2012,,,JD 568 Round Baler 5x6,,,Bail,,,,,,,MT
+3/29/2013,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+3/29/2013,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+5/13/2013,JD 7820,189.0,7300 6 Row,6 row,,Fertilizer Application,,,,,,,MT
+5/14/2013,JD 7820,189.0,7300 6 Row,6 row,"I believe these operations are combined, planter with liquid UAN (NOT UREA) put down behind at 5 lbs/acre",Plant Silage Corn,,,,,,,MT
+6/2/2013,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/19/2013,JD 7820,189.0,6 row Orthman Cultivator 8375,6 row,,Fertilizer Application/Cultivate,,,,,,,MT
+7/24/2013,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+9/30/2013,JD 7980 Forage Harvester,,Kraft,,,Harvest Silage Corn,,,,,,,MT
+4/3/2014,JD 8310,205.0,JD 915 V Ripper,~ 18.75 - 22.5 ft,,Vertical Ripper,V-Ripper,VRIPPER,350.0,0.25,1.0,Tillage,MT
+5/6/2014,JD 7820,189.0,7300 6 row,6 row,,Plant Grain Corn,,,,,,,MT
+6/3/2014,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/25/2014,JD 7820,180.0,6 row Orthman Cultivator 8375,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+12/2/2014,1660 Combine,,,,"Maybe custom this? Or say a combine, the same we use the next year",Harvest Grain Corn,,,,,,,MT
+12/2/2014,,,Alloway Flail Shredder,,,Shred Stalks,,,,,,,MT
+12/2/2014,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,MT
+3/23/2015,,,,,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+3/27/2015,JD 4440,144.0,Dunham Lehr Mulcher,15',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),MT
+4/13/2015,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,"""Orthoman 1 tripper (A)"" - Strip Till",,,,,,,MT
+4/13/2015,JD 7820,189.0,Simplot Liquid Shuttle,,,Fertilizer Application? w/ strip till,,,,,,,MT
+4/30/2015,JD 7820,189.0,7300 6 row,6 row,,Plant Grain Corn,,,,,,,MT
+6/9/2015,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/24/2015,JD 4455,156.0,Eversman 6 row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+6/24/2015,JD 4455,156.0,Pipe Ditcher,6 row,,Pipe Ditch,,,,,,,MT
+11/16/2015,1660 Combine,,,,,Harvest Grain Corn,,,,,,,MT
+11/23/2015,,,Alloway Flail Shredder,,,Shred Stalks,,,,,,,MT
+11/23/2015,,,JD 568 Round Baler 5x6,,,Bale Stalks,,,,,,,MT
+12/11/2015,JD 4455,156.0,2 Shank Deep Ripper,,,Deep Ripper,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage (use VRIPPER 350/0.25 if V-ripper specified),MT
+12/11/2015,JD 8345R,345.0,Landoll VT - Kraft,,"Don't know the tractor, but I say the one I use later. I'll end up combining implements anyway",Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+12/11/2015,JD 8345R,345.0,Landoll VT - Kraft,,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+3/1/2016,JD 7820,189.0,6 Row Orthoman 1tRIPr,6 row,,Fertilizer Application,,,,,,,MT
+3/2/2016,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+3/2/2016,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+3/3/2016,,,Foundation Seed Drill,,"This wasn't a custom job, but probably makes sense to custom this out",Plant Barley,,,,,,,MT
+5/5/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+7/25/2016,1660 Combine,,,,,Harvest Barley,,,,,,,MT
+7/26/2016,,,JD 568 Round Baler 5x6,,,Bale Straw,,,,,,,MT
+9/2/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+9/3/2016,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+4/10/2017,,,PV COOP Airflow,,,Pre-Plant Fertilizer,,,,,,,MT
+4/13/2017,JD 8295R,295.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till + Fert,,,,,,,MT
+4/13/2017,JD 7820,189.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+4/14/2017,JD 4440,144.0,Schmizer,,,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),MT
+4/19/2017,JD 7820,189.0,7300 6 row,6 row,,Plant Silage Corn,,,,,,,MT
+6/21/2017,JD 4010,89.0,Schaben 12 row 3pt sprayer,12 row,,Sidedress Fert,,,,,,,MT
+6/21/2017,JD 7820,189.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+10/13/2017,JD 7980 Forage Harvester,,Kraft,,,Harvest Silage Corn,,,,,,,MT
+5/15/2018,JD 8295R,295.0,Perfecta Field Cultivator,24',,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+5/15/2018,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+5/17/2018,JD 7820,189.0,Corrugator #1,,,Corrugator #1,,,,,,,MT
+5/18/2018,JD 8295R,295.0,6 Row Orthoman 1tRIPr,6 row,,Strip Till + Fertilize,Coulter-Chisel,CCHPLOW,150.0,0.5,0.27,Tillage (same as Strip Till; nutrients tracked separately),MT
+5/18/2018,JD 6130R,130.0,Schmizer,,,Cultipack*,,,,,,,MT
+5/18/2018,,,JD 1710 Max Emerge 12 Row ,12 row,,Plant Dry Beans,,,,,,,MT
+6/25/2018,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+6/26/2018,JD 4455,156.0,Red Pipe Ditcher,6 row,,Pipe Ditch,,,,,,,MT
+7/17/2018,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+8/30/2018,Pickett 6030 OneStep 6Row,,,,Probably make sense to custom this out,Knife Dry Beans,—,—,0.0,0.0,0.0,Non-tillage (undercutter/knife pre-harvest; treat as zero mixing),MT
+9/4/2018,Case 1660 Combine,,Case 1660 Combine,,,Harvest Dry Beans,,,,,,,MT
+9/7/2018,New Holland T8.435,380.0,JD 2623 VT,20',,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+9/7/2018,New Holland T8.435,380.0,JD 2623 VT,20',,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+9/10/2018,,,,,,Severe Hail Damage,—,—,0.0,0.0,0.0,Event marker (no operation),MT
+9/14/2018,JD 7820,189.0,Brillon Mulcher,25',,Cultimulch,Culti-mulch Roller,CULMULCH,25.0,0.25,1.0,Tillage (Brillion/Dunham/Schmeiser),MT
+9/14/2018,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+9/14/2018,JD 4455,156.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+9/14/2018,JD 4440,144.0,Simplot Spreader Cart,,,Fertilizer Application,,,,,,,MT
+9/15/2018,,,Great Plains Drill,4 row,Custom this out,Drill Wheat,,,,,,,MT
+4/24/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+5/31/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/26/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/27/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+7/18/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+7/19/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+7/23/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+8/2/2019,Case 2166 Combine,,,,"Maybe custom this? Or say a combine, the same we use the next year",Harvest Wheat,,,,,,,MT
+8/3/2019,,,JD 568 Round Baler 5x6,,,Chop + Bale Straw,,,,,,,MT
+10/7/2019,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+4/1/2020,JD 6125R,145.0,"Row Cleaner 4-60"" rows",,,Row Clean,Row Conditioner,ROWCOND,25.0,0.5,0.17,Tillage,MT
+4/1/2020,JD 6125R,125.0,PV COOP Spreader Cart,,Looks to be combined with the strip tiller,Fertilizer Application,,,,,,,MT
+4/28/2020,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant Grain Corn,,,,,,,MT
+4/30/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/2/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/17/2020,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/18/2020,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+6/19/2020,JD 7820,189.0,Red Pipe Ditcher,6 row,,Pipe Ditcher,,,,,,,MT
+10/9/2020,Case 2166 Combine,,,,,Harvest Grain Corn,,,,,,,MT
+10/21/2020,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred Stalks,,,,,,,MT
+10/21/2020,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,MT
+10/22/2020,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+3/8/2021,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+4/9/2021,JD 6155R,155.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+4/9/2021,JD 8245R,245.0,Perfecta Field Cultivator,24',,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+4/13/2021,JD 6125R,125.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,MT
+4/27/2021,JD 6130R,130.0,Monosem NG+4 6 Row,6 row,,Plant Grain Corn,,,,,,,MT
+5/25/2021,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/10/2021,,,,,,Fertilizer Application,,,,,,,MT
+6/18/2021,JD 6130R,130.0,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+6/18/2021,JD 6195R,195.0,Red Pipe Ditcher,6 row,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,MT
+6/18/2021,JD 6195R,195.0,Yetter 12 row liquid applicator ,12 row,,Fertilizer Application,,,,,,,MT
+7/23/2021,,,,,,Pesticide and Fertilizer Application,,,,,,,MT
+10/22/2021,Case 2166 Combine,,,,,Harvest Grain,,,,,,,MT
+10/29/2021,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred and Chop,,,,,,,MT
+10/29/2021,,,JD 568 Round Baler 5x6,,,Bale,,,,,,,MT
+11/23/2021,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+11/29/2021,New Holland T8.435,380.0,Great Plains Subsoiler,,,Subsoil Rip,Deep Ripper–Subsoiler,RIPRSUBS,350.0,0.25,1.0,Tillage,MT
+4/11/2022,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+4/11/2022,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+4/11/2022,JD 6125R,125.0,Loader Agfinity Spreader Cart,,,Fertilizer Application,,,,,,,MT
+4/12/2022,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+4/29/2022,JD 6130R,130.0,Monosem NG+4 6 row,6 row,,Plant Grain Corn w/ Optistart Gold,,,,,,,MT
+6/7/2022,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/13/2022,JD 8295R,295.0,Hiniker 6 row cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+6/13/2022,JD 6125R,125.0,Red Pipe Ditcher,6 row,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,MT
+6/13/2022,JD 6195R,195.0,Yetter 12 row liquid applicator ,12 row,,Fertilizer Application,,,,,,,MT
+10/24/2022,Case 2166 Combine,,,,,Harvest Grain,,,,,,,MT
+11/2/2022,,,Hiniker Flail Shredder/Windrower 6 Row,6 row,,Shred and Windrow,,,,,,,MT
+11/2/2022,,,JD 560M Round Baler,,,Chop and Bale,,,,,,,MT
+11/10/2022,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+4/13/2023,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+4/13/2023,JD 6125R,125.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,MT
+4/14/2023,JD 6130R,130.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+5/2/2023,JD 6195R,195.0,JD 7300 6 Row,6 row,,Fertilizer Application,,,,,,,MT
+5/2/2023,JD 6195R,195.0,JD 7300 6 Row,6 row,"This is one operation, planting with an optistart addition",Plant Silage Corn,,,,,,,MT
+5/31/2023,,,,,,Pesticide Application,—,—,0.0,0.0,0.0,Non-tillage,MT
+6/26/2023,JD 8245R,245.0,Yetter 12 row liquid applicator ,12 row,"This is labelled pre-plant, but obviously comes quite a bit later. I think we're also putting this on a cultivator",Fertilizer Application,,,,,,,MT
+6/28/2023,JD 6155R,155.0,Hiniker 6 row cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+6/28/2023,JD 6125R,125.0,Red Piper Ditcher 6 Row,6 row,,Pipe Ditch,,,,,,,MT
+9/8/2023,Custom Silage Harvester,,,,,Harvest Silage Corn,,,,,,,MT
+9/12/2023,JD 8295R,295.0,Landoll 7530 VT Plus Disc,~ 26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+9/12/2023,JD 6125R,125.0,PV COOP Spreader Cart,,,Fertilizer Application,,,,,,,MT
+9/13/2023,JD 8245R,245.0,Hawkins 6 Row Bedder,6 row,,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+9/13/2023,JD 6125 R,125.0,Schmizer,,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+9/13/2023,,,Air Seeder APV 20',,Custom this out,Plant Hard Red Winter Wheat,,,,,,,MT
+11/20/2024,JD 8245R,245.0,Landoll 7530 VT Plus Disc,~26' +,,Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100.0,0.6,1.0,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light),MT
+3/26/2025,JD 6130R,130.0,"Schmizer /1""",,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+3/27/2025,,,PV COOP Spreader Cart,,"11-52-0 MAP, 46-0-0 UREA dry blend",Fertilizer Application,,,,,,,MT
+3/27/2025,JD 6125R,125.0,Red Pipe Ditcher,,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,MT
+4/11/2025,JD 8245R,,Hawkins 6 Row Bedder,,"Hawkins 6 Row Bedder / 3.00 """,Condition Seedbeds,Soil Finisher,SOILFINS,75.0,0.55,1.0,Tillage,MT
+4/11/2025,JD 6130R,130.0,"Schmizer /1""",,,Cultipack,Culti-packer Pulverizer,CULPKPUL,40.0,0.35,1.0,Tillage/firming pass,MT
+4/24/2025,JD 6130R,130.0,Monosem NG+4 6 row,6 row,,Plant Grain Corn w/ Optistart Gold,,,,,,,MT
+6/23/2025,JD 6195R,,LMC 12 Row Nutrient Applicator,,32-0-0 UAN 50.00 Lbs / Ac,Fertilizer Application,,,,,,,MT
+6/24/2025,JD 6125R,125.0,Red Pipe Ditcher,,,Clean Furrows,Furrow-out Cultivator,FUROWOUT,25.0,0.75,0.17,Tillage,MT
+6/24/2025,JD 6130R,,Eversman 1076 6 Row Cultivator,6 row,,Cultivate,Row Cultivator,ROWCULT,25.0,0.25,0.7,Tillage (between rows),MT
+6/24/2025,JD 5055E,156.0,Pipe Ditcher,,,Pack Furrows,Roller Packer (Flat Roller),ROLPKRFT,40.0,0.35,0.3,Tillage (packing/firming furrows),MT
