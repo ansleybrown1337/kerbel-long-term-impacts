@@ -1,35 +1,35 @@
-﻿My Operation,SWAT/RUSLE2 Implement,Tillage Code,Mixing Depth (mm),Mixing Efficiency,Area Fraction,Type / Note
-Strip Till,Coulter-Chisel,CCHPLOW,150,0.5,0.27,Tillage (banded; use AreaFraction = strip_width/row_spacing)
-Strip Till + Fertilize,Coulter-Chisel,CCHPLOW,150,0.5,0.27,Tillage (same as Strip Till; nutrients tracked separately)
-Vertical Till,One-Way (Disk Tiller),ONE-WAYT,100,0.6,1,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light)
-Vertical Disc,One-Way (Disk Tiller),ONE-WAYT,100,0.6,1,Tillage (vertical-disc proxy)
-Disc,Tandem Disk (Reg),TANDEMRG,75,0.6,1,Tillage
-Moldboard Plow,Moldboard Plow (Reg),MLDBOARD,150,0.95,1,Tillage
-Deep Ripper,Deep Ripper–Subsoiler,RIPRSUBS,350,0.25,1,Tillage (use VRIPPER 350/0.25 if V-ripper specified)
-Subsoil Rip,Deep Ripper–Subsoiler,RIPRSUBS,350,0.25,1,Tillage
-Vertical Ripper,V-Ripper,VRIPPER,350,0.25,1,Tillage
-Cultivate,Row Cultivator,ROWCULT,25,0.25,0.7,Tillage (between rows)
-Field Cultivator,Field Cultivator,FLDCULT,100,0.3,1,Tillage (use when “Perfecta/field cultivator”)
-Harrow,Harrow (Tines),HARROW,25,0.2,1,Tillage (light)
-Cultimulch,Culti-mulch Roller,CULMULCH,25,0.25,1,Tillage (Brillion/Dunham/Schmeiser)
-Cultipack,Culti-packer Pulverizer,CULPKPUL,40,0.35,1,Tillage/firming pass
-Landplane,Land Plane–Leveler,LANDLEVL,75,0.5,1,Tillage (leveling/seedbed)
-Seedbed Conditioner,Soil Finisher,SOILFINS,75,0.55,1,"Tillage (Hawkins bedder when conditioning, not shaping beds)"
-Condition Seedbeds,Soil Finisher,SOILFINS,75,0.55,1,Tillage
-Clean Rows,Row Conditioner,ROWCOND,25,0.5,0.17,Tillage (trash whips/row cleaners)
-Row Clean,Row Conditioner,ROWCOND,25,0.5,0.17,Tillage
-Clean Furrows,Furrow-out Cultivator,FUROWOUT,25,0.75,0.17,Tillage
-Pipe Ditch / Ditch,Furrow Diker,FURWDIKE,100,0.7,0.3,Tillage (corrugating/ditching)
-Pack Furrows,Roller Packer (Flat Roller),ROLPKRFT,40,0.35,0.3,Tillage (packing/firming furrows)
-Corrugator,Furrow Diker,FURWDIKE,100,0.7,0.3,Tillage
-Plant / Drill (any crop),—,—,0,0,0,Non-tillage (no soil mixing)
-Fertilizer Application (surface/broadcast),—,—,0,0,0,Non-tillage (unless knife/coulter inject—then map that implement)
-Pre-Plant Fertilizer (surface),—,—,0,0,0,Non-tillage
-Sidedress Fertilizer (surface),—,—,0,0,0,Non-tillage
-Pesticide Application,—,—,0,0,0,Non-tillage
-Harvest / Harvest (grain/silage),—,—,0,0,0,Non-tillage
-Shred Stalks / Shred & Chop / Shred & Windrow,—,—,0,0,0,Non-tillage (residue management only)
-Chop and Windrow,—,—,0,0,0,Non-tillage
-Bale / Bale Stalks / Chop + Bale Straw,—,—,0,0,0,Non-tillage
-Knife Dry Beans,—,—,0,0,0,Non-tillage (undercutter/knife pre-harvest; treat as zero mixing)
-Severe Hail Damage,—,—,0,0,0,Event marker (no operation)
+﻿Names in database,SWAT/RUSLE2 Implement,SoilManageR code,Tillage Code,Mixing Depth (mm),Mixing Efficiency,Area Fraction,Type / Note
+Strip Till,Coulter-Chisel,strip_tiller,CCHPLOW,150,0.5,0.27,Tillage (banded; use AreaFraction = strip_width/row_spacing)
+Strip Till + Fertilize,Coulter-Chisel,strip_tiller,CCHPLOW,150,0.5,0.27,Tillage (same as Strip Till; nutrients tracked separately)
+Vertical Till,One-Way (Disk Tiller),,ONE-WAYT,100,0.6,1,Tillage (VT proxy; use OFFSETLT 100/0.55 if very light)
+Vertical Disc,One-Way (Disk Tiller),,ONE-WAYT,100,0.6,1,Tillage (vertical-disc proxy)
+Disc,Tandem Disk (Reg),disk_harrow,TANDEMRG,75,0.6,1,Tillage
+Moldboard Plow,Moldboard Plow (Reg),plough,MLDBOARD,150,0.95,1,Tillage
+Deep Ripper,Deep Ripper–Subsoiler,subsoiler,RIPRSUBS,350,0.25,1,Tillage (use VRIPPER 350/0.25 if V-ripper specified)
+Subsoil Rip,Deep Ripper–Subsoiler,subsoiler,RIPRSUBS,350,0.25,1,Tillage
+Vertical Ripper,V-Ripper,subsoiler,VRIPPER,350,0.25,1,Tillage
+Cultivate,Row Cultivator,,ROWCULT,25,0.25,0.7,Tillage (between rows)
+Field Cultivator,Field Cultivator,,FLDCULT,100,0.3,1,Tillage (use when “Perfecta/field cultivator”)
+Harrow,Harrow (Tines),,HARROW,25,0.2,1,Tillage (light)
+Cultimulch,Culti-mulch Roller,,CULMULCH,25,0.25,1,Tillage (Brillion/Dunham/Schmeiser)
+Cultipack,Culti-packer Pulverizer,,CULPKPUL,40,0.35,1,Tillage/firming pass
+Landplane,Land Plane–Leveler,,LANDLEVL,75,0.5,1,Tillage (leveling/seedbed)
+Seedbed Conditioner,Soil Finisher,,SOILFINS,75,0.55,1,"Tillage (Hawkins bedder when conditioning, not shaping beds)"
+Condition Seedbeds,Soil Finisher,,SOILFINS,75,0.55,1,Tillage
+Clean Rows,Row Conditioner,,ROWCOND,25,0.5,0.17,Tillage (trash whips/row cleaners)
+Row Clean,Row Conditioner,,ROWCOND,25,0.5,0.17,Tillage
+Clean Furrows,Row Conditioner,,FUROWOUT,25,0.75,0.17,Tillage
+Pipe Ditch / Ditch,Row Conditioner,,FURWDIKE,100,0.7,0.3,Tillage (corrugating/ditching)
+Pack Furrows,Roller Packer (corrugated Roller),,ROLPKRFT,40,0.35,0.3,Tillage (packing/firming furrows)
+Corrugator,Roller Packer (corrugated Roller),,FURWDIKE,100,0.7,0.3,Tillage
+Plant / Drill (any crop),—,,—,0,0,0,Non-tillage (no soil mixing)
+Fertilizer Application (surface/broadcast),—,,—,0,0,0,Non-tillage (unless knife/coulter inject—then map that implement)
+Pre-Plant Fertilizer (surface),—,,—,0,0,0,Non-tillage
+Sidedress Fertilizer (injected),—,,—,0,0,0,Non-tillage
+Pesticide Application,—,,—,0,0,0,Non-tillage
+Harvest / Harvest (grain/silage),—,,—,0,0,0,Non-tillage
+Shred Stalks / Shred & Chop / Shred & Windrow,—,,—,0,0,0,Non-tillage (residue management only)
+Chop and Windrow,—,,—,0,0,0,Non-tillage
+Bale / Bale Stalks / Chop + Bale Straw,—,,—,0,0,0,Non-tillage
+Knife Dry Beans,—,,—,0,0,0,Non-tillage (undercutter/knife pre-harvest; treat as zero mixing)
+Severe Hail Damage,—,,—,0,0,0,Event marker (no operation)
