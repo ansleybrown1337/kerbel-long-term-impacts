@@ -13,11 +13,12 @@ Key behavior
 - Direct join by verbatim operation name (no heuristics).
 - ALWAYS computes STIR with the SoilManageR/RUSLE2 equation:
     STIR = (0.5 * (Speed[km/h]/1.609)) * (3.25 * TTM) * (Depth[cm]/2.54) * (Surf[%]/100)
-- Outputs exactly TWO files:
+- Outputs exactly 3 files:
     1) stir_events_long.csv : preserves all mapper columns + cumulative columns
     2) stir_daily_system_wide.csv : daily aggregates (sum/mean) + cumulative STIR columns
+    3) unmapped_ops.csv : verbatim operations not found in mapper
 - Optional crop file allows computing window-based cumulative STIR in long output
-  (added as STIR_Cum_CropWindow with a Window_ID).
+  (added as STIR_Sum_CropWindow with a Window_ID).
 
 Author: generated for the PhD Ch2 - tillage impacts on WQ project
 """
@@ -89,23 +90,55 @@ def _read_mapper(mapper_path: Path) -> pd.DataFrame:
 def _read_records(records_path: Path) -> pd.DataFrame:
     """Read operations log; normalize to long format with columns:
        Date, System (CT/ST/MT or NA), Operation (verbatim), plus any metadata.
+       Also prints diagnostics for 'bad' rows: unparseable dates, blank operations.
     """
     rec = pd.read_csv(records_path)
+
     if "Date" not in rec.columns:
         raise ValueError("Records CSV must contain a 'Date' column.")
-    rec["Date"] = pd.to_datetime(rec["Date"], errors="coerce")
-    if rec["Date"].isna().any():
-        n_bad = rec["Date"].isna().sum()
-        print(f"[WARN] {n_bad} rows with unparseable Date; they will be dropped.", file=sys.stderr)
-        rec = rec.dropna(subset=["Date"])
 
-    op_cols = [c for c in rec.columns if c.lower() in {"operation","ct operation","st operation","mt operation"}]
+    # --- Keep a raw copy of Date for diagnostics BEFORE parsing ---
+    rec["_Date_raw"] = rec["Date"].astype(str)
+
+    # Parse dates (coerce errors to NaT)
+    rec["Date"] = pd.to_datetime(rec["_Date_raw"], errors="coerce")
+
+    # Report and show a sample of unparseable dates
+    bad_date_mask = rec["Date"].isna()
+    if bad_date_mask.any():
+        n_bad = int(bad_date_mask.sum())
+        print(f"[WARN] {n_bad} rows with unparseable Date; they will be dropped.", file=sys.stderr)
+        bad_date_cols = [c for c in ["_Date_raw", "Date"] if c in rec.columns]
+        # Include a few helpful columns if present
+        for extra in ["CT Operation", "ST Operation", "MT Operation", "Operation"]:
+            if extra in rec.columns:
+                bad_date_cols.append(extra)
+        print(rec.loc[bad_date_mask, bad_date_cols].head(10).to_string(index=False), file=sys.stderr)
+
+        # Drop them
+        rec = rec.loc[~bad_date_mask].copy()
+
+    # Identify operation columns and meta
+    op_cols = [c for c in rec.columns if c.lower() in {"operation", "ct operation", "st operation", "mt operation"}]
     meta_cols = [c for c in rec.columns if c not in op_cols]
 
+    # Wide vs long input
     if "Operation" in rec.columns:
-        long = rec.rename(columns={"Operation":"Operation (verbatim)"})
+        # LONG style
+        long = rec.rename(columns={"Operation": "Operation (verbatim)"})
         long["System"] = "NA"
+
+        # Diagnose blank/whitespace operations BEFORE trimming
+        op_raw = long["Operation (verbatim)"].astype(str)
+        blank_mask = op_raw.str.strip().eq("") | op_raw.isna()
+        if blank_mask.any():
+            n_blank = int(blank_mask.sum())
+            print(f"[WARN] {n_blank} rows with blank/whitespace Operation (verbatim) in long input; they will be dropped.", file=sys.stderr)
+            print(long.loc[blank_mask, ["Date", "System", "Operation (verbatim)"]].head(10).to_string(index=False),
+                  file=sys.stderr)
+
     else:
+        # WIDE style (CT/ST/MT) -> rename, keep, melt
         rename_map = {}
         for c in rec.columns:
             lc = c.lower()
@@ -116,16 +149,49 @@ def _read_records(records_path: Path) -> pd.DataFrame:
             elif lc == "mt operation":
                 rename_map[c] = "MT"
         wide = rec.rename(columns=rename_map)
-        for k in ["CT","ST","MT"]:
-            if k not in wide.columns: wide[k] = np.nan
-        keep = meta_cols + ["CT","ST","MT"]
-        wide = wide[keep]
-        long = wide.melt(id_vars=meta_cols, value_vars=["CT","ST","MT"],
-                         var_name="System", value_name="Operation (verbatim)")
 
+        # Ensure all three exist for consistent melt
+        for k in ["CT", "ST", "MT"]:
+            if k not in wide.columns:
+                wide[k] = np.nan
+
+        # Diagnose rows where all three ops are missing/blank BEFORE melting
+        def _is_blank(s):
+            return s.isna() | s.astype(str).str.strip().eq("")
+
+        all_blank_mask = _is_blank(wide["CT"]) & _is_blank(wide["ST"]) & _is_blank(wide["MT"])
+        if all_blank_mask.any():
+            n_all_blank = int(all_blank_mask.sum())
+            print(f"[WARN] {n_all_blank} rows have all CT/ST/MT operations blank; they will contribute no events.", file=sys.stderr)
+            sample_cols = ["Date", "CT", "ST", "MT"]
+            print(wide.loc[all_blank_mask, sample_cols].head(10).to_string(index=False), file=sys.stderr)
+
+        keep = meta_cols + ["CT", "ST", "MT"]
+        wide = wide[keep]
+
+        long = wide.melt(
+            id_vars=meta_cols,
+            value_vars=["CT", "ST", "MT"],
+            var_name="System",
+            value_name="Operation (verbatim)"
+        )
+
+        # Diagnose blank/whitespace operations AFTER melting (per-system)
+        op_raw = long["Operation (verbatim)"].astype(str)
+        blank_mask = op_raw.str.strip().eq("") | op_raw.isna()
+        if blank_mask.any():
+            n_blank = int(blank_mask.sum())
+            print(f"[WARN] {n_blank} melted rows have blank/whitespace Operation (verbatim); they will be dropped.", file=sys.stderr)
+            print(long.loc[blank_mask, ["Date", "System", "Operation (verbatim)"]].head(10).to_string(index=False),
+                  file=sys.stderr)
+
+    # Final clean: trim and drop empty ops
     long["Operation (verbatim)"] = long["Operation (verbatim)"].astype(str).str.strip()
     long = long[long["Operation (verbatim)"].astype(bool)].copy()
 
+    # Clean up helper column
+    if "_Date_raw" in long.columns:
+        long = long.drop(columns=["_Date_raw"], errors="ignore")
     return long
 
 
@@ -169,34 +235,34 @@ def _compute_windowed_cumulative(events: pd.DataFrame, crop_path: Path) -> pd.Da
     ev = events.copy().sort_values("Date")
     if len(harvest_dates) == 0:
         ev["Window_ID"] = pd.NA
-        ev["STIR_Cum_Window"] = ev["STIR_Event"].fillna(0).cumsum()
+        ev["STIR_Sum_Window"] = ev["STIR_Event"].fillna(0).cumsum()
         return ev
 
     bins = [-np.inf] + list(pd.to_datetime(harvest_dates, utc=False).astype("int64"))
     ev_int = ev["Date"].astype("int64")
     ev["Window_ID"] = pd.cut(ev_int, bins=bins, labels=range(1, len(bins)), include_lowest=True).astype("Int64")
-    ev["STIR_Cum_Window"] = ev.groupby("Window_ID")["STIR_Event"].cumsum(skipna=True)
+    ev["STIR_Sum_Window"] = ev.groupby("Window_ID")["STIR_Event"].cumsum(skipna=True)
     return ev
 
 
 def _add_cumulative_columns_long(events: pd.DataFrame, crop_path: Path | None = None) -> pd.DataFrame:
     """Add cumulative STIR columns to the long table:
-       - STIR_Cum_CalendarYear: cumsum within calendar year by System
-       - STIR_Cum_AllYears    : grand running cumsum by System
-       - If crop_path provided: STIR_Cum_CropWindow and Window_ID
+       - STIR_Sum_CalendarYear: cumsum within calendar year by System
+       - STIR_Sum_AllYears    : grand running cumsum by System
+       - If crop_path provided: STIR_Sum_CropWindow and Window_ID
     """
     ev = events.copy()
     ev = ev.sort_values(["System","Date","Operation (verbatim)"], kind="stable")
     ev["Year"] = ev["Date"].dt.year
 
-    ev["STIR_Cum_CalendarYear"] = ev.groupby(["System","Year"], dropna=False)["STIR_Event"].cumsum()
-    ev["STIR_Cum_AllYears"] = ev.groupby(["System"], dropna=False)["STIR_Event"].cumsum()
+    ev["STIR_Sum_CalendarYear"] = ev.groupby(["System","Year"], dropna=False)["STIR_Event"].cumsum()
+    ev["STIR_Sum_AllYears"] = ev.groupby(["System"], dropna=False)["STIR_Event"].cumsum()
 
     if crop_path and Path(crop_path).exists():
         try:
             windowed = _compute_windowed_cumulative(ev[["Date","STIR_Event"]].assign(System=ev["System"]), crop_path)
             ev["Window_ID"] = windowed["Window_ID"]
-            ev["STIR_Cum_CropWindow"] = windowed["STIR_Cum_Window"]
+            ev["STIR_Sum_CropWindow"] = windowed["STIR_Sum_Window"]
         except Exception as e:
             print(f"[WARN] Skipping crop-window cumulative: {e}", file=sys.stderr)
 
@@ -214,7 +280,7 @@ def _aggregate_daily_wide(events: pd.DataFrame) -> pd.DataFrame:
       Date,
       <System>_STIR, <System>_Diesel_l_ha,
       <System>_Speed_kmh_mean, <System>_Depth_cm_mean, <System>_SurfDist_pct_mean, <System>_TTM_mean,
-      <System>_STIR_Cum_Year, <System>_STIR_Cum_All
+      <System>_STIR_Sum_Year, <System>_STIR_Sum_All
     """
     ev = events.copy()
 
@@ -257,8 +323,8 @@ def _aggregate_daily_wide(events: pd.DataFrame) -> pd.DataFrame:
     for sys_name in ["CT","ST","MT","NA"]:
         stir_col = f"{sys_name}_STIR_Event"
         if stir_col in wide.columns:
-            wide[f"{sys_name}_STIR_Cum_Year"] = wide.groupby("Year")[stir_col].cumsum()
-            wide[f"{sys_name}_STIR_Cum_All"] = wide[stir_col].cumsum()
+            wide[f"{sys_name}_STIR_Sum_Year"] = wide.groupby("Year")[stir_col].cumsum()
+            wide[f"{sys_name}_STIR_Sum_All"] = wide[stir_col].cumsum()
 
     wide = wide.rename(columns={
         "CT_STIR_Event":"CT_STIR",

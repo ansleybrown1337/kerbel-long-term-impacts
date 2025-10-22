@@ -23,7 +23,7 @@ STIR is computed directly from the *SoilManageR* equation:
 
 
 ```math
-STIR = \left( 0.5 \times \frac{Speed_{[km/h]}}{1.609} \right) \times \left( 3.25 \times TTM \right) \times \left( \frac{Depth_{[cm]}}{2.54} \right) \times \left( \frac{Surf_{Disturbance} [%]}{100} \right)
+STIR = \left( 0.5 \times \frac{Speed_{[km/h]}}{1.609} \right) \times \left( 3.25 \times TTM \right) \times \left( \frac{Depth_{[cm]}}{2.54} \right) \times \left( \frac{Surf_{Disturbance}{100} \right)
 ```
 
 
@@ -123,6 +123,5 @@ Because the workflow draws directly from MOSES and RUSLE2 calibration data, the 
 
 ### References
 
-* USDA–NRCS (2023). *Revised Universal Soil Loss Equation, Version 2 (RUSLE2) Official Database (v2023-02-24).* USDA–NRCS, Washington, D.C.
-* Brown, A.J. (2025). *Long-Term Impacts of Tillage on Water Quality and Soil Disturbance Metrics.* Colorado State University.
-* SoilManageR Package (2023). *Tools for Soil Management Operations and STIR Calculations.* GitLab Repository: [https://gitlab.com/nrcs-soil/soilmanager](https://gitlab.com/nrcs-soil/soilmanager)
+* USDA-NRCS. 2023. “ Revised Universal Soil Loss Equation, Version 2 (RUSLE2), Official NRCS RUSLE2 Program and Database (V 2023-02-24).” [https://fargo.nserl.purdue.edu/rusle2_dataweb](https://fargo.nserl.purdue.edu/rusle2_dataweb)
+* Heller, O., Chervet, A., Durand‐Maniclas, F., Guillaume, T., Häfner, F., Müller, M., ... & Keller, T. (2025). SoilManageR—An R Package for Deriving Soil Management Indicators to Harmonise Agricultural Practice Assessments. European Journal of Soil Science, 76(2), e70102. GitLab Repository: [https://gitlab.com/nrcs-soil/soilmanager](https://gitlab.com/nrcs-soil/soilmanager)
