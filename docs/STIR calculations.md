@@ -1,158 +1,128 @@
+# STIR Calculations and Pipeline Workflow
 
+## Overview
 
-# **stircalcs.py – Soil Tillage Intensity Rating (STIR) Calculation Framework**
+This document describes the workflow used to calculate **Soil Tillage Intensity Rating (STIR)** values for each field operation in the Kerbel Long-Term Impacts dataset. The updated workflow uses the **`stir_pipeline.py`** script, which replaces legacy approaches that relied on user-supplied mixing efficiencies or surface fractions. All STIR values are now calculated consistently using the **MOSES (Management Operations and Soil Erosion Simulation)** dataset distributed by the **USDA–NRCS** and integrated into the *SoilManageR* package.
 
-### Author:
+- [SoilManageR Repo](https://gitlab.com/SoilManageR/SoilManageR)
+- [SoilManageR Article](https://bsssjournals.onlinelibrary.wiley.com/doi/10.1111/ejss.70102)
 
-*AJ Brown, Colorado State University Agricultural Water Quality Program (AWQP)*
-<br/>**Last updated:** October 2025
+### What STIR Represents
 
----
+The **Soil Tillage Intensity Rating (STIR)** quantifies the overall physical disturbance to the soil surface caused by a tillage operation. Higher STIR values indicate greater disturbance and correspond to more energy expended in soil manipulation. STIR serves as a core component of the **RUSLE2 (Revised Universal Soil Loss Equation, version 2)** framework for estimating erosion and residue incorporation effects.
 
-## **Purpose**
+### What MOSES Is
 
-This script automates the derivation of **STIR-style soil disturbance metrics** for multi-year tillage operation records.
-It integrates:
-
-* Equipment-level physical disturbance (mixing depth, efficiency, area affected)
-* Treatment-specific operation logs (Conventional, Strip, and Minimum tillage systems)
-* Crop-year boundaries (planting/harvest windows)
-
-to produce both **per-event** and **cumulative soil disturbance indices** suitable for legacy tillage and water-quality modeling.
+**MOSES (Management Operations and Soil Erosion Simulation)** is the official NRCS database that defines operational parameters for tillage, planting, and residue management within RUSLE2. It specifies standardized attributes such as operating speed, tillage depth, surface disturbance, and tillage-type modifier (TTM). These parameters are used by *SoilManageR* to derive STIR values and residue burial coefficients. The dataset forms the scientific foundation of this workflow, ensuring that all tillage operations are traceable to validated national standards.
 
 ---
 
-## **Inputs**
+## Equation and Units
 
-| File                     | Path                            | Description                                                                                                                                         | Required Columns                                                                                                                  |
-| ------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Tillage Mapper Table** | `data/tillage_mapper_table.csv` | User-supplied lookup table linking each “My Operation” (field-record name) to SWAT/RUSLE2 implement codes and STIR parameters.                      | `My Operation`, `SWAT/RUSLE2 Implement`, `Tillage Code`, `Mixing Depth (mm)`, `Mixing Efficiency`, `Area Fraction`, `Type / Note` |
-| **Tillage Records**      | `data/tillage_records.csv`      | Master list of all tillage events with date, tractor, implement, and per-system operation columns (`CT Operation`, `ST Operation`, `MT Operation`). | `Date`, `CT Operation`, `ST Operation`, `MT Operation`, plus optional metadata                                                    |
-| **Crop Records**         | `data/crop records.csv`         | Defines planting and harvest windows for each crop year; used to group tillage events by crop cycle.                                                | `plant date`, `harvest date`, `crop`                                                                                              |
+STIR is computed directly from the *SoilManageR* equation:
 
----
 
-## **Outputs**
-
-| Output File                                                 | Description                                                                                                              |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **`data/derived/mapper_normalized.csv`**                    | Cleaned version of the tillage mapper table (validated, numeric conversions applied).                                    |
-| **`data/derived/mapper_dict.json`**                         | JSON dictionary keyed by `"My Operation"` used internally for mapping.                                                   |
-| **`data/derived/tillage_records_mapped.csv`**               | Wide-format master tillage record with SWAT/RUSLE2 codes and numeric disturbance parameters mapped for CT/ST/MT systems. |
-| **`data/derived/tillage_records_mapped_long.csv`**          | Long-format (tidy) dataset — one record per tillage event × system.                                                      |
-| **`data/derived/tillage_records_disturbance_long.csv`**     | Adds computed **Disturbance_Fraction** for each tillage event.                                                           |
-| **`data/derived/tillage_records_disturbance_long_cum.csv`** | Adds per-crop-year and all-years cumulative STIR sums per system (`Disturbance_Cum`, `Disturbance_CumAllYears`).         |
-| **`data/derived/tillage_records_disturbance_wide_cum.csv`** | Wide-format cumulative dataset for easier plotting or joining with other metrics.                                        |
-
----
-
-## **Key Calculations**
-
-### **1. Fractional Soil Disturbance (per event)**
-
-[
-\text{Disturbance_Fraction} = E_m \times \left( \frac{D_m}{D_\text{ref}} \right) \times A_f
-]
-
-where:
-
-* (E_m) = *Mixing Efficiency* (fraction of soil mass disturbed)
-* (D_m) = *Mixing Depth (mm)*
-* (D_\text{ref}) = *Reference Soil Depth* (default 200 mm)
-* (A_f) = *Area Fraction* (fraction of field affected per pass)
-
-Each component comes from the user’s `tillage_mapper_table.csv`.
-
-> 🔹 *If Area Fraction is missing for a mixing operation, the script conservatively assumes 1.0 and flags a `Compute_Warning` in the output.*
-
----
-
-### **2. Cumulative STIR Between Harvests**
-
-Each tillage event is assigned to a crop-year window:
-[
-(\text{Previous Harvest}, \text{Current Harvest}]
-]
-and the cumulative soil disturbance **within that window** is computed **including the current event**:
-
-[
-\text{Disturbance_Cum}*{i,t} = \sum*{k=1}^{i} \text{Disturbance_Fraction}_{k,t}
-]
-for each tillage system *t* (CT, ST, MT).
-
----
-
-### **3. All-Years Cumulative STIR**
-
-An additional running total is computed that **does not reset** at crop-year boundaries:
-[
-\text{Disturbance_CumAllYears}*{t} = \sum*{y=1}^{N} \text{Disturbance_Fraction}_{y,t}
-]
-
-This provides a continuous “legacy tillage disturbance” metric useful for evaluating long-term soil and water-quality impacts.
-
----
-
-## **Interpretation and Reference Values**
-
-### Typical Mixing Efficiencies (from SWAT–TAMU 2019, Table 15; DayCent 2023 Manual)
-
-| Implement Type          | Mixing Efficiency | Mixing Depth (mm) |
-| ----------------------- | ----------------: | ----------------: |
-| Moldboard Plow          |              0.95 |               150 |
-| Tandem Disk (Regular)   |              0.60 |                75 |
-| Chisel Plow             |              0.30 |               150 |
-| Field Cultivator        |              0.30 |               100 |
-| Row Cultivator          |              0.25 |                25 |
-| Harrow (Tine)           |              0.20 |                25 |
-| Deep Ripper / Subsoiler |              0.25 |               350 |
-
-*(Sources: SWAT-TAMU 2019, NRCS RUSLE2 Database, DayCent Manual v2023-02-28)*
-
----
-
-### Example Area Fractions (user inputs recommended)
-
-| Operation                                 | Typical (A_f) | Rationale / Source                                               |
-| ----------------------------------------- | ------------: | ---------------------------------------------------------------- |
-| Strip Till                                |          0.27 | 6–8 inch bands on 30-inch rows (Deere ST12, NCSU CES 2022)       |
-| Field Cultivator                          |           1.0 | Full-width mixing (RUSLE2/SWAT)                                  |
-| Row Cleaners                              |          0.17 | 5-inch clear band / 30-inch rows (Yetter 2967 Rigid Row Cleaner) |
-| Furrow Diker                              |          0.30 | Corrugation ~9-inch width / 30-inch spacing (NRCS NEH-15 Ch.4)   |
-| Non-tillage (planting, spraying, harvest) |           0.0 | No mixing or disturbance                                         |
-
----
-
-## **How to Run**
-
-From repository root:
-
-```bash
-python code/stircalcs.py
+```math
+STIR = \left( 0.5 \times \frac{Speed_{[km/h]}}{1.609} \right) \times \left( 3.25 \times TTM \right) \times \left( \frac{Depth_{[cm]}}{2.54} \right) \times \left( \frac{Surf_{Disturbance} [%]}{100} \right)
 ```
 
-Outputs will appear in:
+
+| Term                     | Description                       | Conversion       | Notes                                                                            |
+| ------------------------ | --------------------------------- | ---------------- | -------------------------------------------------------------------------------- |
+| **Speed [km/h]**         | Average implement speed           | ÷ 1.609 → mph    | Converts from km/h to miles per hour                                             |
+| **TTM**                  | *Tillage Type Modifier* [0–1]     | none             | Represents the aggressiveness of the implement (0 = no till, 1 = full inversion) |
+| **Depth [cm]**           | Average operating depth           | ÷ 2.54 → inches  | Converts from centimeters to inches                                              |
+| **Surf_Disturbance [%]** | Percent of soil surface disturbed | ÷ 100 → fraction | Captures the area of soil affected by the implement                              |
+| **STIR**                 | Soil Tillage Intensity Rating     | —                | Dimensionless intensity index                                                    |
+
+This formulation converts all metric units to those used in RUSLE2’s empirical calibration (mph, inches) and scales soil energy through both the mechanical and spatial extent of disturbance.
+
+---
+
+## Inputs
+
+### 1. Tillage Mapper (`tillage_mapper_input.csv`)
+
+This file defines how each operation in the field records maps to an equivalent operation in the MOSES database. It also provides all parameters required to compute STIR. Each record corresponds to one implement or operation type.
+
+**Required columns:**
+
+| Column                      | Description                                   | Units |
+| --------------------------- | --------------------------------------------- | ----- |
+| Operation (verbatim)        | The exact operation name found in field logs  | text  |
+| MOSES Operation             | Equivalent operation name from MOSES database | text  |
+| Speed [km/h]                | Average operation speed                       | km/h  |
+| Surf_Disturbance [%]        | Percent of surface disturbed                  | %     |
+| Depth [cm]                  | Average operating depth                       | cm    |
+| TILLAGE_TYPE_Modifier [0-1] | Tillage-type modifier (TTM)                   | —     |
+
+**Optional columns:**
+
+* Diesel_use [l/ha]
+* Burial_Coefficient [0-1]
+* Source
+* Description
+
+### 2. Tillage Records (`tillage_records.csv`)
+
+This dataset contains all field operations across conventional (CT), strip-till (ST), and minimum-till (MT) systems.
+
+Supported formats:
+
+* **Wide** (columns: `CT Operation`, `ST Operation`, `MT Operation`)
+* **Long** (column: `Operation` with a `System` column indicating CT/ST/MT)
+
+The script normalizes the file into long format internally.
+
+### 3. Crop Records (`crop_records.csv`, optional)
+
+If provided, crop harvest dates are used to compute cumulative STIR values between harvest events. Each record should contain at least a `Date` column and one field identifying harvest events.
+
+---
+
+## Outputs
+
+All outputs are written to the directory specified by `--outdir`.
+
+| File                              | Description                                                                   |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| **stir_events_long.csv**          | Long-format table of every operation with computed STIR and mapper parameters |
+| **stir_daily_system_wide.csv**    | Daily STIR sums per system (CT/ST/MT) pivoted to wide format                  |
+| **stir_events_long_windowed.csv** | (Optional) Cumulative STIR between harvest events if crop data provided       |
+| **unmapped_ops.csv**              | Operations from the records not matched to the mapper table                   |
+
+---
+
+## Running the Script
+
+### Example (Windows Command Prompt)
 
 ```
-data/derived/
+python stir_pipeline.py --records "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\data\tillage_records.csv" --mapper "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\data\tillage_mapper_input.csv" --outdir "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\out" --crop "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\data\crop_records.csv"
+```
+
+### Example (PowerShell)
+
+```
+python .\stir_pipeline.py `
+  --records "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\data\tillage_records.csv" `
+  --mapper  "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\data\tillage_mapper_input.csv" `
+  --outdir  "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\out" `
+  --crop    "C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts\data\crop_records.csv"
 ```
 
 ---
 
-## **References**
+## Interpretation and Use
 
-1. **SWAT–TAMU (2019)**. *Soil and Water Assessment Tool Theoretical Documentation: Agricultural Management.*
-   Texas A&M University, College Station, TX.
+The computed STIR values allow comparison of soil disturbance among management systems, years, or tillage operations. When aggregated by crop year or between harvests, cumulative STIR provides a measure of **mechanical soil impact intensity** that can be related to observed changes in residue cover, infiltration, and water-quality responses.
 
-2. **Parton, W. et al. (2023).** *DayCent Model Technical Manual (v2023-02-28).* Natural Resource Ecology Laboratory, Colorado State University.
-
-3. **NRCS (2018).** *RUSLE2 Official Database – Tillage and Residue Management Operations.*
-
-4. **USDA NRCS (2010).** *National Engineering Handbook, Part 623, Chapter 4: Furrow and Basin Irrigation.*
-
-5. **Deere & Company (2020).** *ST12 Strip-Till Operator’s Manual.*
+Because the workflow draws directly from MOSES and RUSLE2 calibration data, the resulting STIR values are standardized and reproducible across studies. This alignment ensures that subsequent analyses (e.g., legacy tillage effects, cumulative disturbance modeling) are directly comparable with national datasets used in NRCS conservation planning and erosion modeling.
 
 ---
 
-Would you like me to add a short **“Recommended citation”** and a schematic figure (STIR workflow diagram in Markdown or mermaid)?
-That would make it look like a formal methods appendix or repo README.
+### References
+
+* USDA–NRCS (2023). *Revised Universal Soil Loss Equation, Version 2 (RUSLE2) Official Database (v2023-02-24).* USDA–NRCS, Washington, D.C.
+* Brown, A.J. (2025). *Long-Term Impacts of Tillage on Water Quality and Soil Disturbance Metrics.* Colorado State University.
+* SoilManageR Package (2023). *Tools for Soil Management Operations and STIR Calculations.* GitLab Repository: [https://gitlab.com/nrcs-soil/soilmanager](https://gitlab.com/nrcs-soil/soilmanager)
