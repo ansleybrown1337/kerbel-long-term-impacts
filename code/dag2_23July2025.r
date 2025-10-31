@@ -14,6 +14,7 @@ bb="-5.892,-5.356,4.412,6.847"
 "Vol. e " [latent,pos="-2.522,4.234"]
 "duplicate status" [exposure,pos="-3.968,-3.951"]
 "flume type" [exposure,pos="-2.005,-0.091"]
+"source water" [pos="-0.151,-4.951"]
 Analyte [exposure,pos="-2.626,-4.327"]
 Block [exposure,pos="-3.104,0.582"]
 Load [outcome,pos="-4.515,2.568"]
@@ -37,6 +38,7 @@ STIR [exposure,pos="0.252,-3.050"]
 "duplicate status" -> "Outflow Conc."
 "flume type" -> "Outflow Conc."
 "flume type" -> "Outflow vol"
+"source water" -> "Inflow Conc."
 Analyte -> "Outflow Conc."
 Block -> "Outflow Conc."
 Block -> "Outflow vol"
