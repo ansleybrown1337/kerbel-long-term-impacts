@@ -1,0 +1,36 @@
+ANALYTE,METHOD,UNITS,MDL,RL,,Notes
+Nitrate/Nitrite (as N),EPA 300.0,mg/L,0.03,0.2,,"Current method by ALS, 2023+"
+"Nitrogen, Nitrate (As N)",EPA 300.1,mg/L,0.03,0.1,,"Current method by ALS, 2023+"
+"Nitrogen, Nitrite  (As N)",EPA 300.2,mg/L,0.03,0.1,,"Current method by ALS, 2023+"
+Ammonia-nitrogen,EPA 350.1,mg/L,0.077,0.2,,"Current method by ALS, 2023+"
+"Phosphorus, Total Orthophosphate (as P)",SM4500P E - P-Ortho M4500P E,mg/L,0.01,0.05,,"Current method by ALS, 2023+"
+"Nitrogen, Total Kjeldahl",M4500 NH3 D - TKN_W 4500NH3 D,mg/L,0.1,0.5,,"Current method by ALS, 2023+"
+"Phosphorus, Total (As P)",SM4500P E - P_TW M4500P E,mg/L,0.02,0.05,,"Current method by ALS, 2023+"
+Selenium,EPA 200.8,µg/L,0.86,2,,"Current method by ALS, 2023+"
+"Total Dissolved Solids (Residue, Filterable)",EPA 160.1,mg/L,5,10,,"Current method by ALS, 2023+"
+Calcium,EPA 200.8,µg/L,18,500,,"Current method by ALS, 2023+"
+Magnesium,EPA 200.8,µg/L,7.8,500,,"Current method by ALS, 2023+"
+Chloride,EPA 300.0,mg/L,0.2,0.5,,"Current method by ALS, 2023+"
+"Alkalinity, Bicarbonate (As CaCO3)",SM2320B - ALK_W 2320B,mg/L,5,5,,"Current method by ALS, 2023+"
+"Alkalinity, Carbonate (As CaCO3)",SM2320B - ALK_W 2320B,mg/L,5,5,,"Current method by ALS, 2023+"
+"Alkalinity, Hydroxide (As CaCO3)",SM2320B - ALK_W 2320B,mg/L,5,5,,"Current method by ALS, 2023+"
+"Alkalinity, Total (As CaCO3)",SM2320B - ALK_W 2320B,mg/L,5,5,,"Current method by ALS, 2023+"
+Hardness (As CaCO3),M2340 B - HARD,mg/L,2,2,,"Current method by ALS, 2023+"
+Iron,EPA 200.8,µg/L,50,200,,"Current method by ALS, 2023+"
+e. coli count,"SM9222-D,G",cfu/100mL,4,4,,eAnalytics lab in 2022
+total fecal coliform,"SM9222-D,G",cfu/100mL,4,4,,eAnalytics lab in 2022
+pH,EPA 150.1,pH,0.1,0.1,,Perfromed by CSU AWQP in-house
+TSS,EPA 160.2,mg/L,2.5,2.5,,Perfromed by CSU AWQP in-house
+EC,EPA 120.1,µS/cm,5,5,,Perfromed by CSU AWQP in-house
+,,,,,,
+,,,,,,
+,,,,,,
+,,,,,,
+,,,,,,
+Subcontract Analysis,NA - SUB_METALS,NA,0,0,,
+Miscellaneous Analysis,NA - XXX SUB,NA,0,0,,
+NITRATE AS N,EPA300.0 [300Nitrate]_W,MG/L,0.19,0.2,,"Old ALS methods (i.e., fort collins lab); pre 2023"
+NITRITE AS N,EPA300.0 [300Nitrite]_W,MG/L,0.11,0.15,,"Old ALS methods (i.e., fort collins lab); pre 2023"
+ORTHOPHOSPHATE AS P,EPA300.0 [300OPHOS]_W,MG/L,0.34,0.75,,"Old ALS methods (i.e., fort collins lab); pre 2023"
+SELENIUM,EPA200.8 [SE200.8]_W,UG/L,NA,1.5,,"Old ALS methods (i.e., fort collins lab); pre 2023"
+TOTAL PHOSPHORUS,EPA365.2 [365.2TPHOS]_W,MG/L,0.033,0.05,,"Old ALS methods (i.e., fort collins lab); pre 2023"

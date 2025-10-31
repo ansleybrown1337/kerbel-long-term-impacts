@@ -85,10 +85,10 @@ Each row represents a single analyte observation for a unique **Date × Irrigati
 
 ## 4. Notes on Data Quality and Schema
 
-- `"NA"` values represent missing data and are preserved as literal strings for schema compatibility.  
+- `"NA"` values represent data that occured but was never measured (missing data), and are preserved as literal strings for schema compatibility.  
 - `"U"` designates results below detection limits (undetected).  
-- `"NA.IRR"` represents cases where no runoff occurred (irrigation-only events).  
-- `"None"` occurs in categorical fields where no method or lab information was recorded.
+- `"NA.IRR"` represents cases irrigation happened, but no runoff occurred.  
+- `"None"` occurs in categorical fields where no method or lab information was ever used
 
 ---
 
