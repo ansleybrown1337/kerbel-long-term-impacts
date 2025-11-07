@@ -90,18 +90,23 @@ def read_wq(path: str, debug: bool=False) -> pd.DataFrame:
 
 
 def read_stir(path: str, debug: bool=False) -> pd.DataFrame:
+    """
+    Read long-format STIR events and return a CLEAN table with exactly one row per
+    (System, Date) and a numeric STIR_val. Drops rows where STIR could not be
+    computed and collapses multiple same-day operations by summing.
+    """
     df = pd.read_csv(path)
 
-    # Try to detect the treatment/system column (commonly 'System')
+    # Detect treatment/system column
     cand_sys = [c for c in df.columns if c.lower() in ("system", "treatment")]
     if not cand_sys:
         raise KeyError(f"[STIR] Could not find 'System' or 'Treatment' column in {path}. cols={list(df.columns)}")
-
     sys_col = cand_sys[0]
+
     if "Date" not in df.columns:
         raise KeyError(f"[STIR] Required column 'Date' not found in {path}. cols={list(df.columns)}")
 
-    # Try to find STIR value column
+    # Detect STIR value column
     cand_stir = [c for c in df.columns if c.strip().upper() in ("STIR", "STIR_EVENT", "STIR_VALUE")]
     if not cand_stir:
         cand_stir = [c for c in df.columns if "stir" in c.lower()]
@@ -109,20 +114,30 @@ def read_stir(path: str, debug: bool=False) -> pd.DataFrame:
         raise KeyError(f"[STIR] Could not locate STIR value column in {path}. cols={list(df.columns)}")
     stir_col = cand_stir[0]
 
+    # Normalize & parse
     df["Date"] = _to_datetime(df["Date"], "STIR.Date")
     df = df[df["Date"].notna()].copy()
     df["System"] = df[sys_col].astype(str).str.strip().str.upper()
     df["STIR_val"] = pd.to_numeric(df[stir_col], errors="coerce")
-    if df["STIR_val"].isna().all():
-        raise ValueError(f"[STIR] All STIR values are NaN after parsing from column '{stir_col}'.")
 
-    keep = ["Date", "System", "STIR_val"]
-    extra = [c for c in df.columns if c not in keep]
-    df = df[keep + extra].sort_values(["System", "Date"], kind="mergesort")
+    # ---- Critical cleanup: remove unusable rows and collapse to daily ----
+    n0 = len(df)
+    n_nan = int(df["STIR_val"].isna().sum())
+    if debug and n_nan:
+        print(f"[INFO] STIR rows with NaN STIR_val dropped: {n_nan}/{n0}")
+
+    df = df[df["STIR_val"].notna()].copy()
+
+    # Sum multiple same-day operations per System to a single row
+    df = (df.groupby(["System", "Date"], as_index=False, sort=False)["STIR_val"]
+            .sum())
+
+    # Sorted for asof/cumsum downstream
+    df = df.sort_values(["System", "Date"], kind="mergesort").reset_index(drop=True)
 
     if debug:
         tts = sorted(df["System"].dropna().unique().tolist())
-        print(f"[INFO] STIR events rows: {len(df)} | Treatments: {tts}")
+        print(f"[INFO] STIR events rows (clean): {len(df)} | Treatments: {tts}")
     return df
 
 
@@ -337,29 +352,39 @@ def attach_season_windows(dfw: pd.DataFrame, dfc: pd.DataFrame, debug: bool = Fa
 
 
 def compute_cumulative_stir(stir: pd.DataFrame, debug: bool=False) -> pd.DataFrame:
+    """
+    Given a cleaned STIR table (one row per System/Date), compute the running
+    all-years cumulative per System and forward-fill to avoid gaps.
+    """
     df = stir.sort_values(["System", "Date"], kind="mergesort").copy()
+
     df["STIR_cum_all"] = df.groupby("System", sort=False)["STIR_val"].cumsum()
+    # Safety: ensure no holes remain within a System
+    df["STIR_cum_all"] = df.groupby("System", sort=False)["STIR_cum_all"].ffill()
+
+    if debug:
+        n_nan = int(df["STIR_cum_all"].isna().sum())
+        if n_nan:
+            print(f"[WARN] STIR_cum_all still has NaNs after ffill: {n_nan}")
     return df
 
 
-def merge_stir_with_wq(wq_seasoned: pd.DataFrame, stir_cum: pd.DataFrame, debug: bool = False) -> pd.DataFrame:
+def merge_stir_with_wq(
+    wq_seasoned: pd.DataFrame,
+    stir_cum: pd.DataFrame,
+    debug: bool = False,
+    season_anchor: str = "calendar",  # "plant" (PlantDate..HarvestDate) or "calendar" (Jan 1..Dec 31)
+) -> pd.DataFrame:
     """
-    Attach two STIR 'to date' metrics to season-tagged WQ rows:
-      - CumAll_STIR_toDate: cumulative STIR for Treatment from earliest STIR event up to WQ Date (inclusive)
-      - Season_STIR_toDate: cumulative STIR within the current crop season window
-                            i.e., CumAll_at_Date - CumAll_just_before_PlantDate
-
-    Requirements in wq_seasoned:
-      ['Treatment','Date','PlantDate','HarvestDate','SeasonYear'] (already attached upstream)
-
-    Requirements in stir_cum:
-      ['System','Date','STIR_cum_all']  (cumulative across all years per system)
+    Attach:
+      - CumAll_STIR_toDate: cumulative STIR to the WQ sample date
+      - Season_STIR_toDate: cumulative STIR since season anchor
+        * season_anchor="plant"   -> since PlantDate (your original behavior)
+        * season_anchor="calendar"-> since Jan 1 of sample's calendar year
     """
-    # Defensive copies
     wq = wq_seasoned.copy()
     sc_all = stir_cum.copy()
 
-    # Hard requirements
     for need in ["Treatment", "Date", "PlantDate", "HarvestDate", "SeasonYear"]:
         if need not in wq.columns:
             raise KeyError(f"[WQ] Missing required column: {need}")
@@ -367,7 +392,7 @@ def merge_stir_with_wq(wq_seasoned: pd.DataFrame, stir_cum: pd.DataFrame, debug:
         if need not in sc_all.columns:
             raise KeyError(f"[STIR] Missing required column: {need}")
 
-    # Datetime coercions (drop rows with bad dates rather than letting merge_asof choke)
+    # Datetime coercions
     for col in ["Date", "PlantDate", "HarvestDate"]:
         wq[col] = pd.to_datetime(wq[col], errors="coerce")
     sc_all["Date"] = pd.to_datetime(sc_all["Date"], errors="coerce")
@@ -378,7 +403,6 @@ def merge_stir_with_wq(wq_seasoned: pd.DataFrame, stir_cum: pd.DataFrame, debug:
             print(f"[WARN] Dropping {int(bad_wq.sum())} WQ rows with NaT in Date/PlantDate/HarvestDate before merge.")
         wq = wq.loc[~bad_wq].copy()
 
-    # Normalize labels for safe matching
     wq["Treatment"] = wq["Treatment"].astype(str).str.strip().str.upper()
     sc_all["System"]  = sc_all["System"].astype(str).str.strip().str.upper()
 
@@ -386,25 +410,20 @@ def merge_stir_with_wq(wq_seasoned: pd.DataFrame, stir_cum: pd.DataFrame, debug:
     wq["CumAll_STIR_toDate"] = np.nan
     wq["Season_STIR_toDate"] = np.nan
 
-    # Per-treatment asof merges: this avoids 'left keys must be sorted' across mixed groups
     eps = pd.to_timedelta(1, unit="us")
     out_pieces = []
 
-    trts = wq["Treatment"].dropna().unique().tolist()
-    for trt in trts:
+    for trt in wq["Treatment"].dropna().unique().tolist():
         wq_t = wq.loc[wq["Treatment"] == trt].copy()
         sc_t = sc_all.loc[sc_all["System"] == trt].copy()
-
-        # If we have no STIR for this treatment, leave NaN metrics and move on
         if sc_t.empty:
             out_pieces.append(wq_t)
             continue
 
-        # Strict sort on the asof key within the group (critical!)
         wq_t = wq_t.sort_values("Date", kind="mergesort").reset_index(drop=True)
         sc_t = sc_t.sort_values("Date", kind="mergesort").reset_index(drop=True)
 
-        # CumAll_STIR_toDate at the sample Date
+        # CumAll at the sample Date
         merge_all = pd.merge_asof(
             wq_t[["Date"]], sc_t[["Date","STIR_cum_all"]],
             left_on="Date", right_on="Date",
@@ -412,16 +431,24 @@ def merge_stir_with_wq(wq_seasoned: pd.DataFrame, stir_cum: pd.DataFrame, debug:
         )
         wq_t["CumAll_STIR_toDate"] = merge_all["STIR_cum_all"].to_numpy()
 
-        # Baseline cumulative just BEFORE PlantDate (epsilon step back)
-        plant_minus = (wq_t["PlantDate"] - eps).rename("Date")
+        # Baseline cumulative just BEFORE the season anchor
+        if season_anchor.lower() == "calendar":
+            # Jan 1 of the WQ sample year
+            anchor = pd.to_datetime(wq_t["Date"].dt.year.astype(int).astype(str) + "-01-01")
+        else:
+            # PlantDate anchor (original behavior)
+            anchor = wq_t["PlantDate"]
+
+        anchor_minus = (anchor - eps).rename("Date")
         base_all = pd.merge_asof(
-            plant_minus.to_frame(), sc_t[["Date","STIR_cum_all"]],
+            anchor_minus.to_frame(), sc_t[["Date","STIR_cum_all"]],
             left_on="Date", right_on="Date",
             direction="backward", allow_exact_matches=True
-        )["STIR_cum_all"]
+        )["STIR_cum_all"].fillna(0)
 
-        # Season value = current cumAll - baseline at season start
+        # Season value = current cumAll - baseline
         wq_t["Season_STIR_toDate"] = wq_t["CumAll_STIR_toDate"] - base_all.to_numpy()
+
 
         out_pieces.append(wq_t)
 
@@ -479,6 +506,13 @@ def main():
     ap.add_argument("--crops", default=os.path.join("data", "crop records.csv"))
     ap.add_argument("--out", default=os.path.join("out"))
     ap.add_argument("--debug", action="store_true")
+    ap.add_argument(
+        "--season",
+        choices=["plant", "calendar"],
+        default="calendar",
+        help="Anchor for Season_STIR_toDate: 'plant' (Plant→Harvest) or 'calendar' (Jan 1→sample date)."
+    )
+
     args = ap.parse_args()
 
     debug = args.debug
