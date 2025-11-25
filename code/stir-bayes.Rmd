@@ -53,7 +53,12 @@ You now choose which variables enter your model from the fields already standard
 Select analytes for modeling:
 
 ```{r subset-analytes}
+# analytes: OP   TP   ICP  NO3  TN   TSS  TKN  TSP  NH4  NPOC Se   NO2  NOx  TDS
 analytes_keep <- c("TP", "TSS")   # modify as needed
+# fullset for ease of use
+analytes_keep <- c("OP", "TP", "ICP", "NO3", "TN", "TSS", 
+                   "TKN", "TSP", "NH4", "NPOC", "Se", "NO2", 
+                   "NOx", "TDS")
 
 d_mod <- wq_clean %>%
   filter(analyte_abbr %in% analytes_keep)
@@ -110,8 +115,8 @@ m_stir <- ulam(
 # 4. Posterior inspection
 
 ```{r summarize, eval=FALSE}
-precis(m_stir, depth=2)
-plot(precis(m_stir, depth=2))
+precis(m_stir, depth=2, prob=0.95)
+plot(precis(m_stir, depth=2, prob=0.95))
 ```
 
 ```{r extract, eval=FALSE}
@@ -120,16 +125,23 @@ post <- extract.samples(m_stir)
 alpha_hat <- apply(post$alpha, 2, mean)
 beta_hat  <- apply(post$beta,  2, mean)
 
+# 89 percent HPDI and 95 percent PI, McElreath-style
+beta_hpdi <- apply(post$beta, 2, HPDI, prob = 0.89)
+beta_pi   <- apply(post$beta, 2, PI,   prob = 0.95)
+
 analyte_lookup <- d_mod %>% 
   distinct(A, analyte_abbr) %>%
   arrange(A)
 
 analyte_effects <- analyte_lookup %>%
   mutate(
-    alpha_hat = alpha_hat,
-    beta_hat  = beta_hat
+    beta_mean = beta_hat,
+    beta_median = apply(post$beta, 2, median),
+    beta_hpdi_low  = beta_hpdi[1, ],
+    beta_hpdi_high = beta_hpdi[2, ],
+    beta_pi_low    = beta_pi[1, ],
+    beta_pi_high   = beta_pi[2, ]
   )
-
 analyte_effects
 ```
 
@@ -138,16 +150,49 @@ analyte_effects
 # 5. Plot posterior slopes
 
 ```{r plot-slopes, eval=FALSE}
-ggplot(analyte_effects, aes(x = analyte_abbr, y = beta_hat)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_point() +
-  labs(
-    x = "Analyte",
-    y = "Posterior mean slope of C_z on STIR_z",
-    title = "Analyte-specific STIR effects on standardized concentration"
-  ) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# Recreate an index for plotting
+A_seq <- analyte_effects$A
+beta_mean  <- analyte_effects$beta_mean
+beta_hpdi  <- analyte_effects %>% select(beta_hpdi_low, beta_hpdi_high)
+beta_pi    <- analyte_effects %>% select(beta_pi_low, beta_pi_high)
+
+# Base R plot setup
+plot(
+  A_seq, beta_mean,
+  xaxt = "n",
+  pch = 16,
+  col = "darkred",
+  ylim = range(c(beta_pi$beta_pi_low, beta_pi$beta_pi_high)),
+  ylab = "Effect of STIR on Concentration",
+  xlab = "Analyte",
+  main = "Analyte-specific STIR effects with 89% HPDI and 95% PI"
+)
+
+axis(1, at = A_seq, labels = analyte_effects$analyte_abbr, las = 2)
+
+# 95 percent PI vertical lines
+for (i in seq_along(A_seq)) {
+  lines(
+    x = c(A_seq[i], A_seq[i]),
+    y = c(beta_pi$beta_pi_low[i], beta_pi$beta_pi_high[i]),
+    col = col.alpha("darkred", 0.2),
+    lwd = 2
+  )
+}
+
+# 89 percent HPDI vertical lines (darker)
+for (i in seq_along(A_seq)) {
+  lines(
+    x = c(A_seq[i], A_seq[i]),
+    y = c(beta_hpdi$beta_hpdi_low[i], beta_hpdi$beta_hpdi_high[i]),
+    col = col.alpha("darkred", 0.6),
+    lwd = 3
+  )
+}
+
+# Add zero reference line
+abline(h = 0, lty = 2)
+
 ```
 
 ---
