@@ -1,0 +1,161 @@
+---
+title: "Bayesian Modeling of STIR Effects on Water Quality"
+author: "AJ Brown"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+# Load backend cleaning + functions
+getwd()
+source("./stir-bayes-backend.R")
+library(rethinking)
+library(dplyr)
+library(ggplot2)
+```
+
+# 1. Load and clean STIR–WQ dataset
+
+```{r load-clean}
+# Step 1: load raw merged dataset
+wq_raw <- load_wq_stir(
+  path = "out/wq_with_stir_by_season.csv",
+  year_max = Inf
+)
+
+# Step 2: clean, type-enforce, standardize (ALL done in backend)
+wq_clean <- clean_wq_stir(wq_raw)
+
+glimpse(wq_clean)
+```
+
+---
+
+# 2. Prepare model-ready dataset
+
+You now choose which variables enter your model from the fields already standardized in the backend:
+
+* `cout_z` = per-analyte standardized OUT concentrations
+* `cin_z`  = per-analyte standardized INFLOW concentrations
+* `stir_season_z` = standardized seasonal STIR
+* `stir_cumall_z` = standardized cumulative STIR
+* `analyte_abbr` = clean factor index
+
+Select analytes for modeling:
+
+```{r subset-analytes}
+analytes_keep <- c("TP", "TSS")   # modify as needed
+
+d_mod <- wq_clean %>%
+  filter(analyte_abbr %in% analytes_keep)
+
+d_mod %>% count(analyte_abbr)
+```
+
+Create analyte index and build data list for ulam:
+
+```{r make-stan-dat}
+d_mod <- d_mod %>% 
+  mutate(
+    A = as.integer(analyte_abbr)
+  )
+
+stan_dat <- list(
+  N    = nrow(d_mod),
+  J    = length(unique(d_mod$A)),
+  A    = as.factor(d_mod$A),
+  C    = d_mod$cout_z,          # standardized concentration
+  STIR = d_mod$stir_season_z    # standardized STIR predictor
+)
+
+str(stan_dat)
+```
+
+---
+
+# 3. Hierarchical Bayesian model
+
+```{r fit-model, eval=T}
+m_stir <- ulam(
+  alist(
+    C ~ dnorm(mu, sigma),
+    mu <- alpha[A] + beta[A] * STIR,
+
+    alpha[A] ~ dnorm(a_bar, sigma_alpha),
+    beta[A]  ~ dnorm(b_bar, sigma_beta),
+
+    c(a_bar, b_bar) ~ dnorm(0, 1),
+    sigma_alpha ~ dexp(1),
+    sigma_beta  ~ dexp(1),
+    sigma       ~ dexp(1)
+  ),
+  data = stan_dat,
+  chains = 4,
+  cores = 4,
+  iter = 2000
+)
+```
+
+---
+
+# 4. Posterior inspection
+
+```{r summarize, eval=FALSE}
+precis(m_stir, depth=2)
+plot(precis(m_stir, depth=2))
+```
+
+```{r extract, eval=FALSE}
+post <- extract.samples(m_stir)
+
+alpha_hat <- apply(post$alpha, 2, mean)
+beta_hat  <- apply(post$beta,  2, mean)
+
+analyte_lookup <- d_mod %>% 
+  distinct(A, analyte_abbr) %>%
+  arrange(A)
+
+analyte_effects <- analyte_lookup %>%
+  mutate(
+    alpha_hat = alpha_hat,
+    beta_hat  = beta_hat
+  )
+
+analyte_effects
+```
+
+---
+
+# 5. Plot posterior slopes
+
+```{r plot-slopes, eval=FALSE}
+ggplot(analyte_effects, aes(x = analyte_abbr, y = beta_hat)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_point() +
+  labs(
+    x = "Analyte",
+    y = "Posterior mean slope of C_z on STIR_z",
+    title = "Analyte-specific STIR effects on standardized concentration"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+---
+
+# 6. Next steps
+
+* Add censoring models for nondetects
+* Compare seasonal STIR vs cumulative STIR
+* Include treatment-level or year-level random effects
+* Fit analyte-specific models for sensitivity analysis
+
