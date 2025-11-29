@@ -23,6 +23,8 @@ library(dplyr)
 library(ggplot2)
 ```
 
+# Model 1.0 - STIR total effect on OUT concentration with analyte-specific slopes and intercepts
+
 # 1. Load and clean STIR–WQ dataset
 
 ```{r load-clean}
@@ -176,7 +178,7 @@ for (i in seq_along(A_seq)) {
     x = c(A_seq[i], A_seq[i]),
     y = c(beta_pi$beta_pi_low[i], beta_pi$beta_pi_high[i]),
     col = col.alpha("darkred", 0.2),
-    lwd = 2
+    lwd = 5
   )
 }
 
@@ -185,8 +187,8 @@ for (i in seq_along(A_seq)) {
   lines(
     x = c(A_seq[i], A_seq[i]),
     y = c(beta_hpdi$beta_hpdi_low[i], beta_hpdi$beta_hpdi_high[i]),
-    col = col.alpha("darkred", 0.6),
-    lwd = 3
+    col = col.alpha("darkred", 0.4),
+    lwd = 5
   )
 }
 

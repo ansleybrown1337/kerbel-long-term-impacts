@@ -1,0 +1,291 @@
+---
+title: "Bayesian Modeling of STIR Effects on Water Quality"
+author: "AJ Brown"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+# Load backend cleaning + functions
+getwd()
+source("./stir-bayes-backend.R")
+library(rethinking)
+library(dplyr)
+library(ggplot2)
+```
+
+# Model 2.0 - STIR total effect on loads via concentration and flow effects
+
+# 1. Load and clean STIR–WQ dataset
+
+```{r load-clean}
+# Step 1: load raw merged dataset
+wq_raw <- load_wq_stir(
+  path = "out/wq_with_stir_by_season.csv",
+  year_max = Inf
+)
+
+# Step 2: clean, type-enforce, standardize (ALL done in backend)
+wq_clean <- clean_wq_stir(wq_raw)
+
+glimpse(wq_clean)
+```
+
+---
+
+# 2. Prepare model-ready dataset
+
+You now choose which variables enter your model from the fields already standardized in the backend:
+
+* `cout_z` = per-analyte standardized OUT concentrations
+* `cin_z`  = per-analyte standardized INFLOW concentrations
+* `stir_season_z` = standardized seasonal STIR
+* `stir_cumall_z` = standardized cumulative STIR
+* `analyte_abbr` = clean factor index
+
+Select analytes for modeling:
+
+```{r subset-analytes}
+# analytes: OP   TP   ICP  NO3  TN   TSS  TKN  TSP  NH4  NPOC Se   NO2  NOx  TDS
+analytes_keep <- c("TP", "TSS")   # modify as needed
+# fullset for ease of use
+analytes_keep <- c("OP", "TP", "ICP", "NO3", "TN", "TSS", 
+                   "TKN", "TSP", "NH4", "NPOC", "Se", "NO2", 
+                   "NOx", "TDS")
+
+d_mod <- wq_clean %>%
+  filter(analyte_abbr %in% analytes_keep)
+
+d_mod %>% count(analyte_abbr)
+```
+
+Create analyte index and build data list for ulam:
+
+```{r make-stan-dat}
+d_mod <- d_mod %>%
+  mutate(
+    A = as.integer(analyte_abbr)
+  )
+
+stan_dat <- list(
+  N    = nrow(d_mod),
+  J    = length(unique(d_mod$A)),
+  A    = as.integer(d_mod$A),
+  C    = d_mod$cout_z,          # standardized concentration (per analyte)
+  STIR = d_mod$stir_season_z,   # standardized seasonal STIR
+  V    = d_mod$volume_z         # standardized raw outflow Volume
+)
+
+
+str(stan_dat)
+```
+
+---
+
+# 3. Hierarchical Bayesian model
+
+```{r fit-model, eval=T}
+m_stir <- ulam(
+  alist(
+    # Likelihoods
+    C ~ dnorm(mu_C, sigma_C),
+    V ~ dnorm(mu_V, sigma_V),
+
+    # Linear predictors
+    mu_C <- alpha[A] + beta[A] * STIR,
+    mu_V <- a_V + b_V * STIR,
+
+    # Hierarchical analyte concentration effects
+    alpha[A] ~ dnorm(a_bar, sigma_alpha),
+    beta[A]  ~ dnorm(b_bar, sigma_beta),
+
+    # Hyperpriors + volume priors
+    c(a_bar, b_bar, a_V, b_V) ~ dnorm(0, 1),
+    sigma_alpha ~ dexp(1),
+    sigma_beta  ~ dexp(1),
+    sigma_C     ~ dexp(1),
+    sigma_V     ~ dexp(1)
+  ),
+  data = stan_dat,
+  chains = 4,
+  cores  = 4,
+  iter   = 2000
+)
+
+```
+
+---
+
+# 4. Posterior inspection
+
+```{r summarize, eval=FALSE}
+pr <- precis(m_stir, depth=1, prob=0.95)
+plot(pr)
+```
+
+```{r extract, eval=FALSE}
+post <- extract.samples(m_stir)
+
+# Per-analyte mean/sd of raw concentration (mg/L)
+c_stats <- d_mod %>%
+  group_by(A) %>%
+  summarize(
+    c_mean = mean(Result_mg_L, na.rm = TRUE),
+    c_sd   = sd(Result_mg_L,   na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Global mean/sd for raw Volume
+V_mean <- mean(d_mod$Volume, na.rm = TRUE)
+V_sd   <- sd(d_mod$Volume,   na.rm = TRUE)
+
+# Function to get posterior load draws for a single analyte
+simulate_posterior_load <- function(analyte_label,
+                                    n_draws = 1000,
+                                    k_unit = 1) {
+  # 1. Identify analyte index j0
+  j0 <- analyte_lookup %>%
+    filter(analyte_abbr == analyte_label) %>%
+    pull(A)
+  
+  if (length(j0) != 1L) stop("Analyte label not found or not unique in analyte_lookup")
+  
+  # 2. Subset rows for this analyte
+  idx_obs <- which(d_mod$A == j0)
+  d_sub   <- d_mod[idx_obs, ]
+  
+  # 3. Stats for this analyte
+  stats_j0 <- filter(c_stats, A == j0)
+  c_mean_j <- stats_j0$c_mean
+  c_sd_j   <- stats_j0$c_sd
+  
+  # 4. Extract predictors for these rows
+  STIR_i <- d_sub$stir_season_z
+  V_z_i  <- d_sub$volume_z   # standardized Volume
+  
+  N_sub <- length(idx_obs)
+  
+  # 5. Allocate matrix: rows = draws, cols = observations (for this analyte)
+  load_draws <- matrix(NA_real_, nrow = n_draws, ncol = N_sub)
+  
+  # 6. Sample posterior indices
+  S <- length(post$a_V)  # total posterior samples
+  idx_draws <- sample(seq_len(S), n_draws, replace = TRUE)
+  
+  # 7. Loop over draws
+  for (k in seq_len(n_draws)) {
+    s <- idx_draws[k]
+    
+    # Linear predictors on z-scale
+    muC <- post$alpha[s, j0] + post$beta[s, j0] * STIR_i
+    muV <- post$a_V[s] + post$b_V[s] * STIR_i
+    
+    # Simulate z-score C and V
+    C_z <- rnorm(N_sub, muC, post$sigma_C[s])
+    V_z <- rnorm(N_sub, muV, post$sigma_V[s])
+    
+    # Back-transform to raw units
+    C_raw <- C_z * c_sd_j + c_mean_j   # mg/L
+    V_raw <- V_z * V_sd   + V_mean     # same units as Volume
+    
+    # Mechanistic load (unit conversion factor k_unit if needed)
+    load_draws[k, ] <- k_unit * C_raw * V_raw
+  }
+  
+  list(
+    load_draws = load_draws,  # matrix n_draws × N_sub
+    d_sub      = d_sub,       # corresponding rows (for plotting, grouping, etc.)
+    analyte    = analyte_label
+  )
+}
+
+# Example: simulate posterior loads for Total Phosphorus (TP)
+res_TP <- simulate_posterior_load("TP", n_draws = 1000)
+str(res_TP$load_draws)
+
+```
+
+---
+
+# 5. Plot generative results
+
+```{r plot-slopes, eval=FALSE}
+plot_posterior_load_vs_stir <- function(load_draws,
+                                        d_sub,
+                                        analyte_label,
+                                        prob = 0.89,
+                                        main = NULL) {
+  if (is.null(main)) {
+    main <- paste("Posterior loads vs STIR for", analyte_label)
+  }
+  
+  # 1. Summaries per observation (column)
+  # Apply over columns: each column is a sample's distribution over draws
+  summarize_obs <- function(x) {
+    hp <- HPDI(x, prob = prob)
+    c(
+      median = median(x),
+      hpdi_lo = hp[1],
+      hpdi_hi = hp[2]
+    )
+  }
+  
+  summ_mat <- apply(load_draws, 2, summarize_obs)
+  summ_df <- as.data.frame(t(summ_mat))
+  
+  # Attach STIR from d_sub
+  summ_df$STIR <- d_sub$stir_season_z
+  
+  # Optional: sort by STIR for nicer plotting
+  ord <- order(summ_df$STIR)
+  summ_df <- summ_df[ord, ]
+  
+  # 2. Set up plot
+  ylim_range <- range(c(summ_df$hpdi_lo, summ_df$hpdi_hi), na.rm = TRUE)
+  
+  plot(
+    summ_df$STIR,
+    summ_df$median,
+    pch = 16,
+    xlab = "Seasonal STIR (z-score)",
+    ylab = "Posterior load (units of k_unit)",
+    ylim = ylim_range,
+    main = main
+  )
+  
+  # 3. Add HPDI vertical bars
+  for (i in seq_len(nrow(summ_df))) {
+    lines(
+      x = c(summ_df$STIR[i], summ_df$STIR[i]),
+      y = c(summ_df$hpdi_lo[i], summ_df$hpdi_hi[i]),
+      col = col.alpha("black", 0.3),
+      lwd = 4
+    )
+  }
+  
+  invisible(summ_df)
+}
+
+# Visualize posterior loads vs STIR
+tp_summary <- plot_posterior_load_vs_stir(
+  load_draws = res_TP$load_draws,
+  d_sub      = res_TP$d_sub,
+  analyte_label = res_TP$analyte,
+  prob = 0.89
+)
+
+```
+
+---
+
+# 6. Next steps
+

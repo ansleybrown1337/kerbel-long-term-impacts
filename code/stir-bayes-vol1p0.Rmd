@@ -1,0 +1,152 @@
+---
+title: "Bayesian Modeling of STIR Effects on Water Quality"
+author: "AJ Brown"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+# Load backend cleaning + functions
+getwd()
+source("./stir-bayes-backend.R")
+library(rethinking)
+library(dplyr)
+library(ggplot2)
+```
+
+# Model 1.0 - STIR total effect on OUT concentration with analyte-specific slopes and intercepts
+
+# 1. Load and clean STIR–WQ dataset
+
+```{r load-clean}
+# Step 1: load raw merged dataset
+wq_raw <- load_wq_stir(
+  path = "out/wq_with_stir_by_season.csv",
+  year_max = Inf
+)
+
+# Step 2: clean, type-enforce, standardize (ALL done in backend)
+wq_clean <- clean_wq_stir(wq_raw)
+
+glimpse(wq_clean)
+```
+
+```{r}
+# Model V1.0 - STIR effect on OUT volume (single slope and intercept)
+
+# 1. Prepare volume-only dataset ----------------------------------------
+
+# For the volume model, we want one row per OUT event
+# Use _wq_idx as an event identifier and keep relevant fields
+d_vol <- wq_clean %>%
+  filter(InflowOutflow == "OUT") %>%
+  distinct(
+    `_wq_idx`,
+    Year,
+    Irrigation,
+    Rep,
+    Treatment,
+    SeasonYear,
+    Season_STIR_toDate,
+    stir_season_z,
+    Volume,
+    volume_z,
+    .keep_all = TRUE
+  )
+
+glimpse(d_vol)
+
+```
+
+
+Build data list for ulam:
+
+```{r make-stan-dat}
+# 2. Build Stan data list for volume model ------------------------------
+
+stan_dat_vol <- list(
+  N    = nrow(d_vol),
+  V    = d_vol$volume_z,       # standardized volume
+  STIR = d_vol$stir_season_z   # standardized seasonal STIR
+)
+
+str(stan_dat_vol)
+
+```
+
+---
+
+# 3. Bayesian model
+
+```{r fit-model, eval=T}
+# 3. Fit Bayesian linear model for volume -------------------------------
+
+m_vol <- ulam(
+  alist(
+    V ~ dnorm(mu, sigma),
+    mu <- a + b * STIR,
+
+    a ~ dnorm(0, 1),
+    b ~ dnorm(0, 1),
+    sigma ~ dexp(1)
+  ),
+  data   = stan_dat_vol,
+  chains = 4,
+  cores  = 4,
+  iter   = 2000
+)
+
+```
+
+---
+
+# 4. Posterior inspection
+
+```{r summarize, eval=FALSE}
+# 4. Posterior inspection -----------------------------------------------
+
+pr <- precis(m_vol, depth=1, prob = 0.95)
+pr
+plot(pr)
+
+```
+
+```{r extract, eval=FALSE}
+# 5. Visualize STIR–volume relationship --------------------------------
+
+# Extract posterior samples
+post <- extract.samples(m_vol)
+
+# Vector of posterior draws of the slope b
+b_post <- post$b
+
+# Density plot
+dens(
+  b_post,
+  xlab = "STIR effect on standardized Volume (slope b)",
+  main = "STIR effect on Runoff Volume",
+  lwd = 4,
+  col = 'darkred',
+  xlim = c(-0.3, 0.3)
+)
+
+# Add 89% HPDI
+hp <- HPDI(b_post, prob = 0.89)
+# lines(hp, rep(0, 2), lwd = 4, col = "darkred")
+
+# plot prior
+curve(dnorm(x, 0, 1), from = -3, to = 3, lwd = 2, lty = 2,  col = "black", add = TRUE)
+ 
+# Zero line for interpretation
+abline(v = 0, lty = 2, col = "grey40")
+
+```

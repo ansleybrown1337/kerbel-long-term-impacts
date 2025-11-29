@@ -181,10 +181,11 @@ clean_wq_stir <- function(wq_stir) {
     ) %>%
     dplyr::ungroup() %>%
     
-    # STEP 2E. Standardize STIR metrics globally
+    # STEP 2E. Standardize STIR and volume metrics globally
     dplyr::mutate(
       stir_season_z = rethinking::standardize(Season_STIR_toDate),
-      stir_cumall_z = rethinking::standardize(CumAll_STIR_toDate)
+      stir_cumall_z = rethinking::standardize(CumAll_STIR_toDate),
+      volume_z      = rethinking::standardize(Volume)
     )
   
   
