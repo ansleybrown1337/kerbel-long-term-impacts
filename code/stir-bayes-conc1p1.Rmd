@@ -1,0 +1,337 @@
+---
+title: "Bayesian Modeling of STIR Effects on Water Quality"
+author: "AJ Brown"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+# Load backend cleaning + functions
+getwd()
+source("./stir-bayes-backend.R")
+library(rethinking)
+library(dplyr)
+library(ggplot2)
+```
+
+# Model 1.0 
+- STIR total effect on OUT concentration 
+- with analyte-specific slopes and intercepts
+- with other DAG-identified adjustment variables
+-- { Analyte, Block, Inflow Conc., Irrigation Count, Outflow vol, Sampler Method, duplicate status, flume type }
+
+# 1. Load and clean STIR–WQ dataset
+
+```{r load-clean}
+# Step 1: load raw merged dataset
+wq_raw <- load_wq_stir(
+  path = "out/wq_with_stir_by_season.csv",
+  year_max = Inf
+)
+
+# Step 2: clean, type-enforce, standardize (ALL done in backend)
+wq_clean <- clean_wq_stir(wq_raw)
+
+# Add original row number for tracking
+wq_clean <- wq_clean %>%
+  mutate(orig_row = row_number())
+
+
+glimpse(wq_clean)
+```
+
+---
+
+# 2. Prepare model-ready dataset
+
+You now choose which variables enter your model from the fields already standardized in the backend:
+
+* `cout_z` = per-analyte standardized OUT concentrations
+* `cin_z`  = per-analyte standardized INFLOW concentrations
+* `stir_season_z` = standardized seasonal STIR
+* `stir_cumall_z` = standardized cumulative STIR
+* `analyte_abbr` = clean factor index
+
+Select analytes for modeling:
+
+```{r subset-analytes}
+# analytes: OP   TP   ICP  NO3  TN   TSS  TKN  TSP  NH4  NPOC Se   NO2  NOx  TDS
+analytes_keep <- c("TP", "TSS")   # modify as needed
+# fullset for ease of use
+analytes_keep <- c("OP", "TP", "ICP", "NO3", "TN", "TSS", 
+                   "TKN", "TSP", "NH4", "NPOC", "Se", "NO2", 
+                   "NOx", "TDS")
+
+d_mod <- wq_clean %>%
+  filter(analyte_abbr %in% analytes_keep) %>%
+  mutate(mod_row = row_number()) %>%
+  droplevels()
+
+d_mod %>% count(analyte_abbr)
+```
+
+Create analyte index and build data list for ulam:
+
+```{r make-stan-dat}
+# 2. Build indices and standardized predictors -----------------------------
+
+d_mod <- d_mod %>%
+  mutate(
+    # analyte index
+    A = as.integer(analyte_abbr),
+
+    # Block (Rep) index
+    B = as.integer(Rep),
+
+    # Sampler method index
+    S = as.integer(SampleMethod),
+
+    # Flume type index
+    Fu = as.integer(FlumeMethod),
+
+    # Irrigation count as numeric
+    irr_num = as.integer(Irrigation),
+
+    # Inflow concentration, already standardized in cin_z
+    # For now, replace missing with 0 on the z scale so the linear term
+    # drops out when there is no inflow measurement
+    cin_std = if_else(is.na(cin_z), 0, cin_z),
+
+    # Duplicate status as 0/1
+    dup = as.integer(Duplicate)
+  )
+
+# prepare data list for stan
+stan_dat <- list(
+  N    = nrow(d_mod),
+  J    = length(unique(d_mod$A)),     # analytes
+  B_n  = length(unique(d_mod$B)),     # blocks
+  S_n  = length(unique(d_mod$S)),     # sampler methods
+  F_n  = length(unique(d_mod$Fu)),    # flume types
+
+  # indices
+  A    = d_mod$A,
+  B    = d_mod$B,
+  S    = d_mod$S,
+  Fu    = d_mod$Fu,
+
+  # outcome
+  C    = d_mod$cout_z,                # standardized outflow concentration
+
+  # main exposure
+  STIR = d_mod$stir_season_z,         # or stir_cumall_z if you want
+
+  # covariates from DAG:
+  CIN   = d_mod$cin_std,              # inflow concentration (z)
+  VOL   = d_mod$volume_z,             # outflow volume (z)
+  IRR   = d_mod$irr_num,              # irrigation count (int)
+  DUP   = d_mod$dup                   # duplicate status (0/1)
+)
+```
+
+```{r}
+# Identify the stan_dat entries that are vectors of length N (i.e., row-level variables)
+vec_names <- names(stan_dat)[sapply(stan_dat, function(x) length(x) == stan_dat$N)]
+
+# Loop through these and report NAs
+for (nm in vec_names) {
+  vals <- stan_dat[[nm]]
+  na_idx <- which(is.na(vals))
+
+  cat("\n==============================\n")
+  cat("Variable:", nm, "\n")
+
+  if (length(na_idx) == 0) {
+    cat("No NA values detected.\n")
+  } else {
+    cat("NA count:", length(na_idx), "\n")
+    cat("Rows with NA:", paste(head(na_idx, 100), collapse = ", "),
+        if (length(na_idx) > 100) "..." else "", "\n\n")
+
+    # Show the corresponding d_mod rows
+    cat("Example offending rows from d_mod:\n")
+    print(d_mod[na_idx[1:min(10, length(na_idx))], ])
+  }
+}
+
+```
+
+
+
+
+```{r}
+# lookup code for later
+analyte_lookup <- d_mod %>%
+  distinct(A, analyte_abbr) %>%
+  arrange(A)
+
+block_lookup <- d_mod %>%
+  distinct(B, Rep) %>%
+  arrange(B)
+
+sampler_lookup <- d_mod %>%
+  distinct(S, SampleMethod) %>%
+  arrange(S)
+
+flume_lookup <- d_mod %>%
+  distinct(Fu, FlumeMethod) %>%
+  arrange(Fu)
+
+```
+
+
+# 3. Hierarchical Bayesian model
+
+```{r fit-model, eval=T}
+m_stir <- ulam(
+  alist(
+    # likelihood
+    C ~ dnorm(mu, sigma),
+
+    # linear predictor
+    mu <- alpha[A] +
+          beta_stir[A] * STIR +
+          beta_cin[A]  * CIN +
+          beta_vol  * VOL +
+          beta_irr  * IRR +
+          beta_dup  * DUP +
+          gamma_B[B] +
+          gamma_S[S] +
+          gamma_F[Fu],
+
+    # analyte level variation
+    alpha[A]     ~ dnorm(a_bar, sigma_alpha),
+    beta_stir[A] ~ dnorm(b_bar, sigma_beta),
+    beta_cin[A]  ~ dnorm(c_bar, sigma_c),
+
+    # block, sampler, flume effects
+    gamma_B[B] ~ dnorm(0, sigma_B),
+    gamma_S[S] ~ dnorm(0, sigma_S),
+    gamma_F[Fu] ~ dnorm(0, sigma_Fu),
+
+    # population level means and slopes
+    c(a_bar, b_bar, c_bar) ~ dnorm(0, 1),
+    beta_vol  ~ dnorm(0, 1),
+    beta_irr  ~ dnorm(0, 1),
+    beta_dup  ~ dnorm(0, 1),
+    
+    # priors for imputing missing data (i.e., NAs)
+    VOL ~ dnorm(0, 1), # When VOl observed, likelihood contribution. When NA, prior contribution.
+
+    # scale parameters
+    sigma_alpha ~ dexp(1),
+    sigma_beta  ~ dexp(1),
+    sigma_c     ~ dexp(1),
+    sigma_B     ~ dexp(1),
+    sigma_S     ~ dexp(1),
+    sigma_Fu     ~ dexp(1),
+    sigma       ~ dexp(1)
+  ),
+  data  = stan_dat,
+  chains = 4,
+  cores  = 4,
+  iter   = 2000
+)
+
+```
+
+---
+
+# 4. Posterior inspection
+
+```{r summarize, eval=FALSE}
+#traceplot(m_stir)
+#trankplot(m_stir)
+precis(m_stir, depth=2, prob=0.95)
+plot(precis(m_stir, depth=1, prob=0.95))
+```
+
+```{r extract, eval=FALSE}
+# extract posterior samples
+post <- extract.samples(m_stir)
+
+# analyte-specific STIR slopes
+alpha_hat      <- apply(post$alpha,     2, mean)
+beta_stir_mean <- apply(post$beta_stir, 2, mean)
+
+# 89 percent HPDI and 95 percent PI for beta_stir
+beta_stir_hpdi <- apply(post$beta_stir, 2, HPDI, prob = 0.89)
+beta_stir_pi   <- apply(post$beta_stir, 2, PI,   prob = 0.95)
+
+analyte_lookup <- d_mod %>% 
+  distinct(A, analyte_abbr) %>%
+  arrange(A)
+
+analyte_effects <- analyte_lookup %>%
+  mutate(
+    beta_stir_mean   = beta_stir_mean,
+    beta_stir_median = apply(post$beta_stir, 2, median),
+    beta_hpdi_low    = beta_stir_hpdi[1, ],
+    beta_hpdi_high   = beta_stir_hpdi[2, ],
+    beta_pi_low      = beta_stir_pi[1, ],
+    beta_pi_high     = beta_stir_pi[2, ]
+  )
+
+analyte_effects
+
+```
+
+---
+
+# 5. Plot posterior slopes
+
+```{r plot-slopes, eval=FALSE}
+# Recreate an index for plotting
+A_seq        <- analyte_effects$A
+beta_mean    <- analyte_effects$beta_stir_mean
+beta_hpdi    <- analyte_effects %>% select(beta_hpdi_low, beta_hpdi_high)
+beta_pi      <- analyte_effects %>% select(beta_pi_low, beta_pi_high)
+
+# Base R plot setup
+plot(
+  A_seq, beta_mean,
+  xaxt = "n",
+  pch  = 16,
+  col  = "darkred",
+  ylim = range(c(beta_pi$beta_pi_low, beta_pi$beta_pi_high)),
+  ylab = "Effect of STIR on Concentration",
+  xlab = "Analyte",
+  main = "Analyte-specific STIR effects with 89% (Darker) 95% (Lighter) CIs"
+)
+
+axis(1, at = A_seq, labels = analyte_effects$analyte_abbr, las = 2)
+
+# 95 percent PI vertical bands (more transparent)
+for (i in seq_along(A_seq)) {
+  lines(
+    x = c(A_seq[i], A_seq[i]),
+    y = c(beta_pi$beta_pi_low[i], beta_pi$beta_pi_high[i]),
+    col = col.alpha("darkred", 0.2),
+    lwd = 5
+  )
+}
+
+# 89 percent HPDI vertical bands
+for (i in seq_along(A_seq)) {
+  lines(
+    x = c(A_seq[i], A_seq[i]),
+    y = c(beta_hpdi$beta_hpdi_low[i], beta_hpdi$beta_hpdi_high[i]),
+    col = col.alpha("darkred", 0.4),
+    lwd = 5
+  )
+}
+
+# Zero reference line
+abline(h = 0, lty = 2)
+
+
+```

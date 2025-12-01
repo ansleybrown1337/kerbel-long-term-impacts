@@ -14,7 +14,8 @@ This file tracks the structure and development stage of all Bayesian model famil
 
 | Version | File    | Description of Model Features                                                                                                                                     | Missing Features / Planned Additions                                                                         |
 | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 1.0     | conc1p0 | Multianalyte concentration model, standardized OUT concentration, analyte-specific intercepts and slopes, posterior slope extraction, HPDI/PI summaries and plots | Censoring for nondetects, measurement-error model, treatment/year varying slopes, joint modeling with volume |
+| 1.0     | conc1p0 | Multianalyte concentration model, standardized OUT concentration, analyte-specific intercepts and slopes, posterior slope extraction, HPDI/PI summaries and plots | |
+| 1.1     | conc1p1 | Same as 1.0 but now includes all DAG dependencies to isolate direct effect of STIR on concentration. | Consider making nested irrigation variable with temporal dependency; integrate MVN priors; non centered version of model |
 
 ---
 
@@ -41,11 +42,18 @@ This file tracks the structure and development stage of all Bayesian model famil
 ---
 
 
-# Planned Versioning Roadmap
+# TODOs
 
-Applies to **all model families**, with adaptations as appropriate.
+* Concentration Model
+  - [ ] Add DAG conditional dependencies for STIR direct effects on concentration
+  - [ ] Create nested year-irrigation var for partial pooling via gaussian kernel process
 
+* Volume Model
+  - **Done:** DAG implies no conditional dependencies to characterize the direct relationship between STIR and volume
 
+* Load Model
+  - [ ] ensure outflow volume model is properly integrated into conc. model
+  - [ ] Finalize concentration model updates before adding new features to load model
 ---
 
 # Notes for Future Updates

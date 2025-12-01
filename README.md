@@ -102,10 +102,11 @@ and displays a colorized summary of run times and generated files.
 
 Key outputs:
 
+* `out/wq_with_stir_by_season.csv` – **final merged analytical table for use**
+* `out/wq_with_stir_unmatched.csv` – samples without STIR match (QC)
 * `out/kerbel_master_concentrations_long.csv` – tidy long water-quality dataset
 * `out/stir_events_long.csv` – event-level STIR data
-* `out/wq_with_stir_by_season.csv` – final merged analytical table
-* `out/wq_with_stir_unmatched.csv` – samples without STIR match (QC)
+
 
 ---
 
