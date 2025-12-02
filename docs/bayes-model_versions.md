@@ -10,7 +10,7 @@ This file tracks the structure and development stage of all Bayesian model famil
 ## Concentration Models
 
 **File:** `code/stir-bayes-conc1p0.Rmd`
-**Current Version:** **1.0**
+**Current Version:** **FINAL 1.1**
 
 | Version | File    | Description of Model Features                                                                                                                                     | Missing Features / Planned Additions                                                                         |
 | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -22,7 +22,7 @@ This file tracks the structure and development stage of all Bayesian model famil
 ## Volume Models
 
 **File:** `code/stir-bayes-vold1p0.Rmd`
-**Current Version:** **1.0**
+**Current Version:** **FINAL 1.0**
 
 | Version | File     | Description of Model Features                                                                                                            | Missing Features / Planned Additions                                                                                                                    |
 | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,11 +33,12 @@ This file tracks the structure and development stage of all Bayesian model famil
 ## Load Models
 
 **File:** `code/stir-bayes-load1p0.Rmd`
-**Current Version:** **1.0**
+**Current Version:** **1.1**
 
 | Version | File    | Description of Model Features                                                                                                             | Missing Features / Planned Additions                                                                                                                |
 | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1.0     | load1p0 | Posterior load computation using posterior C and posterior V, z-score back-transformation, per-analyte load distributions, HPDI summaries | Visualization functions, alternative unit scaling, integration of concentration censoring, inclusion of treatment or year pooling in load summaries |
+| 1.1     | load1p1 | Same as 1.0 but now includes outflow volume model integrated into concentration model for more accurate load estimates. Imputes missing inflow concentrations. | Create non-centered version. Consider Gaussian processes by incorporating year and irrigation number |
 
 ---
 

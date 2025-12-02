@@ -96,7 +96,7 @@ adj_direc_vol
 
 
 
-```{r}
+```{r, eval=F}
 # DAG with STIR effects including latent soil properties
 dag2 <- dagitty('
 dag {
