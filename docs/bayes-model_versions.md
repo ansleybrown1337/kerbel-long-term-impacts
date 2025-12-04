@@ -6,8 +6,20 @@
 This file tracks the structure and development stage of all Bayesian model families used in the STIR–WQ analysis workflow. Each model family has its own Rmd file and evolves independently. This table format is designed for fast updates, minimal text, and clear tracking of model features over time.
 
 ---
+## Load Models (Vol + Concentration) - IN PROGRESS
 
-## Concentration Models
+**File:** `code/stir-bayes-load1p0.Rmd`
+**Current Version:** **1.1**
+
+| Version | File    | Description of Model Features                                                                                                             | Missing Features / Planned Additions                                                                                                                |
+| ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0     | load1p0 | Posterior load computation using posterior C and posterior V, z-score back-transformation, per-analyte load distributions, HPDI summaries | Visualization functions, alternative unit scaling, integration of concentration censoring, inclusion of treatment or year pooling in load summaries |
+| 1.1     | load1p1 | Same as 1.0 but now includes outflow volume model integrated into concentration model for more accurate load estimates. Imputes missing inflow concentrations. | Create non-centered version. Consider Gaussian processes by incorporating year and irrigation number |
+| 1.2     | load1p2 | Same as 1.1 but uses MVN priors and non-centered parameterization| Consider Gaussian processes by incorporating year and/or irrigation number |
+
+---
+
+## Concentration Models - DONE
 
 **File:** `code/stir-bayes-conc1p0.Rmd`
 **Current Version:** **FINAL 1.1**
@@ -19,7 +31,7 @@ This file tracks the structure and development stage of all Bayesian model famil
 
 ---
 
-## Volume Models
+## Volume Models - DONE
 
 **File:** `code/stir-bayes-vold1p0.Rmd`
 **Current Version:** **FINAL 1.0**
@@ -27,18 +39,6 @@ This file tracks the structure and development stage of all Bayesian model famil
 | Version | File     | Description of Model Features                                                                                                            | Missing Features / Planned Additions                                                                                                                    |
 | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1.0     | embedded | Simple linear regression of standardized volume on seasonal STIR, missing-data imputation enabled, posterior slope density visualization | Treatment-level or year-level pooling, residual correlation modeling, alternative predictors (e.g., cumulative STIR), integration into full joint model |
-
----
-
-## Load Models
-
-**File:** `code/stir-bayes-load1p0.Rmd`
-**Current Version:** **1.1**
-
-| Version | File    | Description of Model Features                                                                                                             | Missing Features / Planned Additions                                                                                                                |
-| ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1.0     | load1p0 | Posterior load computation using posterior C and posterior V, z-score back-transformation, per-analyte load distributions, HPDI summaries | Visualization functions, alternative unit scaling, integration of concentration censoring, inclusion of treatment or year pooling in load summaries |
-| 1.1     | load1p1 | Same as 1.0 but now includes outflow volume model integrated into concentration model for more accurate load estimates. Imputes missing inflow concentrations. | Create non-centered version. Consider Gaussian processes by incorporating year and irrigation number |
 
 ---
 

@@ -686,6 +686,182 @@ simulate_load_curves <- function(
   dplyr::bind_rows(res_list)
 }
 
+## ------------------------------------------------------------------
+## Helpers: observed loads under a given scenario
+## ------------------------------------------------------------------
+
+compute_observed_load_points_single <- function(
+  d_mod,
+  analyte,                      # analyte_abbr string
+  block      = NULL,
+  sampler    = NULL,
+  flume      = NULL,
+  irrigation = NULL,            # numeric irr_num, to match your scenario
+  duplicate  = NULL,
+  stir_var   = "Season_STIR_toDate",
+  conc_var   = "Result_mg_L",   # raw concentration, mg/L
+  vol_var    = "Volume"         # raw volume, L
+) {
+
+  # filter to this analyte
+  d_sub <- d_mod %>%
+    filter(analyte_abbr == analyte)
+
+  # optional filters, matching scenario logic
+  if (!is.null(block)) {
+    d_sub <- d_sub %>% filter(Rep == block)
+  }
+
+  if (!is.null(sampler)) {
+    d_sub <- d_sub %>% filter(SampleMethod == sampler)
+  }
+
+  if (!is.null(flume)) {
+    d_sub <- d_sub %>% filter(FlumeMethod == flume)
+  }
+
+  if (!is.null(irrigation)) {
+    d_sub <- d_sub %>% filter(irr_num == irrigation)
+  }
+
+  if (!is.null(duplicate)) {
+    d_sub <- d_sub %>% filter(dup == as.numeric(duplicate))
+  }
+
+  # keep rows with all needed pieces
+  d_sub <- d_sub %>%
+    filter(
+      !is.na(.data[[stir_var]]),
+      !is.na(.data[[conc_var]]),
+      !is.na(.data[[vol_var]])
+    )
+
+  if (nrow(d_sub) == 0L) {
+    return(tibble(
+      analyte          = character(0),
+      STIR_raw         = numeric(0),
+      load_obs         = numeric(0),
+      n_obs            = integer(0),
+      block_level      = character(0),
+      sampler_level    = character(0),
+      flume_level      = character(0),
+      irrigation_level = character(0),
+      duplicate_level  = character(0)
+    ))
+  }
+
+  # compute load (mg/L * L = mg; convert to g)
+  d_sub <- d_sub %>%
+    mutate(
+      STIR_raw = .data[[stir_var]],
+      load_g   = .data[[conc_var]] * .data[[vol_var]] / 1000
+    )
+
+  # average loads at each STIR_raw (across whatever factors remain)
+  d_sum <- d_sub %>%
+    group_by(STIR_raw) %>%
+    summarize(
+      load_obs = mean(load_g, na.rm = TRUE),
+      n_obs    = n(),
+      .groups  = "drop"
+    )
+
+  block_label      <- if (is.null(block))      "avg_all_blocks"      else as.character(block)
+  sampler_label    <- if (is.null(sampler))    "avg_all_samplers"    else as.character(sampler)
+  flume_label      <- if (is.null(flume))      "avg_all_flumes"      else as.character(flume)
+  irrigation_label <- if (is.null(irrigation)) "avg_all_irrigations" else as.character(irrigation)
+  duplicate_label  <- if (is.null(duplicate))  "avg_duplicates"      else ifelse(duplicate, "TRUE", "FALSE")
+
+  d_sum %>%
+    mutate(
+      analyte          = analyte,
+      block_level      = block_label,
+      sampler_level    = sampler_label,
+      flume_level      = flume_label,
+      irrigation_level = irrigation_label,
+      duplicate_level  = duplicate_label
+    )
+}
+
+compute_observed_load_points <- function(
+  d_mod,
+  analytes     = NULL,   # default: all analytes
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  stir_var     = "Season_STIR_toDate",
+  conc_var     = "Result_mg_L",
+  vol_var      = "Volume"
+) {
+  if (is.null(analytes)) {
+    analytes <- unique(d_mod$analyte_abbr)
+  }
+
+  d_list <- lapply(analytes, function(an) {
+    compute_observed_load_points_single(
+      d_mod      = d_mod,
+      analyte    = an,
+      block      = block,
+      sampler    = sampler,
+      flume      = flume,
+      irrigation = irrigation,
+      duplicate  = duplicate,
+      stir_var   = stir_var,
+      conc_var   = conc_var,
+      vol_var    = vol_var
+    )
+  })
+
+  bind_rows(d_list)
+}
+
+# pred and obs merger function
+
+simulate_load_curves_with_obs <- function(
+  post,
+  d_mod,
+  analytes     = NULL,
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  cin_z        = 0,
+  n_draws      = 2000
+) {
+
+  # 1. Posterior predictions
+  pred <- simulate_load_curves(
+    post         = post,
+    analytes     = analytes,
+    STIR_raw_seq = STIR_raw_seq,
+    block        = block,
+    sampler      = sampler,
+    flume        = flume,
+    irrigation   = irrigation,
+    duplicate    = duplicate,
+    cin_z        = cin_z,
+    n_draws      = n_draws
+  )
+
+  # 2. Observed loads under the same scenario choices
+  obs <- compute_observed_load_points(
+    d_mod      = d_mod,
+    analytes   = unique(pred$analyte),
+    block      = block,
+    sampler    = sampler,
+    flume      = flume,
+    irrigation = irrigation,
+    duplicate  = duplicate
+  )
+
+  list(pred = pred, obs = obs)
+}
+
+
 ```
 
 ## Scenario-based STIR → Load Simulation Functions
@@ -757,22 +933,27 @@ The functions return a tidy data frame containing:
 
 This output is designed for straightforward faceted visualization in `ggplot2`.
 
-
-
 ```{r load-generative-curves}
-# Example: averaged over irrigation (and other factors)
+## ------------------------------------------------------------------
+## Example: averaged over blocks, samplers, flumes, duplicates,
+##          but FIXED irrigation = 1
+## ------------------------------------------------------------------
 
-load_pred_scenario <- simulate_load_curves(
-  post        = post,
-  analytes    = NULL,                          # all analytes
+res_scenario <- simulate_load_curves_with_obs(
+  post         = post,
+  d_mod        = d_mod,
+  analytes     = NULL,                          # all analytes
   STIR_raw_seq = seq(0, 300, length.out = 60),
-  block       = NULL,                          # avg over blocks
-  sampler     = NULL,                          # avg over sampler methods
-  flume       = NULL,                          # avg over flume types
-  irrigation  = 1,                             # avg over irrigations
-  duplicate   = NULL,                          # avg over duplicate status
-  cin_z       = 0                              # average inflow concentration
+  block        = NULL,                          # avg over blocks
+  sampler      = NULL,                          # avg over sampler methods
+  flume        = NULL,                          # avg over flume types
+  irrigation   = 5,                          # irrigation = 1
+  duplicate    = NULL,                          # avg over duplicate status
+  cin_z        = 0                              # average inflow concentration
 )
+
+load_pred_scenario <- res_scenario$pred
+load_obs_scenario  <- res_scenario$obs
 
 # Build a dynamic subtitle from scenario labels
 scenario_info <- load_pred_scenario %>%
@@ -791,11 +972,15 @@ subtitle_text <- sprintf(
   scenario_info$cin_z
 )
 
-# Build plot object for saving
+# Build plot object with observed points overlaid
 p_load <- ggplot(load_pred_scenario, aes(x = STIR_raw, y = load_mean)) +
   geom_ribbon(aes(ymin = load_low, ymax = load_high),
               fill = "gray60", alpha = 0.35, linewidth = 0) +
   geom_line(linewidth = 1.1) +
+  geom_point(data = load_obs_scenario,
+             aes(x = STIR_raw, y = load_obs),
+             inherit.aes = FALSE,
+             size = 2.0, alpha = 0.9) +
   facet_wrap(~ analyte, scales = "free_y", ncol = 4) +
   labs(
     x = "Seasonal STIR",
@@ -805,17 +990,17 @@ p_load <- ggplot(load_pred_scenario, aes(x = STIR_raw, y = load_mean)) +
   ) +
   theme_classic(base_size = 18) +
   theme(
-    strip.text = element_text(size = 16, face = "bold"),
-    axis.text  = element_text(size = 14),
-    axis.title = element_text(size = 18),
-    plot.title = element_text(size = 22, face = "bold"),
+    strip.text    = element_text(size = 16, face = "bold"),
+    axis.text     = element_text(size = 14),
+    axis.title    = element_text(size = 18),
+    plot.title    = element_text(size = 22, face = "bold"),
     plot.subtitle = element_text(size = 16),
     panel.spacing = unit(1.2, "lines"),
-    plot.margin = margin(15, 20, 15, 20)
+    plot.margin   = margin(15, 20, 15, 20)
   )
 
-# Display in Rmd
 p_load
+
 
 ```
 
