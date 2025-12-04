@@ -947,7 +947,7 @@ res_scenario <- simulate_load_curves_with_obs(
   block        = NULL,                          # avg over blocks
   sampler      = NULL,                          # avg over sampler methods
   flume        = NULL,                          # avg over flume types
-  irrigation   = 5,                          # irrigation = 1
+  irrigation   = NULL,                          # irrigation = 1
   duplicate    = NULL,                          # avg over duplicate status
   cin_z        = 0                              # average inflow concentration
 )
