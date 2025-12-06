@@ -36,6 +36,7 @@ library(ggplot2)
   * { Analyte, Block, Inflow Conc., Irrigation Count, Outflow vol, Sampler Method, duplicate status, flume type }
 * Full uncertainty propagation from CIN, VOL, STIR into analyte-specific concentration predictions
 * Supports **scenario-based simulation** for STIR → Load via generative functions (conditional or averaged scenarios)
+* Incorporates single Gaussian Process (GP) on Year to capture temporal correlation in residuals
 
 # 1. Load and clean STIR–WQ dataset
 
