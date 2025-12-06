@@ -209,7 +209,8 @@ for (nm in vec_names) {
 
 # 3. Hierarchical Bayesian model
 
-```{r fit-model}
+```{r fit-model, eval=FALSE}
+# ulam cannot handle multi-output GP directly, so we write a custom Stan program in next block
 m_stir_nc <- ulam(
   alist(
     ##################################################
@@ -314,9 +315,9 @@ m_stir_nc <- ulam(
 ```
 
 ```{r}
-# assuming you saved the edited Stan program as "m_stir_mogp.stan"
-mod <- cmdstan_model("m_stir_mogp.stan")
-# starting point: your existing stan_dat built for ulam
+# using "m_stir_mogp.stan" in ./code folder
+mod <- cmdstan_model("m_stir_mogp.stan") # Takes about 15 minutes (850 sec) to run on AJ SUPERCPU
+# starting point: existing stan_dat built for ulam
 # and the d_mod data frame used to build it
 
 stan_dat_cmd <- stan_dat  # copy so we do not break the ulam version

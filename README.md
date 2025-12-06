@@ -1,6 +1,5 @@
 
-# Kerbel Long-Term Impacts Project
-
+![Banner](./figs/banner.png) <br/> <br/>
 **Principal Investigator:**  <br/>
 AJ Brown, Agricultural Data Scientist  <br/>
 CSU Agricultural Water Quality Program <br/>
