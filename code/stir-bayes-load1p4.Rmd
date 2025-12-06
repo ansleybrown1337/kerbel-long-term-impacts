@@ -353,13 +353,7 @@ fit <- mod$sample(
   iter_sampling = 1000
 )
 
-# If you want a "rethinking-style" posterior list:
-# library(rethinking)
-# post <- extract.samples(fit)  # works on stanfit and cmdstanr (via method dispatch)
-# str(post)
-
 ```
-
 
 
 ---
@@ -410,6 +404,8 @@ plot(precis(m_stir_nc, depth = 1, prob = 0.95))
 ```
 
 ```{r}
+# saveRDS(fit, file = "../out/fit_mogp.rds")
+# fit <- readRDS("./out/fit_mogp.rds")
 summarize_cmdstan <- function(fit, vars = NULL, n_show = 30) {
   s <- if (is.null(vars)) {
     fit$summary()
@@ -1364,11 +1360,11 @@ res_scenario <- simulate_load_curves_with_obs(
   STIR_raw_seq = seq(0, 300, length.out = 60),
   block        = 1,                          # avg over blocks
   sampler      = "ISC",                          # avg over sampler methods
-  flume        = "7 V",                          # avg over flume types
+  flume        = "60 V Trap",                          # avg over flume types
   irrigation   = 1,                          # avg over irrigations
   duplicate    = FALSE,                          # avg over duplicate status
   cin_z        = 0,                             # average inflow concentration
-  year         = 2015                           # specific year
+  year         = 2023                           # specific year
 )
 
 load_pred_scenario <- res_scenario$pred
