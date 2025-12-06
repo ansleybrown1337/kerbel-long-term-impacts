@@ -73,14 +73,12 @@ clean_wq_stir <- function(wq_stir) {
     #   "U"       = nondetect (below detection limit)        → set to 0 for now
     #   "NA.IRR"  = no runoff occurred                       → drop rows
     dplyr::mutate(
-      # Standardize "u" to "U" for nondetects
       Result_mg_L        = ifelse(Result_mg_L == "u", "U", Result_mg_L),
       Inflow_Result_mg_L = ifelse(Inflow_Result_mg_L == "u", "U", Inflow_Result_mg_L)
     ) %>%
-    # remove no-runoff cases entirely
-    dplyr::filter(Result_mg_L != "NA.IRR") %>%
-    
-    # Replace nondetects with zero, preserve missing as NA
+    # remove no-runoff cases entirely, but keep pure NAs
+    dplyr::filter(is.na(Result_mg_L) | Result_mg_L != "NA.IRR") %>%
+    # then your case_when and type conversions as before
     dplyr::mutate(
       Result_mg_L = dplyr::case_when(
         Result_mg_L == "U"  ~ "0",

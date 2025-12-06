@@ -18,7 +18,6 @@ knitr::opts_chunk$set(
 # Load backend cleaning + functions
 getwd()
 source("./stir-bayes-backend.R")
-library(BayesianTools)
 library(rethinking)
 library(posterior)
 library(cmdstanr)
@@ -316,43 +315,81 @@ m_stir_nc <- ulam(
 
 ```{r}
 # using "m_stir_mogp.stan" in ./code folder
-mod <- cmdstan_model("m_stir_mogp.stan") # Takes about 15 minutes (850 sec) to run on AJ SUPERCPU
+mod <- cmdstan_model("m_stir_mogp.stan")  # compiled with missing-data support
+
 # starting point: existing stan_dat built for ulam
 # and the d_mod data frame used to build it
-
 stan_dat_cmd <- stan_dat  # copy so we do not break the ulam version
 
-# original standardized CIN and VOL from d_mod
-cin_vec <- d_mod$cin_std
-vol_vec <- d_mod$volume_z
+# -------------------------------------------------------------------
+# 1. Extract row-level vectors from d_mod
+#    (these are the standardized variables used in the model)
+# -------------------------------------------------------------------
+C_vec   <- d_mod$cout_z      # outcome
+CIN_vec <- d_mod$cin_std     # inflow concentration (z)
+VOL_vec <- d_mod$volume_z    # outflow volume (z)
 
-# 1. indices of missing values (1-based, as Stan expects)
-stan_dat_cmd$CIN_missidx <- which(is.na(cin_vec))
-stan_dat_cmd$VOL_missidx <- which(is.na(vol_vec))
-
-# sanity check: these lengths should match the sizes hard-coded in the Stan program
-length(stan_dat_cmd$CIN_missidx)  # should be 560 for your current dataset
-length(stan_dat_cmd$VOL_missidx)  # should be 1637
-
-# 2. replace NAs with a filler value (0 is fine because CIN/VOL are z-scored)
-cin_clean <- cin_vec
-cin_clean[is.na(cin_clean)] <- 0
-
-vol_clean <- vol_vec
-vol_clean[is.na(vol_clean)] <- 0
-
-stan_dat_cmd$CIN <- as.numeric(cin_clean)
-stan_dat_cmd$VOL <- as.numeric(vol_clean)
-
-# now sample with cmdstanr
-fit <- mod$sample(
-  data = stan_dat_cmd,
-  chains = 4,
-  parallel_chains = 4,
-  iter_warmup = 1000,
-  iter_sampling = 1000
+# Sanity check: all should have length N
+stopifnot(
+  length(C_vec)   == stan_dat_cmd$N,
+  length(CIN_vec) == stan_dat_cmd$N,
+  length(VOL_vec) == stan_dat_cmd$N
 )
 
+# -------------------------------------------------------------------
+# 2. Helper for building *_missidx, N_*_miss, and cleaned vectors
+# -------------------------------------------------------------------
+impute_var <- function(x) {
+  missidx <- which(is.na(x))          # 1-based indices for Stan
+  x_clean <- x
+  x_clean[missidx] <- 0               # placeholder; replaced in Stan
+  list(
+    missidx = missidx,
+    N_miss  = length(missidx),
+    clean   = as.numeric(x_clean)
+  )
+}
+
+# -------------------------------------------------------------------
+# 3. Apply helper to C, CIN, VOL
+# -------------------------------------------------------------------
+imp_C   <- impute_var(C_vec)
+imp_CIN <- impute_var(CIN_vec)
+imp_VOL <- impute_var(VOL_vec)
+
+# outcome C
+stan_dat_cmd$C_missidx <- imp_C$missidx
+stan_dat_cmd$N_C_miss  <- imp_C$N_miss
+stan_dat_cmd$C         <- imp_C$clean
+
+# inflow concentration CIN
+stan_dat_cmd$CIN_missidx <- imp_CIN$missidx
+stan_dat_cmd$N_CIN_miss  <- imp_CIN$N_miss
+stan_dat_cmd$CIN         <- imp_CIN$clean
+
+# volume VOL
+stan_dat_cmd$VOL_missidx <- imp_VOL$missidx
+stan_dat_cmd$N_VOL_miss  <- imp_VOL$N_miss
+stan_dat_cmd$VOL         <- imp_VOL$clean
+
+# Optional quick check
+length(stan_dat_cmd$C_missidx)
+length(stan_dat_cmd$CIN_missidx)
+length(stan_dat_cmd$VOL_missidx)
+
+# -------------------------------------------------------------------
+# 4. Sample with cmdstanr
+# -------------------------------------------------------------------
+fit <- mod$sample(
+  data            = stan_dat_cmd,
+  chains          = 4,
+  parallel_chains = 4,
+  iter_warmup     = 1000,
+  iter_sampling   = 1000
+)
+
+# saveRDS(fit, file = "../out/fit_mogp.rds")
+# fit <- readRDS("./out/fit_mogp.rds")
 ```
 
 
@@ -404,8 +441,7 @@ plot(precis(m_stir_nc, depth = 1, prob = 0.95))
 ```
 
 ```{r}
-# saveRDS(fit, file = "../out/fit_mogp.rds")
-# fit <- readRDS("./out/fit_mogp.rds")
+
 summarize_cmdstan <- function(fit, vars = NULL, n_show = 30) {
   s <- if (is.null(vars)) {
     fit$summary()
@@ -1339,33 +1375,33 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 ##
 ## Adjust for finer or coarser resolution.
 
-# res_scenario <- simulate_load_curves_with_obs(
-#   post         = post,
-#   d_mod        = d_mod,
-#   analytes     = NULL,                          # all analytes
-#   STIR_raw_seq = seq(0, 300, length.out = 60),
-#   block        = NULL,                          # avg over blocks
-#   sampler      = NULL,                          # avg over sampler methods
-#   flume        = NULL,                          # avg over flume types
-#   irrigation   = NULL,                          # avg over irrigations
-#   duplicate    = NULL,                          # avg over duplicate status
-#   cin_z        = 0,                             # average inflow concentration
-#   year         = NULL                           # specific year
-# )
-
 res_scenario <- simulate_load_curves_with_obs(
   post         = post,
   d_mod        = d_mod,
   analytes     = NULL,                          # all analytes
   STIR_raw_seq = seq(0, 300, length.out = 60),
-  block        = 1,                          # avg over blocks
-  sampler      = "ISC",                          # avg over sampler methods
-  flume        = "60 V Trap",                          # avg over flume types
-  irrigation   = 1,                          # avg over irrigations
-  duplicate    = FALSE,                          # avg over duplicate status
+  block        = NULL,                          # avg over blocks
+  sampler      = NULL,                          # avg over sampler methods
+  flume        = NULL,                          # avg over flume types
+  irrigation   = NULL,                          # avg over irrigations
+  duplicate    = NULL,                          # avg over duplicate status
   cin_z        = 0,                             # average inflow concentration
-  year         = 2023                           # specific year
+  year         = NULL                           # specific year
 )
+
+# res_scenario <- simulate_load_curves_with_obs(
+#   post         = post,
+#   d_mod        = d_mod,
+#   analytes     = NULL,                          # all analytes
+#   STIR_raw_seq = seq(0, 300, length.out = 60),
+#   block        = 1,                          # avg over blocks
+#   sampler      = "ISC",                          # avg over sampler methods
+#   flume        = "60 V Trap",                          # avg over flume types
+#   irrigation   = 1,                          # avg over irrigations
+#   duplicate    = FALSE,                          # avg over duplicate status
+#   cin_z        = 0,                             # average inflow concentration
+#   year         = 2023                           # specific year
+# )
 
 load_pred_scenario <- res_scenario$pred
 load_obs_scenario  <- res_scenario$obs
