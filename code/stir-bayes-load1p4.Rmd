@@ -1222,23 +1222,153 @@ The functions return a tidy data frame containing:
 This output is designed for straightforward faceted visualization in `ggplot2`.
 
 ```{r load-generative-curves}
-## ------------------------------------------------------------------
-## Example: year specific, averaged over blocks, samplers, flumes, duplicates
-##          but FIXED inflow at cin_z = 0
-## ------------------------------------------------------------------
+###############################################################
+## USER INPUT GUIDE FOR `simulate_load_curves_with_obs()`
+## -----------------------------------------------------------
+## This block summarizes all allowable inputs and their valid
+## levels for running scenario-based STIR → Load simulations.
+##
+## EXAMPLE CALL:
+## res_scenario <- simulate_load_curves_with_obs(
+##     post         = post,
+##     d_mod        = d_mod,
+##     analytes     = NULL,
+##     STIR_raw_seq = seq(0, 300, length.out = 60),
+##     block        = NULL,
+##     sampler      = NULL,
+##     flume        = NULL,
+##     irrigation   = NULL,
+##     duplicate    = NULL,
+##     cin_z        = 0,
+##     year         = NULL
+## )
+##
+## When an argument is set to NULL, the function AUTOMATICALLY
+## averages over that variable using posterior means (for
+## random effects) or empirical means (for covariates).
+###############################################################
+
+## -----------------------------------------------------------
+## analytes
+## -----------------------------------------------------------
+## Character vector of analyte abbreviations, e.g.:
+## c("NH4","NO3","TN","TP","TSS","OP", ...)
+##
+## Use:
+##   analytes = NULL   → use ALL analytes in analyte_lookup
+##
+## Valid names come from:
+##   unique(analyte_lookup$analyte_abbr)
+
+## -----------------------------------------------------------
+## block (field replication)
+## -----------------------------------------------------------
+## Character level from block_lookup$Rep:
+##   c(1, 2)
+##
+## Use:
+##   block = NULL  → posterior mean across all blocks
+##
+## Use a specific block to condition on that environment:
+##   block = 1
+
+## -----------------------------------------------------------
+## sampler (sampler method)
+## -----------------------------------------------------------
+## Valid sampler methods from sampler_lookup$SampleMethod:
+##   c("GB","GB3","GBH","GBW","ISC","LC")
+##
+## Use:
+##   sampler = NULL → average across all sampler types
+##                   (posterior mean of gamma_S)
+
+## -----------------------------------------------------------
+## flume (flume hardware type)
+## -----------------------------------------------------------
+## Valid levels from flume_lookup$FlumeMethod:
+##   c("10 V","10V","60 V Trap","7 V","8 V","Weir")
+##
+## Use:
+##   flume = NULL → average across flumes (posterior mean gamma_F)
+
+## -----------------------------------------------------------
+## irrigation (irrigation event identity)
+## -----------------------------------------------------------
+## Values come from irrigation_lookup$Irrigation:
+##   c(1,2,3,4,5,6,7,8,9,10,"S1","S2")
+##
+## Use:
+##   irrigation = NULL → mean(d_mod$irr_num)
+##
+## Or specify:
+##   irrigation = 3
+
+## -----------------------------------------------------------
+## duplicate (lab duplicate indicator)
+## -----------------------------------------------------------
+## Use TRUE or FALSE.
+##
+## Or:
+##   duplicate = NULL → use empirical mean duplicate rate
+
+## -----------------------------------------------------------
+## cin_z (standardized inflow concentration)
+## -----------------------------------------------------------
+## Z-scored CIN. Use numeric values:
+##   cin_z = 0  → average inflow concentration for that analyte
+##
+## Useful for sensitivity analysis:
+##   cin_z = +1 or -1
+
+## -----------------------------------------------------------
+## year (calendar year for temporal effect)
+## -----------------------------------------------------------
+## Must match values from years_used (the model’s year index):
+##   c(2011,2012, ..., 2024)
+##
+## Use:
+##   year = NULL → average across all years
+##                 (posterior mean of F_year for analyte)
+##
+## Or specify:
+##   year = 2016
+
+## -----------------------------------------------------------
+## STIR_raw_seq
+## -----------------------------------------------------------
+## A numeric vector of raw STIR values (unstandardized).
+##
+## Default:
+##   seq(0, 300, length.out = 60)
+##
+## Adjust for finer or coarser resolution.
+
+# res_scenario <- simulate_load_curves_with_obs(
+#   post         = post,
+#   d_mod        = d_mod,
+#   analytes     = NULL,                          # all analytes
+#   STIR_raw_seq = seq(0, 300, length.out = 60),
+#   block        = NULL,                          # avg over blocks
+#   sampler      = NULL,                          # avg over sampler methods
+#   flume        = NULL,                          # avg over flume types
+#   irrigation   = NULL,                          # avg over irrigations
+#   duplicate    = NULL,                          # avg over duplicate status
+#   cin_z        = 0,                             # average inflow concentration
+#   year         = NULL                           # specific year
+# )
 
 res_scenario <- simulate_load_curves_with_obs(
   post         = post,
   d_mod        = d_mod,
   analytes     = NULL,                          # all analytes
   STIR_raw_seq = seq(0, 300, length.out = 60),
-  block        = NULL,                          # avg over blocks
-  sampler      = NULL,                          # avg over sampler methods
-  flume        = NULL,                          # avg over flume types
-  irrigation   = NULL,                          # avg over irrigations
-  duplicate    = NULL,                          # avg over duplicate status
+  block        = 1,                          # avg over blocks
+  sampler      = "ISC",                          # avg over sampler methods
+  flume        = "7 V",                          # avg over flume types
+  irrigation   = 1,                          # avg over irrigations
+  duplicate    = FALSE,                          # avg over duplicate status
   cin_z        = 0,                             # average inflow concentration
-  year         = NULL                           # specific year
+  year         = 2015                           # specific year
 )
 
 load_pred_scenario <- res_scenario$pred
