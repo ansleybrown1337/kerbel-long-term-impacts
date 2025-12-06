@@ -208,4 +208,31 @@ if (interactive()) {
   wq_stir_clean <- clean_wq_stir(wq_stir)
 }
 
-# ---- 3. Prepare data for modeling ----
+
+
+# ---- Helper functions ----
+
+# Create distance matrix for year effects
+# Usage:
+#   make_year_dist_mat(2011, 2025)              # contiguous years (old behavior)
+#   make_year_dist_mat(unique(d_mod$Year))      # only observed years (recommended)
+make_year_dist_mat <- function(start_or_years, end_year = NULL) {
+  if (is.null(end_year)) {
+    # Case 1: user passed a vector of years
+    years <- sort(unique(start_or_years))
+  } else {
+    # Case 2: user passed start_year, end_year
+    years <- seq(start_or_years, end_year)
+  }
+  
+  n_years <- length(years)
+  
+  # pairwise absolute differences using outer
+  dist_matrix <- abs(outer(years, years, "-"))
+  
+  rownames(dist_matrix) <- years
+  colnames(dist_matrix) <- years
+  
+  dist_matrix
+}
+

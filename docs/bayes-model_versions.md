@@ -16,6 +16,7 @@ This file tracks the structure and development stage of all Bayesian model famil
 | 1.0     | load1p0 | Posterior load computation using posterior C and posterior V, z-score back-transformation, per-analyte load distributions, HPDI summaries | Visualization functions, alternative unit scaling, integration of concentration censoring, inclusion of treatment or year pooling in load summaries |
 | 1.1     | load1p1 | Same as 1.0 but now includes outflow volume model integrated into concentration model for more accurate load estimates. Imputes missing inflow concentrations. | Create non-centered version. Consider Gaussian processes by incorporating year and irrigation number |
 | 1.2     | load1p2 | Same as 1.1 but uses MVN priors and non-centered parameterization| Consider Gaussian processes by incorporating year and/or irrigation number; plot relationship over each year for 1 analyte for load curves |
+| 1.3     | load1p3 | Same as 1.2 but uses single Gaussin process for year and now graphs accordingly| we need a multi-output GP next for a per-analyte year relationship I think. |
 
 ---
 

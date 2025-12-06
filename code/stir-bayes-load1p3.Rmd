@@ -1,0 +1,1213 @@
+---
+title: "Bayesian Modeling of STIR Effects on Water Quality"
+author: "AJ Brown"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+# Load backend cleaning + functions
+getwd()
+source("./stir-bayes-backend.R")
+library(BayesianTools)
+library(rethinking)
+library(dplyr)
+library(ggplot2)
+```
+
+# Model 1.3 (Concentration + Volume Joint Model)
+
+* Joint Bayesian model for **OUT concentration and OUT volume** fit simultaneously
+* Model uses multivariate normal (MVN) hierarchical structure for analyte-specific parameters
+* Model is parametrized in **non-centered** form for better sampling efficiency
+* **Analyte-specific** intercepts, STIR slopes, and inflow-concentration slopes
+* **Volume** modeled as a function of STIR, with Bayesian imputation for missing VOL
+* **Inflow concentration (CIN)** now handled via Bayesian imputation (`CIN ~ dnorm(0,1)`), not zero-substitution
+* Includes all DAG-identified adjustment variables affecting concentration
+  * { Analyte, Block, Inflow Conc., Irrigation Count, Outflow vol, Sampler Method, duplicate status, flume type }
+* Full uncertainty propagation from CIN, VOL, STIR into analyte-specific concentration predictions
+* Supports **scenario-based simulation** for STIR → Load via generative functions (conditional or averaged scenarios)
+
+# 1. Load and clean STIR–WQ dataset
+
+```{r load-clean}
+# Step 1: load raw merged dataset
+wq_raw <- load_wq_stir(
+  path = "out/wq_with_stir_by_season.csv",
+  year_max = Inf
+)
+
+# Step 2: clean, type-enforce, standardize (ALL done in backend)
+wq_clean <- clean_wq_stir(wq_raw)
+
+# Add original row number for tracking
+wq_clean <- wq_clean %>%
+  mutate(orig_row = row_number())
+
+
+glimpse(wq_clean)
+```
+
+---
+
+# 2. Prepare model-ready dataset
+
+Select analytes for modeling:
+
+```{r subset-analytes}
+# analytes: OP   TP   ICP  NO3  TN   TSS  TKN  TSP  NH4  NPOC Se   NO2  NOx  TDS
+# analytes_keep <- c("TP", "TSS")   # modify as needed
+# fullset for ease of use
+analytes_keep <- c("OP", "TP", "ICP", "NO3", "TN", "TSS", 
+                   "TKN", "TSP", "NH4", "NPOC", "Se", "NO2", 
+                   "NOx", "TDS")
+
+d_mod <- wq_clean %>%
+  filter(analyte_abbr %in% analytes_keep) %>%
+  mutate(mod_row = row_number()) %>%
+  droplevels()
+
+d_mod %>% count(analyte_abbr)
+```
+
+Create analyte index and build data list for ulam:
+
+```{r make-stan-dat}
+# 2. Build indices and standardized predictors -----------------------------
+
+d_mod <- d_mod %>%
+  mutate(
+    # analyte index
+    A = as.integer(analyte_abbr),
+
+    # Block (Rep) index
+    B = as.integer(Rep),
+
+    # Sampler method index
+    S = as.integer(SampleMethod),
+
+    # Flume type index
+    Fu = as.integer(FlumeMethod),
+
+    # Irrigation count as numeric
+    irr_num = as.integer(Irrigation),
+
+    # Inflow concentration (standardized), keep NAs for Bayesian imputation
+    cin_std = cin_z,
+    
+    # Duplicate status as 0/1
+    dup = as.integer(Duplicate),
+    
+    # Year index
+    Y = as.integer(as.factor(Year))
+  )
+
+# instantiate distance matrix for gaussian process on year
+years_used <- sort(unique(d_mod$Year))
+mat <- make_year_dist_mat(years_used)
+
+# lookup code for later
+analyte_lookup <- d_mod %>%
+  distinct(A, analyte_abbr) %>%
+  arrange(A)
+
+block_lookup <- d_mod %>%
+  distinct(B, Rep) %>%
+  arrange(B)
+
+sampler_lookup <- d_mod %>%
+  distinct(S, SampleMethod) %>%
+  arrange(S)
+
+flume_lookup <- d_mod %>%
+  distinct(Fu, FlumeMethod) %>%
+  arrange(Fu)
+
+irrigation_lookup <- d_mod %>%
+  distinct(irr_num, Irrigation) %>%
+  arrange(irr_num)
+
+duplicate_lookup <- d_mod %>%
+  distinct(dup, Duplicate) %>%
+  arrange(dup)
+
+# prepare data list for stan
+stan_dat <- list(
+  N    = nrow(d_mod),
+  
+  # group counts
+  A_n  = length(unique(d_mod$A)),   # analyte length
+  B_n  = length(unique(d_mod$B)),     # blocks
+  S_n  = length(unique(d_mod$S)),     # sampler methods
+  F_n  = length(unique(d_mod$Fu)),    # flume types
+  D_n  = length(unique(d_mod$dup)),   # duplicate status
+  Y_n  = length(unique(d_mod$Y)),     # years
+
+  # indices
+  A    = d_mod$A,
+  B    = d_mod$B,
+  S    = d_mod$S,
+  Fu   = d_mod$Fu,
+  Y    = d_mod$Y,
+  
+  # distance matrix for year effects
+  D    = mat,
+
+  # outcome
+  C    = d_mod$cout_z,                # standardized outflow concentration
+
+  # main exposure
+  STIR = d_mod$stir_season_z,         # or stir_cumall_z if you want
+
+  # other identified covariates from DAG:
+  CIN  = d_mod$cin_std,              # inflow concentration (z, with NAs)
+  VOL  = d_mod$volume_z,             # outflow volume (z, with NAs)
+  IRR  = d_mod$irr_num,              # irrigation count (int)
+  DUP  = d_mod$dup                   # duplicate status (0/1)
+)
+```
+
+```{r}
+# Identify the stan_dat entries that are vectors of length N (i.e., row-level variables)
+vec_names <- names(stan_dat)[sapply(stan_dat, function(x) length(x) == stan_dat$N)]
+
+# Loop through these and report NAs
+for (nm in vec_names) {
+  vals <- stan_dat[[nm]]
+  na_idx <- which(is.na(vals))
+
+  cat("\n==============================\n")
+  cat("Variable:", nm, "\n")
+
+  if (length(na_idx) == 0) {
+    cat("No NA values detected.\n")
+  } else {
+    cat("NA count:", length(na_idx), "\n")
+    cat("Rows with NA:", paste(head(na_idx, 25), collapse = ", "),
+        if (length(na_idx) > 25) "..." else "", "\n\n")
+
+    # Show the corresponding d_mod rows
+    cat("Example offending rows from d_mod:\n")
+    print(d_mod[na_idx[1:min(10, length(na_idx))], ])
+  }
+}
+
+```
+
+
+# 3. Hierarchical Bayesian model
+
+```{r fit-model}
+m_stir_nc <- ulam(
+  alist(
+    ##################################################
+    # 1. Likelihood and linear predictor
+    ##################################################
+    C ~ normal(mu_C, sigma_analyte[A]),
+
+    mu_C <- alpha[A] +
+            beta_stir[A] * STIR +
+            beta_cin[A]  * CIN +
+            beta_vol     * VOL +
+            beta_irr     * IRR +
+            beta_dup[A]  * DUP +
+            gamma_B[A, B] +
+            gamma_S[A, S] +
+            gamma_F[A, Fu] +
+            f_year[Y],
+
+    ##################################################
+    # 2. Volume model (with missing data)
+    ##################################################
+    VOL ~ normal(mu_V, sigma_V),
+    mu_V <- a_V + b_V * STIR,
+
+    ##################################################
+    # 2b. Inflow concentration model
+    ##################################################
+    CIN ~ normal(0, 1),
+
+    ##################################################
+    # 3. Analyte-level MVN (non-centered)
+    ##################################################
+    transpars> vector[A_n]:alpha     <<- mu_A[1] + v_A[,1],
+    transpars> vector[A_n]:beta_stir <<- mu_A[2] + v_A[,2],
+    transpars> vector[A_n]:beta_cin  <<- mu_A[3] + v_A[,3],
+    transpars> vector[A_n]:beta_dup  <<- mu_A[4] + v_A[,4],
+
+    transpars> matrix[A_n,4]:v_A <- compose_noncentered(sigma_A, L_A, Z_A),
+
+    matrix[4, A_n]:Z_A ~ normal(0, 1),
+    vector[4]:mu_A ~ normal(0, 1),
+    cholesky_factor_corr[4]:L_A ~ lkj_corr_cholesky(2),
+    vector[4]:sigma_A ~ exponential(1),
+
+    ##################################################
+    # 4. Analyte × block effects (non-centered MVN)
+    ##################################################
+    transpars> matrix[A_n, B_n]:gamma_B <- compose_noncentered(sigma_B, L_B, Z_B),
+
+    matrix[B_n, A_n]:Z_B ~ normal(0, 1),
+    cholesky_factor_corr[B_n]:L_B ~ lkj_corr_cholesky(2),
+    vector[B_n]:sigma_B ~ exponential(1),
+
+    ##################################################
+    # 5. Analyte × sampler effects
+    ##################################################
+    transpars> matrix[A_n, S_n]:gamma_S <- compose_noncentered(sigma_S, L_S, Z_S),
+
+    matrix[S_n, A_n]:Z_S ~ normal(0, 1),
+    cholesky_factor_corr[S_n]:L_S ~ lkj_corr_cholesky(2),
+    vector[S_n]:sigma_S ~ exponential(1),
+
+    ##################################################
+    # 6. Analyte × flume effects
+    ##################################################
+    transpars> matrix[A_n, F_n]:gamma_F <- compose_noncentered(sigma_F, L_F, Z_F),
+
+    matrix[F_n, A_n]:Z_F ~ normal(0, 1),
+    cholesky_factor_corr[F_n]:L_F ~ lkj_corr_cholesky(2),
+    vector[F_n]:sigma_F ~ exponential(1),
+
+    ##################################################
+    # 7. Population-level priors and residual scales
+    ##################################################
+    beta_vol ~ normal(0, 1),
+    beta_irr ~ normal(0, 1),
+
+    a_V ~ normal(0, 1),
+    b_V ~ normal(0, 1),
+
+    vector[A_n]:sigma_analyte ~ exponential(1),
+    sigma_V ~ exponential(1),
+
+    ##################################################
+    # 8. Gaussian Process on Year
+    ##################################################
+    vector[Y_n]:f_year ~ multi_normal(0, K_year),
+    matrix[Y_n, Y_n]:K_year <- cov_GPL2(D, etasq_year, rhosq_year, 0.01),
+
+    etasq_year ~ dexp(2),
+    rhosq_year ~ dexp(0.5)
+  ),
+  data   = stan_dat,
+  chains = 4,
+  cores  = 4,
+  iter   = 2000
+)
+
+```
+
+---
+
+# 4. Posterior inspection
+
+```{r summarize, eval=FALSE}
+#traceplot(m_stir)
+#trankplot(m_stir)
+summarize_precis <- function(fit, depth = 2, prob = 0.95, n_show = 20) {
+
+  # Extract precis table as a data frame
+  p <- precis(fit, depth = depth, prob = prob)
+  p_df <- as.data.frame(p)
+  p_df$param <- rownames(p_df)
+
+  # ---- Basic display ----
+  cat("\n=== Top", n_show, "rows of precis() ===\n")
+  print(head(p_df, n_show), row.names = FALSE)
+
+  # ---- Extract diagnostics ----
+  rhat_vals <- p_df$rhat
+  ess_vals  <- p_df$ess_bulk
+
+  # ---- Summary stats ----
+  cat("\n=== Rhat Diagnostics ===\n")
+  cat("Min Rhat:    ", min(rhat_vals, na.rm = TRUE),
+      "   (", p_df$param[which.min(rhat_vals)], ")\n")
+  cat("Median Rhat: ", median(rhat_vals, na.rm = TRUE), "\n")
+  cat("Max Rhat:    ", max(rhat_vals, na.rm = TRUE),
+      "   (", p_df$param[which.max(rhat_vals)], ")\n")
+
+  cat("\n=== Bulk ESS Diagnostics ===\n")
+  cat("Min ESS:     ", min(ess_vals, na.rm = TRUE),
+      "   (", p_df$param[which.min(ess_vals)], ")\n")
+  cat("Median ESS:  ", median(ess_vals, na.rm = TRUE), "\n")
+  cat("Max ESS:     ", max(ess_vals, na.rm = TRUE),
+      "   (", p_df$param[which.max(ess_vals)], ")\n")
+
+  invisible(p_df)
+}
+
+p_df <- summarize_precis(m_stir_nc, depth = 2, prob = 0.95, n_show = 50)
+
+# Optional plotting
+plot(precis(m_stir_nc, depth = 1, prob = 0.95))
+
+```
+
+```{r extract, eval=FALSE}
+# extract posterior samples
+post <- extract.samples(m_stir_nc)
+
+# analyte-specific STIR slopes
+alpha_hat      <- apply(post$alpha,     2, mean)
+beta_stir_mean <- apply(post$beta_stir, 2, mean)
+
+# 89 percent HPDI and 95 percent PI for beta_stir
+beta_stir_hpdi <- apply(post$beta_stir, 2, HPDI, prob = 0.89)
+beta_stir_pi   <- apply(post$beta_stir, 2, PI,   prob = 0.95)
+
+analyte_lookup <- d_mod %>% 
+  distinct(A, analyte_abbr) %>%
+  arrange(A)
+
+analyte_effects <- analyte_lookup %>%
+  mutate(
+    beta_stir_mean   = beta_stir_mean,
+    beta_stir_median = apply(post$beta_stir, 2, median),
+    beta_hpdi_low    = beta_stir_hpdi[1, ],
+    beta_hpdi_high   = beta_stir_hpdi[2, ],
+    beta_pi_low      = beta_stir_pi[1, ],
+    beta_pi_high     = beta_stir_pi[2, ]
+  )
+
+analyte_effects
+```
+
+---
+
+# 5. Plot posterior slopes for STIR effects on concentration
+
+```{r plot-slopes, eval=FALSE}
+# Order analytes by estimated mean STIR effect
+analyte_effects_ord <- analyte_effects %>%
+  arrange(beta_stir_mean) %>%
+  mutate(A_plot = seq_len(n()))    # new plotting index 1...J
+
+A_seq     <- analyte_effects_ord$A_plot
+beta_mean <- analyte_effects_ord$beta_stir_mean
+
+beta_hpdi_low  <- analyte_effects_ord$beta_hpdi_low
+beta_hpdi_high <- analyte_effects_ord$beta_hpdi_high
+
+beta_pi_low  <- analyte_effects_ord$beta_pi_low
+beta_pi_high <- analyte_effects_ord$beta_pi_high
+
+labels <- analyte_effects_ord$analyte_abbr
+
+# Base R plot setup
+# Save as JPEG in figs folder
+jpeg("../figs/load1p1_STIReffects.jpeg", width = 2000, height = 1300, res = 200)
+
+## --- your existing base R plot code below ---
+plot(
+  A_seq, beta_mean,
+  xaxt = "n",
+  pch  = 16,
+  col  = "darkred",
+  ylim = range(c(beta_pi_low, beta_pi_high)),
+  ylab = "Effect of STIR on Concentration",
+  xlab = "Analyte (ordered by effect)",
+  main = "Analyte-specific STIR effects with 89% & 95% CIs"
+)
+
+axis(1, at = A_seq, labels = labels, las = 2)
+
+for (i in seq_along(A_seq)) {
+  lines(
+    c(A_seq[i], A_seq[i]),
+    c(beta_pi_low[i], beta_pi_high[i]),
+    col = col.alpha("darkred", 0.2),
+    lwd = 5
+  )
+}
+
+for (i in seq_along(A_seq)) {
+  lines(
+    c(A_seq[i], A_seq[i]),
+    c(beta_hpdi_low[i], beta_hpdi_high[i]),
+    col = col.alpha("darkred", 0.4),
+    lwd = 5
+  )
+}
+
+abline(h = 0, lty = 2)
+## --- end of plot code ---
+
+dev.off()
+
+
+plot(
+  A_seq, beta_mean,
+  xaxt = "n",
+  pch  = 16,
+  col  = "darkred",
+  ylim = range(c(beta_pi_low, beta_pi_high)),
+  ylab = "Effect of STIR on Concentration",
+  xlab = "Analyte (ordered by effect)",
+  main = "Analyte-specific STIR effects (ordered) with 89% & 95% intervals"
+)
+
+axis(1, at = A_seq, labels = labels, las = 2)
+
+# 95 percent PI vertical bands (lighter)
+for (i in seq_along(A_seq)) {
+  lines(
+    x = c(A_seq[i], A_seq[i]),
+    y = c(beta_pi_low[i], beta_pi_high[i]),
+    col = col.alpha("darkred", 0.2),
+    lwd = 5
+  )
+}
+
+# 89 percent HPDI vertical bands (darker)
+for (i in seq_along(A_seq)) {
+  lines(
+    x = c(A_seq[i], A_seq[i]),
+    y = c(beta_hpdi_low[i], beta_hpdi_high[i]),
+    col = col.alpha("darkred", 0.4),
+    lwd = 5
+  )
+}
+
+abline(h = 0, lty = 2)
+
+
+```
+
+## 6. Generative STIR → Load curves by analyte --------------------------------
+
+```{r load-generative-curves}
+## Scenario-based STIR -> Load link functions -----------------------------
+## Assumes 'post', 'd_mod', and the *_lookup tables already exist
+
+# 1. Back-transform stats (only computed once)
+c_stats <- d_mod %>%
+  group_by(A) %>%
+  summarize(
+    c_mean = mean(Result_mg_L, na.rm = TRUE),
+    c_sd   = sd(Result_mg_L,   na.rm = TRUE),
+    .groups = "drop"
+  )
+
+V_mean <- mean(d_mod$Volume, na.rm = TRUE)
+V_sd   <- sd(d_mod$Volume,   na.rm = TRUE)
+
+# STIR raw mean/sd for Season_STIR_toDate
+stir_mean <- mean(d_mod$Season_STIR_toDate, na.rm = TRUE)
+stir_sd   <- sd(d_mod$Season_STIR_toDate,   na.rm = TRUE)
+
+# Empirical means for averaging when left NULL
+IRR_bar <- mean(d_mod$irr_num, na.rm = TRUE)
+DUP_bar <- mean(d_mod$dup,     na.rm = TRUE)
+
+
+# Helper: one analyte, one scenario --------------------------------------
+simulate_load_curve_single <- function(
+  post,
+  analyte,
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block      = NULL,
+  sampler    = NULL,
+  flume      = NULL,
+  irrigation = NULL,
+  duplicate  = NULL,
+  cin_z      = 0,
+  year       = NULL,     # NEW: calendar year, e.g. 2014
+  n_draws    = 2000
+) {
+
+  # Map analyte label -> index A
+  j_idx <- analyte_lookup$A[analyte_lookup$analyte_abbr == analyte]
+  if (length(j_idx) != 1L) stop("analyte not found in analyte_lookup")
+
+  # Stats for this analyte
+  stats_j  <- dplyr::filter(c_stats, A == j_idx)
+  c_mean_j <- stats_j$c_mean
+  c_sd_j   <- stats_j$c_sd
+
+  # STIR in z units
+  STIR_z_seq <- (STIR_raw_seq - stir_mean) / stir_sd
+
+  # Subsample posterior draws for speed
+  S_full   <- length(post$a_V)
+  draw_idx <- if (S_full > n_draws) sample.int(S_full, n_draws) else seq_len(S_full)
+
+  # Random effects / covariate settings ------------------------------
+  # Block (Rep)
+  if (is.null(block)) {
+    gamma_B_draws <- post$gamma_B[draw_idx, j_idx, , drop = FALSE]  # draws × 1 × B_n
+    gamma_B_star  <- apply(gamma_B_draws, 1, mean)                   # length = draws
+    block_label   <- "avg_all_blocks"
+  } else {
+    B_idx <- block_lookup$B[block_lookup$Rep == block]
+    if (length(B_idx) != 1L) stop("block not found in block_lookup")
+    gamma_B_star <- post$gamma_B[draw_idx, j_idx, B_idx]
+    block_label  <- as.character(block)
+  }
+
+  # Sampler method
+  if (is.null(sampler)) {
+    gamma_S_draws <- post$gamma_S[draw_idx, j_idx, , drop = FALSE]  # draws × 1 × S_n
+    gamma_S_star  <- apply(gamma_S_draws, 1, mean)
+    sampler_label <- "avg_all_samplers"
+  } else {
+    S_idx <- sampler_lookup$S[sampler_lookup$SampleMethod == sampler]
+    if (length(S_idx) != 1L) stop("sampler not found in sampler_lookup")
+    gamma_S_star  <- post$gamma_S[draw_idx, j_idx, S_idx]
+    sampler_label <- as.character(sampler)
+  }
+
+  # Flume type
+  if (is.null(flume)) {
+    gamma_F_draws <- post$gamma_F[draw_idx, j_idx, , drop = FALSE]  # draws × 1 × F_n
+    gamma_F_star  <- apply(gamma_F_draws, 1, mean)
+    flume_label   <- "avg_all_flumes"
+  } else {
+    Fu_idx <- flume_lookup$Fu[flume_lookup$FlumeMethod == flume]
+    if (length(Fu_idx) != 1L) stop("flume not found in flume_lookup")
+    gamma_F_star  <- post$gamma_F[draw_idx, j_idx, Fu_idx]
+    flume_label   <- as.character(flume)
+  }
+
+  # Irrigation
+  if (is.null(irrigation)) {
+    IRR_star         <- IRR_bar
+    irrigation_label <- "avg_all_irrigations"
+  } else {
+    irr_val <- irrigation_lookup$irr_num[irrigation_lookup$Irrigation == irrigation]
+    if (length(irr_val) != 1L) stop("irrigation not found in irrigation_lookup")
+    IRR_star         <- irr_val
+    irrigation_label <- as.character(irrigation)
+  }
+
+  # Duplicate status
+  if (is.null(duplicate)) {
+    DUP_star        <- DUP_bar
+    duplicate_label <- "avg_duplicates"
+  } else {
+    DUP_star        <- as.numeric(duplicate)  # TRUE/FALSE -> 1/0
+    duplicate_label <- ifelse(duplicate, "TRUE", "FALSE")
+  }
+
+  # Posterior arrays for this analyte and global params ---------------
+  alpha_j    <- post$alpha[draw_idx, j_idx]
+  beta_stirj <- post$beta_stir[draw_idx, j_idx]
+  beta_cinj  <- post$beta_cin[draw_idx, j_idx]
+  beta_dupj  <- post$beta_dup[draw_idx, j_idx]
+
+  beta_vol <- post$beta_vol[draw_idx]
+  beta_irr <- post$beta_irr[draw_idx]
+
+  a_V <- post$a_V[draw_idx]
+  b_V <- post$b_V[draw_idx]
+
+  # GP on year: either specific year or average across years ---------
+  if (!is.null(post$k_year)) {
+    if (is.null(year)) {
+      # average GP effect across all years in each draw (backwards compatible)
+      k_year_draws <- post$k_year[draw_idx, , drop = FALSE]  # draws × Y_n
+      k_star       <- rowMeans(k_year_draws)
+      year_label   <- "avg_all_years"
+    } else {
+      # map calendar year to index in GP
+      Y_idx <- match(year, years_used)
+      if (is.na(Y_idx)) stop("requested year not in years_used")
+      k_star     <- post$k_year[draw_idx, Y_idx]
+      year_label <- as.character(year)
+    }
+  } else {
+    # safety fallback if model is ever run without GP
+    k_star    <- rep(0, length(draw_idx))
+    year_label <- if (is.null(year)) "no_GP" else as.character(year)
+  }
+
+  n_x <- length(STIR_z_seq)
+
+  load_mean <- numeric(n_x)
+  load_low  <- numeric(n_x)
+  load_high <- numeric(n_x)
+
+  # Loop over STIR values ---------------------------------------------
+  for (k in seq_len(n_x)) {
+    stz <- STIR_z_seq[k]
+
+    # Volume (z scale) from STIR
+    muV_z <- a_V + b_V * stz
+
+    # Concentration (z scale) with covariates and year specific GP
+    muC_z <- alpha_j +
+             beta_stirj * stz +
+             beta_cinj  * cin_z +
+             beta_vol   * muV_z +
+             beta_irr   * IRR_star +
+             beta_dupj  * DUP_star +
+             gamma_B_star +
+             gamma_S_star +
+             gamma_F_star +
+             k_star
+
+    # Back transform to raw units
+    C_raw <- c_mean_j + c_sd_j * muC_z    # mg/L
+    V_raw <- V_mean   + V_sd   * muV_z    # L
+
+    # Load (mg) converted to g
+    L_s <- C_raw * V_raw / 1000
+
+    load_mean[k] <- mean(L_s)
+    hpdi_k       <- HPDI(L_s, prob = 0.89)
+    load_low[k]  <- hpdi_k[1]
+    load_high[k] <- hpdi_k[2]
+  }
+
+  data.frame(
+    analyte          = analyte,
+    STIR_raw         = STIR_raw_seq,
+    load_mean        = load_mean,
+    load_low         = load_low,
+    load_high        = load_high,
+    block_level      = block_label,
+    sampler_level    = sampler_label,
+    flume_level      = flume_label,
+    irrigation_level = irrigation_label,
+    duplicate_level  = duplicate_label,
+    cin_z            = cin_z,
+    year_level       = year_label
+  )
+}
+
+
+# Wrapper: multiple analytes (default = all) -----------------------------
+simulate_load_curves <- function(
+  post,
+  analytes     = NULL,                        # default: all analytes
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  cin_z        = 0,
+  year         = NULL,                        # NEW: calendar year, e.g. 2014
+  n_draws      = 2000
+) {
+  if (is.null(analytes)) {
+    analytes <- as.character(analyte_lookup$analyte_abbr)
+  }
+
+  res_list <- lapply(analytes, function(an) {
+    simulate_load_curve_single(
+      post         = post,
+      analyte      = an,
+      STIR_raw_seq = STIR_raw_seq,
+      block        = block,
+      sampler      = sampler,
+      flume        = flume,
+      irrigation   = irrigation,
+      duplicate    = duplicate,
+      cin_z        = cin_z,
+      year         = year,       # pass year through
+      n_draws      = n_draws
+    )
+  })
+
+  dplyr::bind_rows(res_list)
+}
+
+
+## ------------------------------------------------------------------
+## Helpers: observed loads under a given scenario
+## ------------------------------------------------------------------
+
+compute_observed_load_points_single <- function(
+  d_mod,
+  analyte,                      # analyte_abbr string
+  block      = NULL,
+  sampler    = NULL,
+  flume      = NULL,
+  irrigation = NULL,            # numeric irr_num, to match your scenario
+  duplicate  = NULL,
+  year       = NULL,            # NEW: calendar year, e.g. 2014
+  stir_var   = "Season_STIR_toDate",
+  conc_var   = "Result_mg_L",   # raw concentration, mg/L
+  vol_var    = "Volume"         # raw volume, L
+) {
+
+  # filter to this analyte
+  d_sub <- d_mod %>%
+    dplyr::filter(analyte_abbr == analyte)
+
+  # optional filters, matching scenario logic
+  if (!is.null(block)) {
+    d_sub <- d_sub %>% dplyr::filter(Rep == block)
+  }
+
+  if (!is.null(sampler)) {
+    d_sub <- d_sub %>% dplyr::filter(SampleMethod == sampler)
+  }
+
+  if (!is.null(flume)) {
+    d_sub <- d_sub %>% dplyr::filter(FlumeMethod == flume)
+  }
+
+  if (!is.null(irrigation)) {
+    d_sub <- d_sub %>% dplyr::filter(irr_num == irrigation)
+  }
+
+  if (!is.null(duplicate)) {
+    d_sub <- d_sub %>% dplyr::filter(dup == as.numeric(duplicate))
+  }
+
+  # NEW: filter by year, if requested
+  if (!is.null(year)) {
+    d_sub <- d_sub %>% dplyr::filter(Year == year)
+  }
+
+  # keep rows with all needed pieces
+  d_sub <- d_sub %>%
+    dplyr::filter(
+      !is.na(.data[[stir_var]]),
+      !is.na(.data[[conc_var]]),
+      !is.na(.data[[vol_var]])
+    )
+
+  # labels for scenario
+  block_label      <- if (is.null(block))      "avg_all_blocks"      else as.character(block)
+  sampler_label    <- if (is.null(sampler))    "avg_all_samplers"    else as.character(sampler)
+  flume_label      <- if (is.null(flume))      "avg_all_flumes"      else as.character(flume)
+  irrigation_label <- if (is.null(irrigation)) "avg_all_irrigations" else as.character(irrigation)
+  duplicate_label  <- if (is.null(duplicate))  "avg_duplicates"      else ifelse(duplicate, "TRUE", "FALSE")
+  year_label       <- if (is.null(year))       "all_years"           else as.character(year)
+
+  if (nrow(d_sub) == 0L) {
+    return(tibble::tibble(
+      analyte          = character(0),
+      STIR_raw         = numeric(0),
+      load_obs         = numeric(0),
+      n_obs            = integer(0),
+      block_level      = character(0),
+      sampler_level    = character(0),
+      flume_level      = character(0),
+      irrigation_level = character(0),
+      duplicate_level  = character(0),
+      year_level       = character(0)   # NEW
+    ))
+  }
+
+  # compute load (mg/L * L = mg; convert to g)
+  d_sub <- d_sub %>%
+    dplyr::mutate(
+      STIR_raw = .data[[stir_var]],
+      load_g   = .data[[conc_var]] * .data[[vol_var]] / 1000
+    )
+
+  # average loads at each STIR_raw (across whatever factors remain)
+  d_sum <- d_sub %>%
+    dplyr::group_by(STIR_raw) %>%
+    dplyr::summarize(
+      load_obs = mean(load_g, na.rm = TRUE),
+      n_obs    = dplyr::n(),
+      .groups  = "drop"
+    )
+
+  d_sum %>%
+    dplyr::mutate(
+      analyte          = analyte,
+      block_level      = block_label,
+      sampler_level    = sampler_label,
+      flume_level      = flume_label,
+      irrigation_level = irrigation_label,
+      duplicate_level  = duplicate_label,
+      year_level       = year_label
+    )
+}
+
+
+compute_observed_load_points <- function(
+  d_mod,
+  analytes     = NULL,   # default: all analytes
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  year         = NULL,   # NEW: calendar year, e.g. 2014
+  stir_var     = "Season_STIR_toDate",
+  conc_var     = "Result_mg_L",
+  vol_var      = "Volume"
+) {
+  if (is.null(analytes)) {
+    analytes <- unique(d_mod$analyte_abbr)
+  }
+
+  d_list <- lapply(analytes, function(an) {
+    compute_observed_load_points_single(
+      d_mod      = d_mod,
+      analyte    = an,
+      block      = block,
+      sampler    = sampler,
+      flume      = flume,
+      irrigation = irrigation,
+      duplicate  = duplicate,
+      year       = year,        # pass year through
+      stir_var   = stir_var,
+      conc_var   = conc_var,
+      vol_var    = vol_var
+    )
+  })
+
+  dplyr::bind_rows(d_list)
+}
+
+
+# pred and obs merger function
+
+simulate_load_curves_with_obs <- function(
+  post,
+  d_mod,
+  analytes     = NULL,
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  cin_z        = 0,
+  year         = NULL,          # NEW: calendar year, e.g. 2014
+  n_draws      = 2000
+) {
+
+  # 1. Posterior predictions
+  pred <- simulate_load_curves(
+    post         = post,
+    analytes     = analytes,
+    STIR_raw_seq = STIR_raw_seq,
+    block        = block,
+    sampler      = sampler,
+    flume        = flume,
+    irrigation   = irrigation,
+    duplicate    = duplicate,
+    cin_z        = cin_z,
+    year         = year,       # pass year through
+    n_draws      = n_draws
+  )
+
+  # 2. Observed loads under the same scenario choices
+  obs <- compute_observed_load_points(
+    d_mod      = d_mod,
+    analytes   = unique(pred$analyte),
+    block      = block,
+    sampler    = sampler,
+    flume      = flume,
+    irrigation = irrigation,
+    duplicate  = duplicate,
+    year       = year          # pass year through
+  )
+
+  list(pred = pred, obs = obs)
+}
+
+
+
+```
+
+## Scenario-based STIR → Load Simulation Functions
+
+### Parameter definitions and behavior
+
+The simulation functions allow you to generate posterior predicted analyte loads across a range of STIR values under different user-defined “scenarios.” Each scenario variable may be explicitly specified or left blank. When a parameter is left blank (NULL), the model automatically averages over that variable by using the posterior mean of its random effect or the empirical mean of the covariate.
+
+**analyte**
+
+* Character analyte abbreviation (for example, `"TP"`, `"NO3"`, `"TDS"`).
+* Default behavior: uses *all analytes*.
+* Valid levels come from `analyte_lookup$analyte_abbr`:
+  NH4, ICP, NO3, NOx, NO2, NPOC, OP, Se, TDS, TKN, TN, TP, TSP, TSS.
+
+**block**
+
+* Field block or replication factor, matching `block_lookup$Rep` (typically `"1"` or `"2"`).
+* If left NULL: averaged over blocks via the posterior mean of the random effect `gamma_B`.
+
+**sampler**
+
+* Sampler method type, matching `sampler_lookup$SampleMethod` (GB, GB3, GBH, GBW, ISC, LC).
+* If left NULL: averaged over sampler methods via the posterior mean of `gamma_S`.
+
+**flume**
+
+* Flume hardware type, matching `flume_lookup$FlumeMethod`:
+  “10 V”, “10V”, “60 V Trap”, “7 V”, “8 V”, “Weir”.
+* If left NULL: averaged using the posterior mean of `gamma_F`.
+
+**irrigation**
+
+* Irrigation-event identity, matching `irrigation_lookup$Irrigation`:
+  1, 10, 2, 3, 4, 5, 6, 7, 8, 9, S1, S2.
+* IRR is a fixed-effect covariate, not a random effect.
+* If left NULL: the function uses the empirical mean of `irr_num` in the dataset.
+
+**duplicate**
+
+* Laboratory duplicate indicator (TRUE or FALSE).
+* If NULL: uses the empirical mean duplicate rate across the dataset.
+
+**cin_z**
+
+* Standardized inflow concentration for the selected analyte.
+* Defaults to 0 (“average inflow concentration”).
+
+**STIR_raw_seq**
+
+* The raw STIR values over which predictions are generated (for example, 0–300).
+
+**n_draws**
+
+* Number of posterior samples used for simulation, for computational efficiency.
+
+---
+
+
+### Output
+
+The functions return a tidy data frame containing:
+
+* analyte
+* STIR_raw
+* load_mean (posterior mean load in mg)
+* load_low (lower 89 percent HPDI)
+* load_high (upper 89 percent HPDI)
+
+This output is designed for straightforward faceted visualization in `ggplot2`.
+
+```{r load-generative-curves}
+## ------------------------------------------------------------------
+## Example: year specific, averaged over blocks, samplers, flumes, duplicates
+##          but FIXED inflow at cin_z = 0
+## ------------------------------------------------------------------
+
+res_scenario <- simulate_load_curves_with_obs(
+  post         = post,
+  d_mod        = d_mod,
+  analytes     = NULL,                          # all analytes
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,                          # avg over blocks
+  sampler      = NULL,                          # avg over sampler methods
+  flume        = NULL,                          # avg over flume types
+  irrigation   = NULL,                          # avg over irrigations
+  duplicate    = NULL,                          # avg over duplicate status
+  cin_z        = 0,                             # average inflow concentration
+  year         = NULL                           # specific year
+)
+
+load_pred_scenario <- res_scenario$pred
+load_obs_scenario  <- res_scenario$obs
+
+# Build a dynamic subtitle from scenario labels
+scenario_info <- load_pred_scenario %>%
+  dplyr::distinct(
+    year_level,
+    block_level, sampler_level, flume_level,
+    irrigation_level, duplicate_level, cin_z
+  )
+
+subtitle_text <- sprintf(
+  "Year: %s; Block: %s; Sampler: %s;\nFlume: %s; Irrigation: %s;\nDuplicate: %s; Inflow (Z-score) = %g",
+  scenario_info$year_level,
+  scenario_info$block_level,
+  scenario_info$sampler_level,
+  scenario_info$flume_level,
+  scenario_info$irrigation_level,
+  scenario_info$duplicate_level,
+  scenario_info$cin_z
+)
+
+# Build plot object with observed points overlaid
+p_load <- ggplot(load_pred_scenario, aes(x = STIR_raw, y = load_mean)) +
+  geom_ribbon(aes(ymin = load_low, ymax = load_high),
+              fill = "gray60", alpha = 0.35, linewidth = 0) +
+  geom_line(linewidth = 1.1) +
+  geom_point(data = load_obs_scenario,
+             aes(x = STIR_raw, y = load_obs),
+             inherit.aes = FALSE,
+             size = 2.0, alpha = 0.9) +
+  facet_wrap(~ analyte, scales = "free_y", ncol = 4) +
+  labs(
+    x = "Seasonal STIR",
+    y = "Expected Load (g per event, with 89% HPDI)",
+    title = "STIR → Load curves by analyte",
+    subtitle = subtitle_text
+  ) +
+  theme_classic(base_size = 18) +
+  theme(
+    strip.text    = element_text(size = 16, face = "bold"),
+    axis.text     = element_text(size = 14),
+    axis.title    = element_text(size = 18),
+    plot.title    = element_text(size = 22, face = "bold"),
+    plot.subtitle = element_text(size = 16),
+    panel.spacing = unit(1.2, "lines"),
+    plot.margin   = margin(15, 20, 15, 20)
+  )
+
+p_load
+
+
+
+```
+
+
+```{r}
+# Save to figs folder
+ggsave(
+  filename = "../figs/load1p2_STIR_load_curves.jpeg",
+  plot = p_load,
+  width = 12, height = 10, dpi = 300
+)
+```
+
+Plot effects of time (i.e., Year)
+```{r}
+## ============================================================
+## Year-distance covariance functions (prior vs posterior)
+## ============================================================
+
+# sequence of distances in years
+d_max <- max(dist(years_used))
+x_seq <- seq(0, d_max, length.out = 200)
+
+# number of draws to plot
+n_prior <- 50
+n_post  <- 50
+
+# prior draws (same priors as model)
+etasq_prior <- rexp(n_prior, rate = 2)        # dexp(2)
+rhosq_prior <- rexp(n_prior, rate = 0.5)      # dexp(0.5)
+
+# posterior draws
+etasq_post <- post$etasq_year[1:n_post, 1]
+rhosq_post <- post$rhosq_year[1:n_post, 1]
+
+# -----------------------------
+# Build plot
+# -----------------------------
+jpeg("../figs/year_covariance_gp.jpeg", width = 2000, height = 1500, res = 220)
+
+plot(
+  NULL,
+  xlab = "distance (years)",
+  ylab = "covariance",
+  xlim = c(0, d_max),
+  ylim = c(0, max(c(etasq_prior, etasq_post)) * 1.1)
+)
+
+# PRIOR curves (grey)
+for (i in seq_len(n_prior)) {
+  curve(
+    etasq_prior[i] * exp(-rhosq_prior[i] * x^2),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col.alpha("black", 0.2),
+    lwd = 2
+  )
+}
+
+# POSTERIOR curves (red)
+for (i in seq_len(n_post)) {
+  curve(
+    etasq_post[i] * exp(-rhosq_post[i] * x^2),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col.alpha("firebrick", 0.35),
+    lwd = 2
+  )
+}
+
+# Posterior mean covariance curve (thick red)
+pm_cov <- sapply(
+  x_seq,
+  function(x) etasq_post * exp(-rhosq_post * x^2)
+)
+lines(x_seq, colMeans(pm_cov), col = "firebrick", lwd = 4)
+
+# Labels like McElreath's example
+text(
+  x = d_max * 0.3,
+  y = max(etasq_post) * 3.5,
+  labels = "Prior",
+  col = "black",
+  cex = 1.5
+)
+text(
+  x = d_max * 0.5,
+  y = max(etasq_post) * 1.80,
+  labels = "Posterior",
+  col = "firebrick",
+  cex = 1.5
+)
+
+dev.off()
+
+
+# set up empty plot
+plot(
+  NULL,
+  xlab = "distance (years)",
+  ylab = "covariance",
+  xlim = c(0, d_max),
+  ylim = c(0, 2)    # adjust if your curves exceed 2
+)
+
+# PRIOR: "empty model" covariance functions (grey, faint)
+for (i in seq_len(n_prior)) {
+  curve(
+    etasq_prior[i] * exp(-rhosq_prior[i] * x^2),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col.alpha("black", 0.2),
+    lwd = 2
+  )
+}
+
+# POSTERIOR: "population model" covariance functions (red, faint)
+for (i in seq_len(n_post)) {
+  curve(
+    etasq_post[i] * exp(-rhosq_post[i] * x^2),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col.alpha("firebrick", 0.4),
+    lwd = 2
+  )
+}
+
+# Optional: posterior mean covariance function in thick red line
+pmcov <- sapply(
+  x_seq,
+  function(x) etasq_post * exp(-rhosq_post * x^2)
+)
+pmcov_mu <- apply(pmcov, 2, mean)
+lines(x_seq, pmcov_mu, lwd = 3, col = "firebrick")
+
+text(
+  x = d_max * 0.7,
+  y = 1.8,
+  labels = "Prior",
+  col = "black"
+)
+text(
+  x = d_max * 0.7,
+  y = 1.6,
+  labels = "Posterior",
+  col = "firebrick"
+)
+
+```
+
