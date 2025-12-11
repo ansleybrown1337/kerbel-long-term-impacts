@@ -173,7 +173,7 @@ Both inflow concentration (CIN) and runoff volume (VOL) contain missing values a
 Each is imputed through a simple measurement-error model:
 
 ```math
-\text{CIN}_i^{\text{obs}} \sim \mathrm{Normal}(\text{CIN}_i^{\text{true}}, 1),
+\text{CIN}_i^{\text{obs}} \sim \mathrm{Normal}(0, 1),
 ```
 
 ```math
@@ -334,3 +334,9 @@ Detailed schema for all output fields is in
 ## License
 
 GPL‑2. Please credit the **Colorado State University Agricultural Water Quality Program (AWQP)** when using this repository.
+
+
+## TODOS
+- [ ] fix flume labeling so that 10V and 10 V are consistent, rerun model
+- [X] add graph showing STIR impacts on runoff volume
+- [ ] add table of annual load summaries by analyte and treatment over study period

@@ -23,8 +23,13 @@ STIR is computed directly from the *SoilManageR* equation:
 
 
 ```math
-STIR = \left( 0.5 \times \frac{Speed_{[km/h]}}{1.609} \right) \times \left( 3.25 \times TTM \right) \times \left( \frac{Depth_{[cm]}}{2.54} \right) \times \left( \frac{Surf_{Disturbance}{100} \right)
+\mathrm{STIR}
+= \left( 0.5 \times \frac{Speed_{[km/h]}}{1.609} \right)
+  \times \left( 3.25 \times TTM \right)
+  \times \left( \frac{Depth_{[cm]}}{2.54} \right)
+  \times \left( \frac{Surf_{Disturbance}}{100} \right)
 ```
+
 
 
 | Term                     | Description                       | Conversion       | Notes                                                                            |

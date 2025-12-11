@@ -18,7 +18,7 @@ bb="-5.892,-5.356,4.412,6.847"
 "Depth measurement method" [pos="2.857,3.988"]
 "Inflow Conc." [exposure,pos="-3.320,-4.474"]
 "Inflow vol" [pos="3.591,-2.952"]
-"Irrigation Count" [exposure,pos="-1.874,-4.773"]
+"Irrigation Count" [exposure,pos="-2.397,-4.895"]
 "Irrigation Method" [exposure,pos="1.011,-4.730"]
 "Load e." [latent,pos="-3.102,5.823"]
 "Outflow Conc." [outcome,pos="-4.213,0.646"]
@@ -32,6 +32,7 @@ Analyte [pos="-1.786,-3.109"]
 Block [exposure,pos="-0.587,2.651"]
 Load [outcome,pos="-0.587,5.994"]
 STIR [exposure,pos="-0.595,-1.388"]
+Year [exposure,pos="-1.372,-4.853"]
 "Conc. e" -> "Outflow Conc."
 "Crop Type" -> STIR
 "Depth measurement method" -> "Outflow vol"
@@ -60,9 +61,10 @@ Block -> "Outflow vol"
 STIR -> "Outflow Conc."
 STIR -> "Outflow vol"
 STIR -> Analyte
+Year -> "Outflow Conc."
+Year -> "Outflow vol"
+Year -> Analyte
 }
-
-
 ')
 
 plot(dag)

@@ -513,6 +513,7 @@ analyte_effects
 ## =====================================================================
 
 # Dimensions from the data list used to fit the model
+stan_dat_cmd <- stan_dat
 A_n <- stan_dat_cmd$A_n  # analytes
 B_n <- stan_dat_cmd$B_n  # blocks
 S_n <- stan_dat_cmd$S_n  # samplers
@@ -750,6 +751,66 @@ abline(h = 0, lty = 2)
 
 
 ```
+
+```{r}
+plot_stir_volume_effect <- function(fit, param = "b_V",
+                                    file = NULL,
+                                    main = "Posterior effect of STIR on runoff volume",
+                                    xlab = "Effect of STIR on runoff volume",
+                                    ylab = "Density") {
+
+  # Extract draws for b_V depending on object type
+  if (inherits(fit, "CmdStanMCMC")) {
+    # cmdstanr
+    draws <- fit$draws(variables = param, format = "draws_matrix")
+    b <- as.numeric(draws[, param])
+  } else if (inherits(fit, "stanfit")) {
+    # rstan
+    s <- rstan::extract(fit, pars = param, permuted = TRUE)
+    b <- as.numeric(s[[param]])
+  } else if (is.numeric(fit)) {
+    # allow direct numeric vector of draws
+    b <- as.numeric(fit)
+  } else {
+    stop("Unsupported object type for 'fit'. Use a CmdStanMCMC, stanfit, or numeric vector of draws.")
+  }
+
+  b <- b[is.finite(b)]  # just in case
+
+  if (!is.null(file)) {
+    jpeg(file, width = 2000, height = 1300, res = 200)
+    on.exit(dev.off(), add = TRUE)
+  }
+
+  dens <- density(b)
+
+  plot(
+    dens,
+    type = "l",
+    lwd  = 4,
+    col  = "darkred",
+    xlab = xlab,
+    ylab = ylab,
+    main = main,
+    bty  = "l"
+  )
+
+  abline(v = 0, lty = 2)
+
+  invisible(b)
+}
+
+# Just plot to the device
+plot_stir_volume_effect(fit)
+
+# Or save to file similar to your other figs
+plot_stir_volume_effect(
+  fit,
+  file = "../figs/post_STIR_effect_on_volume.jpeg"
+)
+
+```
+
 
 ## 6. Generative STIR → Load curves by analyte --------------------------------
 
