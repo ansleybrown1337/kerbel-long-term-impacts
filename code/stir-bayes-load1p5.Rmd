@@ -294,7 +294,7 @@ fit <- mod$sample(
   iter_sampling   = 1000
 )
 
-# saveRDS(fit, file = "../out/fit_mogp.rds")
+# saveRDS(fit, file = "./out/fit_mogp.rds")
 # fit <- readRDS("./out/fit_mogp.rds")
 ```
 
@@ -1300,20 +1300,20 @@ res_scenario <- simulate_load_curves_with_obs(
   ci_prob      = 0.95                           # 95% credible intervals
 )
 
-res_scenario <- simulate_load_curves_with_obs(
-  post         = post,
-  d_mod        = d_mod,
-  analytes     = NULL,                          # all analytes
-  STIR_raw_seq = seq(0, 300, length.out = 60),
-  block        = 1,
-  sampler      = "ISC",
-  flume        = "10 V",
-  irrigation   = 1,
-  duplicate    = FALSE,
-  cin_z        = 0,
-  year         = 2016,
-  ci_prob      = 0.95                           # 95% credible intervals
-)
+# res_scenario <- simulate_load_curves_with_obs(
+#   post         = post,
+#   d_mod        = d_mod,
+#   analytes     = NULL,                          # all analytes
+#   STIR_raw_seq = seq(0, 300, length.out = 60),
+#   block        = 1,
+#   sampler      = "ISC",
+#   flume        = "10 V",
+#   irrigation   = 1,
+#   duplicate    = FALSE,
+#   cin_z        = 0,
+#   year         = 2016,
+#   ci_prob      = 0.95                           # 95% credible intervals
+# )
 
 load_pred_scenario <- res_scenario$pred
 load_obs_scenario  <- res_scenario$obs
