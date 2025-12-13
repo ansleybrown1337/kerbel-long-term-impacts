@@ -1,0 +1,451 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+ml_postprocess_plots.py
+
+Post-processing and plotting for the LOYO ML pipeline outputs:
+  - Saves CV plot as JPG
+  - Creates annual load plots (Observed vs ML) with uncertainty intervals
+  - Creates parity (1:1) plots for concentration and volume (log scale)
+  - Creates prediction-interval coverage diagnostics
+
+Observed annual load uncertainty:
+  - Nonparametric bootstrap (within Year × Treatment × Analyte) over event loads
+    where event load = Result_mg_L × Volume_L
+  - Produces 95% bootstrap intervals by default (configurable)
+
+Expected inputs (produced by ml_catboost_conformal_loyo.py):
+  out/ml_catboost_conformal_loyo/cv_metrics_by_year.csv
+  out/ml_catboost_conformal_loyo/cv_predictions_samplelevel.csv
+  out/ml_catboost_conformal_loyo/annual_load_summary.csv
+
+Also requires original data:
+  out/wq_with_stir_by_season.csv
+
+Outputs are written to:
+  figs/ml_catboost_conformal_loyo/
+
+Run:
+  conda activate wq_ml
+  python code/ml_postprocess_plots.py
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import sys
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def find_repo_root(start: Path) -> Path:
+    cur = start.resolve()
+    for _ in range(10):
+        if (cur / "README.md").exists() and (cur / "out").exists() and (cur / "figs").exists():
+            return cur
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    raise FileNotFoundError(
+        "Could not find repo root containing README.md, out/, figs/. "
+        "Run from within the repo or pass --repo explicitly."
+    )
+
+
+def parse_dates(df: pd.DataFrame) -> pd.DataFrame:
+    for c in ("Date", "PlantDate", "HarvestDate"):
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+    return df
+
+
+def safe_numeric(s: pd.Series) -> pd.Series:
+    return pd.to_numeric(s, errors="coerce")
+
+
+def ensure_treatment(df: pd.DataFrame) -> pd.DataFrame:
+    if "Treatment" not in df.columns and "System" in df.columns:
+        df["Treatment"] = df["System"]
+    return df
+
+
+def coerce_bool(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    if col in df.columns:
+        s = df[col].astype(str).str.strip().str.lower()
+        df[col] = s.isin(["true", "t", "1", "yes", "y"])
+    return df
+
+
+def bootstrap_interval(values: np.ndarray,
+                       n_boot: int = 2000,
+                       alpha: float = 0.05,
+                       rng: np.random.Generator | None = None) -> tuple[float, float, float]:
+    """
+    Bootstrap the sum of 'values' (event loads) using resampling with replacement.
+
+    Returns:
+      (point_estimate, low, high)
+
+    If len(values) == 0: returns (nan, nan, nan)
+    If len(values) == 1: returns (v, v, v)
+    """
+    if rng is None:
+        rng = np.random.default_rng(123)
+
+    values = np.asarray(values, dtype=float)
+    values = values[np.isfinite(values)]
+
+    if values.size == 0:
+        return (np.nan, np.nan, np.nan)
+    if values.size == 1:
+        v = float(values[0])
+        return (v, v, v)
+
+    point = float(values.sum())
+
+    # Bootstrap sums
+    idx = rng.integers(0, values.size, size=(n_boot, values.size))
+    boot_sums = values[idx].sum(axis=1)
+
+    lo = float(np.quantile(boot_sums, alpha / 2))
+    hi = float(np.quantile(boot_sums, 1 - alpha / 2))
+    return (point, lo, hi)
+
+
+def compute_observed_annual_loads(data_csv: Path,
+                                  n_boot: int = 2000,
+                                  alpha: float = 0.05,
+                                  seed: int = 123) -> pd.DataFrame:
+    """
+    Observed annual load in mg:
+      event load = Result_mg_L * Volume_L
+      annual load = sum(event load) within Year x Treatment x Analyte
+
+    Adds bootstrap uncertainty intervals by resampling events within each group.
+
+    Notes:
+    - Uses outflow concentration (Result_mg_L) and outflow volume (Volume).
+    - Excludes NoRunoff==TRUE if present (consistent with ML training).
+    """
+    df = pd.read_csv(data_csv)
+    df = parse_dates(df)
+    df = ensure_treatment(df)
+    df = coerce_bool(df, "NoRunoff")
+
+    if "Year" not in df.columns:
+        if "Date" in df.columns:
+            df["Year"] = pd.to_datetime(df["Date"], errors="coerce").dt.year
+        else:
+            raise ValueError("Observed loads require Year or Date in the source data.")
+
+    df["Result_mg_L"] = safe_numeric(df.get("Result_mg_L"))
+    df["Volume"] = safe_numeric(df.get("Volume"))
+
+    if "NoRunoff" in df.columns:
+        df = df.loc[~df["NoRunoff"].fillna(False)].copy()
+
+    df = df.dropna(subset=["Year", "Treatment", "Analyte", "Result_mg_L", "Volume"]).copy()
+
+    df["Load_mg"] = df["Result_mg_L"] * df["Volume"]
+
+    rng = np.random.default_rng(seed)
+
+    records = []
+    for (year, trt, an), g in df.groupby(["Year", "Treatment", "Analyte"]):
+        vals = g["Load_mg"].to_numpy()
+        point, lo, hi = bootstrap_interval(vals, n_boot=n_boot, alpha=alpha, rng=rng)
+        records.append({
+            "Year": int(year),
+            "Treatment": trt,
+            "Analyte": an,
+            "obs_annual_load_mg": point,
+            "obs_low_mg": lo,
+            "obs_high_mg": hi,
+            "n_events": int(len(vals)),
+        })
+
+    return pd.DataFrame.from_records(records)
+
+
+def save_cv_rmse_jpg(outdir: Path, figdir: Path) -> None:
+    metrics_path = outdir / "cv_metrics_by_year.csv"
+    if not metrics_path.exists():
+        print(f"[WARN] Missing {metrics_path}; skipping CV plot.", file=sys.stderr)
+        return
+
+    m = pd.read_csv(metrics_path)
+    if m.empty:
+        print("[WARN] cv_metrics_by_year.csv is empty; skipping CV plot.", file=sys.stderr)
+        return
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for target in ["logC", "logV"]:
+        d = m.loc[m["Target"] == target].sort_values("Year_Test")
+        if d.empty:
+            continue
+        ax.plot(d["Year_Test"], d["RMSE"], marker="o", label=target)
+
+    ax.set_title("LOYO CV RMSE by Held-out Year (log scale)")
+    ax.set_xlabel("Held-out Year")
+    ax.set_ylabel("RMSE")
+    ax.legend()
+    fig.tight_layout()
+
+    figpath = figdir / "cv_rmse_by_year.jpg"
+    fig.savefig(figpath, dpi=220)
+    plt.close(fig)
+
+
+def annual_load_plots(ml_summary: pd.DataFrame,
+                      obs: pd.DataFrame,
+                      figdir: Path,
+                      analytes: list[str] | None = None,
+                      units: str = "g") -> None:
+    """
+    One figure per analyte: Observed vs ML annual load by treatment.
+
+    ML: line with point markers, plus vertical interval (low/high) per year.
+    Obs: open circles with bootstrap interval error bars (low/high).
+
+    ML summary expected columns:
+      Year, Treatment, Analyte, mean, median, low, high
+
+    Observed expected:
+      Year, Treatment, Analyte, obs_annual_load_mg, obs_low_mg, obs_high_mg
+    """
+    df = ml_summary.copy()
+    df["Year"] = safe_numeric(df["Year"]).astype(int)
+
+    # Convert mg -> units
+    factor = 1.0
+    ylabel = "Annual load (mg)"
+    if units.lower() == "g":
+        factor = 1e-3
+        ylabel = "Annual load (g)"
+    elif units.lower() == "kg":
+        factor = 1e-6
+        ylabel = "Annual load (kg)"
+
+    for c in ["mean", "median", "low", "high"]:
+        if c in df.columns:
+            df[c] = safe_numeric(df[c]) * factor
+
+    obs2 = obs.copy()
+    obs2["Year"] = safe_numeric(obs2["Year"]).astype(int)
+    for c in ["obs_annual_load_mg", "obs_low_mg", "obs_high_mg"]:
+        if c in obs2.columns:
+            obs2[c] = safe_numeric(obs2[c]) * factor
+
+    # analytes to plot
+    available = sorted(df["Analyte"].dropna().unique().tolist())
+    use_analytes = available if analytes is None else [a for a in analytes if a in available]
+
+    treatments = ["CT", "MT", "ST"]
+    trts_avail = df["Treatment"].dropna().unique().tolist()
+    if any(t not in trts_avail for t in treatments):
+        treatments = sorted(trts_avail)
+
+    for an in use_analytes:
+        d_an = df.loc[df["Analyte"] == an].copy()
+        if d_an.empty:
+            continue
+
+        fig, ax = plt.subplots(figsize=(11, 5.8))
+
+        for trt in treatments:
+            dd = d_an.loc[d_an["Treatment"] == trt].sort_values("Year")
+            if dd.empty:
+                continue
+
+            center = dd["median"] if "median" in dd.columns else dd["mean"]
+
+            ax.plot(dd["Year"], center, marker="o", linewidth=2, label=f"{trt} modeled")
+
+            # ML uncertainty
+            if "low" in dd.columns and "high" in dd.columns:
+                ax.vlines(dd["Year"], dd["low"], dd["high"], linewidth=4, alpha=0.30)
+
+            # observed point + bootstrap interval
+            oo = obs2.loc[(obs2["Analyte"] == an) & (obs2["Treatment"] == trt)].sort_values("Year")
+            if not oo.empty:
+                # open circles
+                ax.scatter(
+                    oo["Year"], oo["obs_annual_load_mg"],
+                    facecolors="none",
+                    edgecolors=ax.lines[-1].get_color(),
+                    s=120, linewidths=2, label=f"{trt} observed"
+                )
+                # error bars (vertical interval)
+                if {"obs_low_mg", "obs_high_mg"}.issubset(oo.columns):
+                    ax.vlines(
+                        oo["Year"], oo["obs_low_mg"], oo["obs_high_mg"],
+                        linewidth=3, alpha=0.45, colors=ax.lines[-1].get_color()
+                    )
+
+        ax.set_title(f"{an}: annual load by treatment (Observed vs ML)")
+        ax.set_xlabel("Year")
+        ax.set_ylabel(ylabel)
+        ax.grid(True, axis="y", alpha=0.3)
+        ax.legend(ncol=2, frameon=True)
+
+        fig.tight_layout()
+        fig.savefig(figdir / f"annual_load_{an.lower()}_obs_vs_ml.jpg", dpi=220)
+        plt.close(fig)
+
+
+def parity_plots(preds: pd.DataFrame, figdir: Path) -> None:
+    required = {"Target", "y_true", "y_pred"}
+    if not required.issubset(set(preds.columns)):
+        print("[WARN] Missing required columns for parity plots; skipping.", file=sys.stderr)
+        return
+
+    for target, fname, xlabel in [
+        ("Result_mg_L", "parity_logC.jpg", "Observed log1p(Result_mg_L)"),
+        ("Volume_L", "parity_logV.jpg", "Observed log1p(Volume_L)"),
+    ]:
+        d = preds.loc[preds["Target"] == target].copy()
+        if d.empty:
+            continue
+
+        y_true = safe_numeric(d["y_true"])
+        y_pred = safe_numeric(d["y_pred"])
+        mask = y_true.notna() & y_pred.notna() & (y_true >= 0) & (y_pred >= 0)
+        y_true = np.log1p(y_true[mask].to_numpy())
+        y_pred = np.log1p(y_pred[mask].to_numpy())
+
+        fig, ax = plt.subplots(figsize=(6.5, 6.5))
+        ax.scatter(y_true, y_pred, s=12, alpha=0.25)
+
+        mn = float(np.nanmin([y_true.min(), y_pred.min()]))
+        mx = float(np.nanmax([y_true.max(), y_pred.max()]))
+        ax.plot([mn, mx], [mn, mx], linewidth=2)
+
+        ax.set_title(f"Parity plot: {target} (log scale)")
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel("Predicted log1p")
+        ax.grid(True, alpha=0.25)
+        fig.tight_layout()
+        fig.savefig(figdir / fname, dpi=220)
+        plt.close(fig)
+
+
+def coverage_plot(preds: pd.DataFrame, figdir: Path) -> None:
+    required = {"Target", "y_true", "pi_low", "pi_high"}
+    if not required.issubset(set(preds.columns)):
+        print("[WARN] Missing PI columns for coverage plot; skipping.", file=sys.stderr)
+        return
+
+    df = preds.copy()
+    df["y_true"] = safe_numeric(df["y_true"])
+    df["pi_low"] = safe_numeric(df["pi_low"])
+    df["pi_high"] = safe_numeric(df["pi_high"])
+
+    df = df.dropna(subset=["y_true", "pi_low", "pi_high", "Target"]).copy()
+    df["covered"] = (df["y_true"] >= df["pi_low"]) & (df["y_true"] <= df["pi_high"])
+
+    targets = df["Target"].unique().tolist()
+
+    overall = (df.groupby("Target", as_index=False)
+                 .agg(n=("covered", "size"), coverage=("covered", "mean")))
+    fig, ax = plt.subplots(figsize=(7.5, 4.5))
+    ax.bar(overall["Target"], overall["coverage"])
+    ax.set_ylim(0, 1)
+    ax.set_title("Empirical PI coverage (overall)")
+    ax.set_ylabel("Coverage fraction")
+    ax.grid(True, axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(figdir / "pi_coverage_overall.jpg", dpi=220)
+    plt.close(fig)
+
+    if "Year" in df.columns:
+        df["Year"] = safe_numeric(df["Year"])
+        per_year = (df.dropna(subset=["Year"])
+                      .groupby(["Target", "Year"], as_index=False)
+                      .agg(n=("covered", "size"), coverage=("covered", "mean")))
+        if not per_year.empty:
+            fig, ax = plt.subplots(figsize=(10, 5))
+            for t in targets:
+                dd = per_year.loc[per_year["Target"] == t].sort_values("Year")
+                if dd.empty:
+                    continue
+                ax.plot(dd["Year"], dd["coverage"], marker="o", label=t)
+            ax.set_ylim(0, 1)
+            ax.set_title("Empirical PI coverage by held-out year")
+            ax.set_xlabel("Year")
+            ax.set_ylabel("Coverage fraction")
+            ax.grid(True, axis="y", alpha=0.25)
+            ax.legend()
+            fig.tight_layout()
+            fig.savefig(figdir / "pi_coverage_by_year.jpg", dpi=220)
+            plt.close(fig)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--repo", type=str, default=None, help="Repo root. If omitted, auto-detected.")
+    ap.add_argument("--units", type=str, default="g", choices=["mg", "g", "kg"], help="Annual load plotting units.")
+    ap.add_argument("--analytes", type=str, default=None,
+                    help="Optional comma-separated analytes to plot (default: all in ML summary).")
+    ap.add_argument("--obs_boot", type=int, default=2000, help="Bootstrap replicates for observed annual loads.")
+    ap.add_argument("--obs_alpha", type=float, default=0.05, help="Alpha for observed bootstrap intervals (0.05 -> 95%).")
+    ap.add_argument("--seed", type=int, default=123, help="Random seed for bootstrap.")
+    args = ap.parse_args()
+
+    repo = Path(args.repo).resolve() if args.repo else find_repo_root(Path.cwd())
+
+    outdir = repo / "out" / "ml_catboost_conformal_loyo"
+    figdir = repo / "figs" / "ml_catboost_conformal_loyo"
+    figdir.mkdir(parents=True, exist_ok=True)
+
+    data_csv = repo / "out" / "wq_with_stir_by_season.csv"
+    ml_summary_csv = outdir / "annual_load_summary.csv"
+    preds_csv = outdir / "cv_predictions_samplelevel.csv"
+
+    if not data_csv.exists():
+        raise FileNotFoundError(f"Missing source data: {data_csv}")
+    if not ml_summary_csv.exists():
+        raise FileNotFoundError(f"Missing ML annual load summary: {ml_summary_csv}")
+    if not preds_csv.exists():
+        raise FileNotFoundError(f"Missing ML CV predictions: {preds_csv}")
+
+    print(f"[INFO] Repo: {repo}")
+    print(f"[INFO] Reading ML outputs from: {outdir}")
+    print(f"[INFO] Writing figures to: {figdir}")
+    print(f"[INFO] Observed bootstrap: B={args.obs_boot}, alpha={args.obs_alpha}")
+
+    save_cv_rmse_jpg(outdir, figdir)
+
+    obs = compute_observed_annual_loads(
+        data_csv,
+        n_boot=args.obs_boot,
+        alpha=args.obs_alpha,
+        seed=args.seed
+    )
+
+    ml = pd.read_csv(ml_summary_csv)
+
+    analytes = None
+    if args.analytes:
+        analytes = [a.strip() for a in args.analytes.split(",") if a.strip()]
+
+    annual_load_plots(ml, obs, figdir, analytes=analytes, units=args.units)
+
+    preds = pd.read_csv(preds_csv)
+    parity_plots(preds, figdir)
+    coverage_plot(preds, figdir)
+
+    print("[DONE] Post-processing figures created.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n[STOPPED] KeyboardInterrupt received.", file=sys.stderr)
+        raise
+    except Exception as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
+        raise
