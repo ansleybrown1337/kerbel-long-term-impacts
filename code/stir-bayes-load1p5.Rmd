@@ -67,19 +67,29 @@ glimpse(wq_clean)
 Select analytes for modeling:
 
 ```{r subset-analytes}
-# analytes: OP   TP   ICP  NO3  TN   TSS  TKN  TSP  NH4  NPOC Se   NO2  NOx  TDS
-# analytes_keep <- c("TP", "TSS")   # modify as needed
-# fullset for ease of use
-analytes_keep <- c("OP", "TP", "ICP", "NO3", "TN", "TSS", 
-                   "TKN", "TSP", "NH4", "NPOC", "Se", "NO2", 
-                   "NOx", "TDS")
+analytes_keep <- c(
+  "OP", "TP", "ICP", "NO3", "TN", "TSS",
+  "TKN", "TSP", "NH4", "NPOC", "Se", "NO2",
+  "NOx", "TDS"
+)
 
 d_mod <- wq_clean %>%
-  filter(analyte_abbr %in% analytes_keep) %>%
-  mutate(mod_row = row_number()) %>%
+  dplyr::filter(analyte_abbr %in% analytes_keep) %>%
+  dplyr::mutate(mod_row = dplyr::row_number()) %>%
   droplevels()
 
-d_mod %>% count(analyte_abbr)
+na_table <- d_mod %>%
+  dplyr::group_by(analyte_abbr) %>%
+  dplyr::summarize(
+    n_total   = dplyr::n(),
+    n_value   = sum(!is.na(Result_mg_L)),
+    n_na      = sum(is.na(Result_mg_L)),
+    prop_na   = n_na / n_total, #proportion missing
+    .groups   = "drop"
+  )
+
+na_table
+
 ```
 
 Create analyte index and build data list for ulam:
@@ -629,7 +639,7 @@ plot_stir_volume_effect(fit)
 # Or save to file similar to your other figs
 plot_stir_volume_effect(
   fit,
-  file = "../figs/post_STIR_effect_on_volume.jpeg"
+  file = "../figs/1p5_post_STIR_effect_on_volume.jpeg"
 )
 
 ```
@@ -673,9 +683,15 @@ simulate_load_curve_single <- function(
   irrigation = NULL,
   duplicate  = NULL,
   cin_z      = 0,
-  year       = NULL,     # calendar year, e.g. 2014
-  n_draws    = 2000
+  year       = NULL,
+  n_draws    = 2000,
+  ci_prob    = 0.95
 ) {
+  
+  # Input check for CI
+  if (!is.numeric(ci_prob) || length(ci_prob) != 1L || ci_prob <= 0 || ci_prob >= 1) {
+    stop("ci_prob must be a single numeric value strictly between 0 and 1.")
+  }
 
   # Map analyte label -> index A
   j_idx <- analyte_lookup$A[analyte_lookup$analyte_abbr == analyte]
@@ -813,7 +829,7 @@ simulate_load_curve_single <- function(
     L_s <- C_raw * V_raw / 1000
 
     load_mean[k] <- mean(L_s)
-    hpdi_k       <- HPDI(L_s, prob = 0.89)
+    hpdi_k       <- HPDI(L_s, prob = ci_prob)
     load_low[k]  <- hpdi_k[1]
     load_high[k] <- hpdi_k[2]
   }
@@ -830,7 +846,8 @@ simulate_load_curve_single <- function(
     irrigation_level = irrigation_label,
     duplicate_level  = duplicate_label,
     cin_z            = cin_z,
-    year_level       = year_label
+    year_level       = year_label,
+    ci_prob          = ci_prob
   )
 }
 
@@ -847,8 +864,9 @@ simulate_load_curves <- function(
   irrigation   = NULL,
   duplicate    = NULL,
   cin_z        = 0,
-  year         = NULL,                        # NEW: calendar year, e.g. 2014
-  n_draws      = 2000
+  year         = NULL,
+  n_draws      = 2000,
+  ci_prob      = 0.95
 ) {
   if (is.null(analytes)) {
     analytes <- as.character(analyte_lookup$analyte_abbr)
@@ -866,7 +884,8 @@ simulate_load_curves <- function(
       duplicate    = duplicate,
       cin_z        = cin_z,
       year         = year,       # pass year through
-      n_draws      = n_draws
+      n_draws      = n_draws,
+      ci_prob      = ci_prob
     )
   })
 
@@ -1032,8 +1051,9 @@ simulate_load_curves_with_obs <- function(
   irrigation   = NULL,
   duplicate    = NULL,
   cin_z        = 0,
-  year         = NULL,          # NEW: calendar year, e.g. 2014
-  n_draws      = 2000
+  year         = NULL,          
+  n_draws      = 2000,
+  ci_prob      = 0.95
 ) {
 
   # 1. Posterior predictions
@@ -1047,8 +1067,9 @@ simulate_load_curves_with_obs <- function(
     irrigation   = irrigation,
     duplicate    = duplicate,
     cin_z        = cin_z,
-    year         = year,       # pass year through
-    n_draws      = n_draws
+    year         = year,       
+    n_draws      = n_draws,
+    ci_prob      = ci_prob
   )
 
   # 2. Observed loads under the same scenario choices
@@ -1060,7 +1081,7 @@ simulate_load_curves_with_obs <- function(
     flume      = flume,
     irrigation = irrigation,
     duplicate  = duplicate,
-    year       = year          # pass year through
+    year       = year          
   )
 
   list(pred = pred, obs = obs)
@@ -1122,6 +1143,10 @@ The simulation functions allow you to generate posterior predicted analyte loads
 
 * Number of posterior samples used for simulation, for computational efficiency.
 
+**ci_prob**
+
+* Credible interval probability for load estimates (default 0.95).
+
 ---
 
 
@@ -1156,7 +1181,8 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 ##     irrigation   = NULL,
 ##     duplicate    = NULL,
 ##     cin_z        = 0,
-##     year         = NULL
+##     year         = NULL,
+##     ci_prob      = 0.95
 ## )
 ##
 ## When an argument is set to NULL, the function AUTOMATICALLY
@@ -1259,32 +1285,34 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 ##
 ## Adjust for finer or coarser resolution.
 
-# res_scenario <- simulate_load_curves_with_obs(
-#   post         = post,
-#   d_mod        = d_mod,
-#   analytes     = NULL,                          # all analytes
-#   STIR_raw_seq = seq(0, 300, length.out = 60),
-#   block        = NULL,                          # avg over blocks
-#   sampler      = NULL,                          # avg over sampler methods
-#   flume        = NULL,                          # avg over flume types
-#   irrigation   = NULL,                          # avg over irrigations
-#   duplicate    = NULL,                          # avg over duplicate status
-#   cin_z        = 0,                             # average inflow concentration
-#   year         = NULL                           # specific year
-# )
+res_scenario <- simulate_load_curves_with_obs(
+  post         = post,
+  d_mod        = d_mod,
+  analytes     = NULL,                          # all analytes
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,                          # avg over blocks
+  sampler      = NULL,                          # avg over sampler methods
+  flume        = NULL,                          # avg over flume types
+  irrigation   = NULL,                          # avg over irrigations
+  duplicate    = NULL,                          # avg over duplicate status
+  cin_z        = 0,                             # average inflow concentration
+  year         = NULL,                          # specific year
+  ci_prob      = 0.95                           # 95% credible intervals
+)
 
 res_scenario <- simulate_load_curves_with_obs(
   post         = post,
   d_mod        = d_mod,
   analytes     = NULL,                          # all analytes
   STIR_raw_seq = seq(0, 300, length.out = 60),
-  block        = 1,                          
-  sampler      = "LC",                          
-  flume        = "60 V Trap",                          
-  irrigation   = 1,                          
-  duplicate    = TRUE,                          
-  cin_z        = 0,                             
-  year         = 2018                           
+  block        = 1,
+  sampler      = "ISC",
+  flume        = "10 V",
+  irrigation   = 1,
+  duplicate    = FALSE,
+  cin_z        = 0,
+  year         = 2016,
+  ci_prob      = 0.95                           # 95% credible intervals
 )
 
 load_pred_scenario <- res_scenario$pred
@@ -1298,6 +1326,7 @@ scenario_info <- load_pred_scenario %>%
     irrigation_level, duplicate_level, cin_z
   )
 
+
 subtitle_text <- sprintf(
   "Year: %s; Block: %s; Sampler: %s;\nFlume: %s; Irrigation: %s;\nDuplicate: %s; Inflow (Z-score) = %g",
   scenario_info$year_level,
@@ -1308,6 +1337,10 @@ subtitle_text <- sprintf(
   scenario_info$duplicate_level,
   scenario_info$cin_z
 )
+
+# Extract CI percentage for subtitle
+ci_pct <- round(100 * unique(load_pred_scenario$ci_prob)[1])
+
 
 # Build plot object with observed points overlaid
 p_load <- ggplot(load_pred_scenario, aes(x = STIR_raw, y = load_mean)) +
@@ -1321,7 +1354,7 @@ p_load <- ggplot(load_pred_scenario, aes(x = STIR_raw, y = load_mean)) +
   facet_wrap(~ analyte, scales = "free_y", ncol = 4) +
   labs(
     x = "Seasonal STIR",
-    y = "Expected Load (g per event, with 89% HPDI)",
+    y = sprintf("Expected Load (g per event, with %d%% HPDI)", ci_pct),
     title = "STIR → Load curves by analyte",
     subtitle = subtitle_text
   ) +
@@ -1337,8 +1370,6 @@ p_load <- ggplot(load_pred_scenario, aes(x = STIR_raw, y = load_mean)) +
   )
 
 p_load
-
-
 
 ```
 

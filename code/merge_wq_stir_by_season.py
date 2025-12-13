@@ -123,6 +123,10 @@ def read_stir(path: str, debug: bool=False) -> pd.DataFrame:
     # ---- Critical cleanup: remove unusable rows and collapse to daily ----
     n0 = len(df)
     n_nan = int(df["STIR_val"].isna().sum())
+
+    if debug:
+        print(f"[DEBUG] Using STIR value column: {stir_col}")
+
     if debug and n_nan:
         print(f"[INFO] STIR rows with NaN STIR_val dropped: {n_nan}/{n0}")
 
@@ -469,22 +473,46 @@ def write_unmatched_csv(
     keys=("SampleID", "Date", "Treatment"),
     keep_cols=("SampleID", "Date", "Treatment", "Analyte"),
 ) -> pd.DataFrame:
+
     for k in keys:
         if k not in wq_in.columns:
             raise KeyError(f"[unmatched] key '{k}' missing in wq_in columns: {list(wq_in.columns)}")
         if k not in merged.columns:
             raise KeyError(f"[unmatched] key '{k}' missing in merged columns: {list(merged.columns)}")
 
+    wq_in = wq_in.copy()
+    merged = merged.copy()
+
+    # Normalize join keys consistently (match your diagnostic)
     if "Date" in keys:
-        wq_in = wq_in.copy()
-        merged = merged.copy()
         wq_in["Date"] = pd.to_datetime(wq_in["Date"], errors="coerce")
         merged["Date"] = pd.to_datetime(merged["Date"], errors="coerce")
 
-    if merged.duplicated(list(keys)).any():
-        merged_keys_only = merged[list(keys)].drop_duplicates()
-    else:
-        merged_keys_only = merged[list(keys)].drop_duplicates()
+    if "Treatment" in keys:
+        wq_in["Treatment"] = wq_in["Treatment"].astype(str).str.strip().str.upper()
+        merged["Treatment"] = merged["Treatment"].astype(str).str.strip().str.upper()
+
+    if "SampleID" in keys:
+        # Strip whitespace; keep missing as <NA> so behavior is explicit
+        wq_in["SampleID"] = wq_in["SampleID"].astype("string").str.strip()
+        merged["SampleID"] = merged["SampleID"].astype("string").str.strip()
+
+        # OPTIONAL but recommended: make missing IDs matchable by filling with a stable surrogate
+        # Comment out if you *want* missing IDs to be reported as unmatched.
+        fill_mask_wq = wq_in["SampleID"].isna() | (wq_in["SampleID"] == "")
+        fill_mask_m  = merged["SampleID"].isna() | (merged["SampleID"] == "")
+        if fill_mask_wq.any() or fill_mask_m.any():
+            # Use Treatment+Date as a reproducible fallback (add Rep/Irrigation if you prefer)
+            wq_in.loc[fill_mask_wq, "SampleID"] = (
+                "MISSING_" + wq_in.loc[fill_mask_wq, "Treatment"] + "_" +
+                wq_in.loc[fill_mask_wq, "Date"].dt.strftime("%Y%m%d")
+            )
+            merged.loc[fill_mask_m, "SampleID"] = (
+                "MISSING_" + merged.loc[fill_mask_m, "Treatment"] + "_" +
+                merged.loc[fill_mask_m, "Date"].dt.strftime("%Y%m%d")
+            )
+
+    merged_keys_only = merged[list(keys)].drop_duplicates()
 
     base_cols = [c for c in keep_cols if c in wq_in.columns]
     if not base_cols:
@@ -492,7 +520,12 @@ def write_unmatched_csv(
 
     left = wq_in[base_cols].copy()
     anti = left.merge(merged_keys_only, on=list(keys), how="left", indicator=True)
-    unmatched = anti[anti["_merge"] == "left_only"].drop(columns=["_merge"]).drop_duplicates(list(keys))
+
+    unmatched = (
+        anti[anti["_merge"] == "left_only"]
+        .drop(columns=["_merge"])
+        .drop_duplicates(list(keys))
+    )
 
     unmatched.to_csv(out_path, index=False)
     print(f"[INFO] Unmatched rows written: {len(unmatched)} -> {out_path}")
@@ -548,25 +581,38 @@ def main():
     if debug:
         print(f"[INFO] Merged rows written: {len(merged)} -> {merged_out}")
 
-    # Unmatched list (WQ rows inside a season but with no CumAll STIR to date)
+    # QC: "unmatched" = rows inside a season window but missing STIR metrics
     in_season_mask = merged["PlantDate"].notna()
-    wq_in = merged.loc[in_season_mask, ["SampleID", "Date", "Treatment", "Analyte"]].copy()
 
-    merged_keys = merged.loc[in_season_mask, ["SampleID", "Date", "Treatment"]].copy()
-    merged_keys["__has_cum"] = merged.loc[in_season_mask, "CumAll_STIR_toDate"].notna().astype(int)
-    unmatched_keys = merged_keys.loc[merged_keys["__has_cum"] == 0, ["SampleID", "Date", "Treatment"]].copy()
+    # If you want BOTH metrics required, keep this as written.
+    # If you only care about CumAll, you can drop the Season_STIR_toDate part.
+    missing_stir = merged.loc[
+        in_season_mask
+        & (merged["CumAll_STIR_toDate"].isna() | merged["Season_STIR_toDate"].isna()),
+        ["SampleID", "Date", "Treatment", "Analyte"]
+    ].copy()
 
-    _ = write_unmatched_csv(
-        wq_in=wq_in,
-        merged=unmatched_keys.assign(Analyte="NA"),
-        out_path=unmatched_out,
-        keys=("SampleID", "Date", "Treatment"),
-        keep_cols=("SampleID", "Date", "Treatment", "Analyte"),
-    )
+    # Normalize keys for cleaner QC output (optional but helpful)
+    missing_stir["Treatment"] = missing_stir["Treatment"].astype(str).str.strip().str.upper()
+    missing_stir["SampleID"] = missing_stir["SampleID"].astype("string").str.strip()
+    missing_stir["Date"] = pd.to_datetime(missing_stir["Date"], errors="coerce")
+
+    missing_stir = missing_stir.drop_duplicates(["SampleID", "Date", "Treatment", "Analyte"])
+    missing_stir.to_csv(unmatched_out, index=False)
+
+    outside_out = os.path.join(out_dir, "wq_outside_crop_windows.csv")
+    outside = merged.loc[~in_season_mask, ["SampleID", "Date", "Treatment", "Analyte"]].copy()
+    outside.to_csv(outside_out, index=False)
+
+    if debug:
+        print(f"[INFO] Outside-window rows written: {len(outside)} -> {outside_out}")
+
+    print(f"[INFO] Unmatched rows written: {len(missing_stir)} -> {unmatched_out}")
 
     if debug:
         tts = sorted(merged["Treatment"].dropna().unique().tolist())
         print(f"[INFO] Done. Treatments present in merged: {tts}")
+
 
 
 if __name__ == "__main__":
