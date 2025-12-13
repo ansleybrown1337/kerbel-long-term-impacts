@@ -1611,7 +1611,7 @@ ggsave(
 
 ## Annual Load Table and Plot
 
-```{r pred data}
+```{r pred data generation}
 # ============================================================
 # Build a prediction frame that includes "missing chemistry years"
 # Drop-in replacement with:
@@ -1790,204 +1790,124 @@ d_pred <- build_d_pred(wq_clean, event_id_col = "orig_row")
 ```
 
 
-```{r real data only}
-# using real data
-make_annual_load_table_all_treatments <- function(
-  post,
-  d_mod,
-  years_used,
-  analyte_lookup,
-  block_lookup,
-  sampler_lookup,
-  flume_lookup,
-  c_stats,
-  V_mean, V_sd,
-  stir_mean, stir_sd,
-  n_draws = 1500,
-  prob_ci = 0.95
+```{r real data generation}
+make_annual_observed_table_all_treatments <- function(
+  wq_clean,
+  analyte_pick = NULL,
+  keep_outflow_only = TRUE,
+  drop_no_runoff = TRUE,
+  B = 600,
+  prob_ci = 0.95,
+  seed = 1
 ) {
+  needed <- c("Year","Treatment","analyte_abbr","Result_mg_L","Volume","orig_row")
+  miss <- setdiff(needed, names(wq_clean))
+  if (length(miss) > 0) stop("wq_clean missing columns: ", paste(miss, collapse = ", "))
 
-  # ---- checks ----
-  needed_cols <- c(
-    "Year","Treatment","analyte_abbr","Season_STIR_toDate",
-    "Rep","SampleMethod","FlumeMethod","irr_num","dup","cin_z"
-  )
-  miss <- setdiff(needed_cols, names(d_mod))
-  if (length(miss) > 0) stop("d_mod is missing columns: ", paste(miss, collapse = ", "))
+  d0 <- wq_clean
 
-  # ---- draw subsample ----
-  n_total <- nrow(post$alpha)
-  draw_idx <- if (n_total > n_draws) sample.int(n_total, n_draws) else seq_len(n_total)
-  D <- length(draw_idx)
+  if (keep_outflow_only && "InflowOutflow" %in% names(d0)) {
+    d0 <- d0 %>% dplyr::filter(InflowOutflow == "OUT")
+  }
+  if (drop_no_runoff && "NoRunoff" %in% names(d0)) {
+    d0 <- d0 %>% dplyr::filter(!isTRUE(NoRunoff))
+  }
+  if (!is.null(analyte_pick)) {
+    d0 <- d0 %>% dplyr::filter(as.character(analyte_abbr) == analyte_pick)
+  }
+
+  # rows usable for observed load
+  d_obs <- d0 %>%
+    dplyr::filter(!is.na(Result_mg_L), !is.na(Volume)) %>%
+    dplyr::mutate(
+      Year = as.integer(Year),
+      analyte = as.character(analyte_abbr),
+      treatment = as.character(Treatment),
+      event_id = orig_row,
+      load_g = (Result_mg_L * Volume) / 1000,  # mg -> g
+      vol_L  = Volume
+    ) %>%
+    dplyr::select(Year, analyte, treatment, event_id, load_g, vol_L)
 
   q_lo <- (1 - prob_ci) / 2
   q_hi <- 1 - q_lo
-  ci <- function(x) stats::quantile(x, probs = c(q_lo, q_hi), na.rm = TRUE, names = FALSE)
 
-  # ---- map indices and attach backtransform stats ----
-  dat <- d_mod %>%
-    dplyr::transmute(
-      Year, Treatment,
-      analyte_abbr,
-      STIR_raw = Season_STIR_toDate,
-      Rep, SampleMethod, FlumeMethod,
-      irr_num, dup = as.numeric(dup),
-      cin_z
-    ) %>%
-    dplyr::left_join(
-      analyte_lookup %>% dplyr::select(A, analyte_abbr),
-      by = "analyte_abbr"
-    ) %>%
-    dplyr::left_join(
-      block_lookup %>% dplyr::select(B, Rep),
-      by = "Rep"
-    ) %>%
-    dplyr::left_join(
-      sampler_lookup %>% dplyr::select(S, SampleMethod),
-      by = "SampleMethod"
-    ) %>%
-    dplyr::left_join(
-      flume_lookup %>% dplyr::select(Fu, FlumeMethod),
-      by = "FlumeMethod"
-    ) %>%
-    dplyr::left_join(
-      c_stats %>% dplyr::select(A, c_mean, c_sd) %>% dplyr::distinct(),
-      by = "A"
-    ) %>%
-    dplyr::mutate(
-      Y = match(Year, years_used),
-      STIR_z = (STIR_raw - stir_mean) / stir_sd
-    )
+  set.seed(seed)
 
-  if (anyNA(dat$A))  stop("Some analyte_abbr not found in analyte_lookup.")
-  if (anyNA(dat$B))  stop("Some Rep not found in block_lookup.")
-  if (anyNA(dat$S))  stop("Some SampleMethod not found in sampler_lookup.")
-  if (anyNA(dat$Fu)) stop("Some FlumeMethod not found in flume_lookup.")
-  if (anyNA(dat$Y))  stop("Some Year not found in years_used.")
-  if (anyNA(dat$c_mean) || anyNA(dat$c_sd)) stop("Missing c_stats for some analytes (A).")
+  out <- d_obs %>%
+    dplyr::group_by(Year, analyte, treatment) %>%
+    dplyr::group_modify(~{
+      dat <- dplyr::distinct(.x, event_id, .keep_all = TRUE)
+      n_events <- nrow(dat)
 
-  # Drop incomplete predictor rows (you can relax this if you want)
-  dat <- dat %>%
-    dplyr::filter(
-      !is.na(STIR_z), !is.na(cin_z),
-      !is.na(irr_num), !is.na(dup)
-    )
+      if (n_events == 0) {
+        return(tibble::tibble(
+          load_mean = NA_real_, load_low95 = NA_real_, load_high95 = NA_real_,
+          volume_mean = NA_real_, volume_low95 = NA_real_, volume_high95 = NA_real_,
+          conc_mean = NA_real_, conc_low95 = NA_real_, conc_high95 = NA_real_,
+          n_events = 0L
+        ))
+      }
 
-  # ---- grouping keys (ALL treatments automatically) ----
-  groups <- dat %>%
-    dplyr::distinct(Year, analyte_abbr, Treatment) %>%
-    dplyr::arrange(analyte_abbr, Year, Treatment)
+      # point estimates
+      L_sum <- sum(dat$load_g, na.rm = TRUE)
+      V_sum <- sum(dat$vol_L,  na.rm = TRUE)
+      C_fw  <- if (is.finite(V_sum) && V_sum > 0) (L_sum * 1000 / V_sum) else NA_real_
 
-  out <- vector("list", nrow(groups))
+      # If only one event, bootstrap is degenerate, CI == point estimate
+      if (n_events == 1 || B <= 1) {
+        return(tibble::tibble(
+          load_mean = L_sum, load_low95 = L_sum, load_high95 = L_sum,
+          volume_mean = V_sum, volume_low95 = V_sum, volume_high95 = V_sum,
+          conc_mean = C_fw, conc_low95 = C_fw, conc_high95 = C_fw,
+          n_events = as.integer(n_events)
+        ))
+      }
 
-  # ---- main loop: group -> draw -> row predictions -> annual aggregates ----
-  for (g in seq_len(nrow(groups))) {
+      # bootstrap indices: n_events x B matrix
+      idx_mat <- matrix(
+        sample.int(n_events, size = n_events * B, replace = TRUE),
+        nrow = n_events, ncol = B
+      )
 
-    yr <- groups$Year[g]
-    an <- groups$analyte_abbr[g]
-    tr <- groups$Treatment[g]
+      # ensure 2D numeric matrices for colSums
+      load_mat <- matrix(dat$load_g[idx_mat], nrow = n_events, ncol = B)
+      vol_mat  <- matrix(dat$vol_L[idx_mat],  nrow = n_events, ncol = B)
 
-    dsub <- dat %>% dplyr::filter(Year == yr, analyte_abbr == an, Treatment == tr)
-    n_i <- nrow(dsub)
-    if (n_i == 0) next
+      Lb <- colSums(load_mat, na.rm = TRUE)
+      Vb <- colSums(vol_mat,  na.rm = TRUE)
+      Cb <- ifelse(Vb > 0, (Lb * 1000 / Vb), NA_real_)
 
-    A <- dsub$A; B <- dsub$B; S <- dsub$S; Fu <- dsub$Fu; Y <- dsub$Y
-    stz <- dsub$STIR_z
-    cin <- dsub$cin_z
-    irr <- dsub$irr_num
-    dup <- dsub$dup
-    c_mean <- dsub$c_mean
-    c_sd   <- dsub$c_sd
+      tibble::tibble(
+        load_mean = L_sum,
+        load_low95 = stats::quantile(Lb, probs = q_lo, na.rm = TRUE, names = FALSE),
+        load_high95 = stats::quantile(Lb, probs = q_hi, na.rm = TRUE, names = FALSE),
 
-    V_ann   <- numeric(D)
-    L_ann_g <- numeric(D)
-    C_fw    <- numeric(D)
+        volume_mean = V_sum,
+        volume_low95 = stats::quantile(Vb, probs = q_lo, na.rm = TRUE, names = FALSE),
+        volume_high95 = stats::quantile(Vb, probs = q_hi, na.rm = TRUE, names = FALSE),
 
-    for (dd in seq_len(D)) {
-      s <- draw_idx[dd]
+        conc_mean = C_fw,
+        conc_low95 = stats::quantile(Cb, probs = q_lo, na.rm = TRUE, names = FALSE),
+        conc_high95 = stats::quantile(Cb, probs = q_hi, na.rm = TRUE, names = FALSE),
 
-      # Volume model on z scale
-      muV_z <- post$a_V[s] + post$b_V[s] * stz
-      V_raw <- V_mean + V_sd * muV_z  # L
+        n_events = as.integer(n_events)
+      )
+    }) %>%
+    dplyr::ungroup()
 
-      # Random effects and year effect
-      # Ensure integer indices (avoid factors)
-      A  <- as.integer(A)
-      B  <- as.integer(B)
-      S  <- as.integer(S)
-      Fu <- as.integer(Fu)
-      Y  <- as.integer(Y)
-      
-      # Pull the per-draw slices as matrices, then elementwise index
-      gB <- post$gamma_B[s, , , drop = TRUE][cbind(A, B)]     # length n_i
-      gS <- post$gamma_S[s, , , drop = TRUE][cbind(A, S)]     # length n_i
-      gF <- post$gamma_F[s, , , drop = TRUE][cbind(A, Fu)]    # length n_i
-      kY <- post$F_year[s, , , drop = TRUE][cbind(Y, A)]      # length n_i (note order Y, A)
-
-
-      # Concentration model on z scale
-      muC_z <- post$alpha[s, A] +
-        post$beta_stir[s, A] * stz +
-        post$beta_cin[s, A]  * cin +
-        post$beta_vol[s]     * muV_z +
-        post$beta_irr[s]     * irr +
-        post$beta_dup[s, A]  * dup +
-        gB + gS + gF + kY
-
-      C_raw <- c_mean + c_sd * muC_z  # mg/L
-
-      # annual totals
-      Vsum <- sum(V_raw, na.rm = TRUE)
-      Lmg  <- sum(C_raw * V_raw, na.rm = TRUE)   # mg
-      Lg   <- Lmg / 1000                         # g
-
-      V_ann[dd]   <- Vsum
-      L_ann_g[dd] <- Lg
-      C_fw[dd]    <- if (is.finite(Vsum) && Vsum > 0) (Lmg / Vsum) else NA_real_
-    }
-
-    V_ci <- ci(V_ann)
-    C_ci <- ci(C_fw)
-    L_ci <- ci(L_ann_g)
-
-    out[[g]] <- tibble::tibble(
-      Year = yr,
-      analyte = an,
-      treatment = tr,
-      volume_mean   = mean(V_ann,   na.rm = TRUE),
-      volume_low95  = V_ci[1],
-      volume_high95 = V_ci[2],
-      conc_mean     = mean(C_fw,    na.rm = TRUE),
-      conc_low95    = C_ci[1],
-      conc_high95   = C_ci[2],
-      load_mean     = mean(L_ann_g, na.rm = TRUE),
-      load_low95    = L_ci[1],
-      load_high95   = L_ci[2],
-      n_rows        = n_i
-    )
-  }
-
-  dplyr::bind_rows(out) %>%
-    dplyr::arrange(analyte, Year, treatment)
+  out
 }
 
+
 # Example:
-annual_tbl <- make_annual_load_table_all_treatments(
-  post = post,
-  d_mod = d_mod,
-  years_used = years_used,
-  analyte_lookup = analyte_lookup,
-  block_lookup = block_lookup,
-  sampler_lookup = sampler_lookup,
-  flume_lookup = flume_lookup,
-  c_stats = c_stats,
-  V_mean = V_mean, V_sd = V_sd,
-  stir_mean = stir_mean, stir_sd = stir_sd,
-  n_draws = 1500,
+annual_tbl_obs <- make_annual_observed_table_all_treatments(
+  wq_clean = wq_clean,
+  B = 600,
   prob_ci = 0.95
 )
-
 ```
+
 
 ```{r pred data table}
 # ============================================================
@@ -2173,36 +2093,30 @@ annual_tbl_pred <- make_annual_load_table_all_treatments_pred(
 ```
 
 
-```{r plot annual loads}
-# ============================================================
-# Plot annual treatment trajectories (mean + 95% intervals)
-# ============================================================
-# annual_tbl: output tibble like you showed (Year, analyte, treatment, *_mean, *_low95, *_high95)
-# analyte_pick: e.g. "NH4"
-# metric: one of c("load","conc","volume")
-#
-plot_annual_by_treatment <- function(
+```{r plot annual loads fxn}
+plot_annual_by_treatment_pretty <- function(
   annual_tbl,
   analyte_pick,
-  metric = c("load", "conc", "volume"),
+  metric = c("load","conc","volume"),
+  source_label = NULL,        # optional title suffix, e.g. "Modeled" or "Observed"
+  draw_line = TRUE,           # TRUE for modeled trajectories, often FALSE for observed-only
   show_points = TRUE,
-  dodge = 0.25
+  dodge = 0.20
 ) {
   metric <- match.arg(metric)
 
-  stopifnot(all(c("Year", "analyte", "treatment") %in% names(annual_tbl)))
+  stopifnot(all(c("Year","analyte","treatment") %in% names(annual_tbl)))
 
   y_mean <- paste0(metric, "_mean")
   y_low  <- paste0(metric, "_low95")
   y_high <- paste0(metric, "_high95")
-
   stopifnot(all(c(y_mean, y_low, y_high) %in% names(annual_tbl)))
 
   d <- annual_tbl %>%
     dplyr::filter(as.character(analyte) == analyte_pick) %>%
     dplyr::mutate(
       Year = as.integer(Year),
-      treatment = forcats::fct_drop(treatment)
+      treatment = factor(treatment, levels = c("CT","MT","ST"))
     ) %>%
     dplyr::arrange(Year, treatment)
 
@@ -2217,41 +2131,327 @@ plot_annual_by_treatment <- function(
 
   pd <- ggplot2::position_dodge(width = dodge)
 
-  p <- ggplot2::ggplot(d, ggplot2::aes(x = Year, y = .data[[y_mean]], group = treatment, color = treatment)) +
+  # Okabe–Ito colorblind-safe palette
+  trt_cols <- c(
+    CT = "#0072B2",
+    MT = "#E69F00",
+    ST = "#009E73"
+  )
+
+  ttl <- paste0(analyte_pick, ": annual ", metric, " by treatment")
+  if (!is.null(source_label)) ttl <- paste0(ttl, " (", source_label, ")")
+
+  p <- ggplot2::ggplot(
+    d,
+    ggplot2::aes(
+      x = Year,
+      y = .data[[y_mean]],
+      color = treatment,
+      group = treatment
+    )
+  ) +
     ggplot2::geom_errorbar(
       ggplot2::aes(ymin = .data[[y_low]], ymax = .data[[y_high]]),
-      width = 0.15,
+      width = 0,
       position = pd,
-      linewidth = 0.6
-    ) +
-    ggplot2::geom_line(position = pd, linewidth = 1.0)
+      linewidth = 2,
+      alpha = 0.6
+    )
+
+  if (draw_line) {
+    p <- p + ggplot2::geom_line(
+      position = pd,
+      linewidth = 1.2,
+      alpha = 0.9
+    )
+  }
 
   if (show_points) {
-    p <- p + ggplot2::geom_point(position = pd, size = 2.2)
+    p <- p + ggplot2::geom_point(
+      position = pd,
+      size = 3,
+      stroke = 2,
+      shape = 16
+    )
   }
 
   p +
-    ggplot2::scale_x_continuous(breaks = sort(unique(d$Year))) +
+    ggplot2::scale_color_manual(values = trt_cols) +
+    ggplot2::scale_x_continuous(
+      breaks = sort(unique(d$Year)),
+      expand = ggplot2::expansion(mult = c(0.01, 0.02))
+    ) +
     ggplot2::labs(
       x = "Year",
       y = ylab,
-      title = paste0(analyte_pick, ": annual ", metric, " by treatment"),
+      title = ttl,
       color = "Treatment"
     ) +
     ggplot2::theme_classic(base_size = 14) +
     ggplot2::theme(
       axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-      plot.title = ggplot2::element_text(face = "bold")
+      plot.title = ggplot2::element_text(face = "bold"),
+      legend.position = "right",
+      legend.box = "vertical",
+      legend.key.height = grid::unit(0.9, "lines"),
+      panel.grid.major.y = ggplot2::element_line(color = "grey90", linewidth = 0.4)
     )
 }
 
-# Examples:
-# plot_annual_by_treatment(annual_tbl, analyte_pick = "NH4", metric = "load")
-# plot_annual_by_treatment(annual_tbl, analyte_pick = "TP",  metric = "conc")
-# plot_annual_by_treatment(annual_tbl, analyte_pick = "TSS", metric = "volume")
+```
 
-#plot_annual_by_treatment(annual_tbl, analyte_pick = "TSS",  metric = "load")
-plot_annual_by_treatment(annual_tbl_pred, analyte_pick = "TSS",  metric = "load")
+```{r plot annual loads execution}
+# Modeled-only (your annual_tbl_pred)
+p_mod <- plot_annual_by_treatment_pretty(
+  annual_tbl_pred,
+  analyte_pick = "TSS",
+  metric = "load",
+  source_label = "Modeled",
+  draw_line = TRUE
+)
 
+ggplot2::ggsave(
+  filename = "figs/TSS_annual_load_modeled_only.png",
+  plot = p_mod,
+  width = 8,
+  height = 5,
+  dpi = 300
+)
+
+
+# Observed-only (your annual_tbl_obs)
+# plot_annual_by_treatment_pretty(annual_tbl_obs, "TSS", "load",
+#                                source_label = "Observed", draw_line = FALSE)
+
+
+```
+
+
+```{r bind obs and modeled}
+bind_observed_modeled <- function(annual_tbl_pred, annual_tbl_obs) {
+
+  mod <- annual_tbl_pred %>%
+    dplyr::transmute(
+      Year = as.integer(Year),
+      analyte = as.character(analyte),
+      treatment = as.character(treatment),
+      source = "Modeled",
+      load_mean, load_low95, load_high95,
+      conc_mean, conc_low95, conc_high95,
+      volume_mean, volume_low95, volume_high95,
+      n = dplyr::coalesce(n_events, n_rows)
+    )
+
+  obs <- annual_tbl_obs %>%
+    dplyr::transmute(
+      Year = as.integer(Year),
+      analyte = as.character(analyte),
+      treatment = as.character(treatment),
+      source = "Observed",
+      load_mean, load_low95, load_high95,
+      conc_mean, conc_low95, conc_high95,
+      volume_mean, volume_low95, volume_high95,
+      n = n_events
+    )
+
+  dplyr::bind_rows(mod, obs) %>%
+    dplyr::mutate(
+      treatment = factor(treatment, levels = c("CT","MT","ST")),
+      source = factor(source, levels = c("Modeled","Observed"))
+    ) %>%
+    dplyr::arrange(analyte, Year, treatment, source)
+}
+
+# Example:
+annual_both <- bind_observed_modeled(
+  annual_tbl_pred = annual_tbl_pred,
+  annual_tbl_obs  = annual_tbl_obs
+)
+
+```
+
+
+```{r plot obs and mod}
+plot_annual_by_treatment_obs_vs_mod <- function(
+  annual_both,
+  analyte_pick,
+  metric = c("load","conc","volume"),
+  dodge = 0.20
+) {
+  metric <- match.arg(metric)
+
+  y_mean <- paste0(metric, "_mean")
+  y_low  <- paste0(metric, "_low95")
+  y_high <- paste0(metric, "_high95")
+
+  d <- annual_both %>%
+    dplyr::filter(as.character(analyte) == analyte_pick) %>%
+    dplyr::mutate(
+      Year = as.integer(Year),
+      treatment = factor(treatment, levels = c("CT","MT","ST")),
+      source = factor(source, levels = c("Modeled","Observed"))
+    ) %>%
+    dplyr::arrange(Year, treatment, source)
+
+  if (nrow(d) == 0) stop("No rows found for analyte = '", analyte_pick, "'.")
+
+  ylab <- switch(
+    metric,
+    "load"   = "Annual load (g)",
+    "conc"   = "Flow-weighted concentration (mg/L)",
+    "volume" = "Annual volume (L)"
+  )
+
+  pd <- ggplot2::position_dodge(width = dodge)
+
+  trt_cols <- c(
+    CT = "#0072B2",
+    MT = "#E69F00",
+    ST = "#009E73"
+  )
+
+  ggplot2::ggplot(
+    d,
+    ggplot2::aes(
+      x = Year,
+      y = .data[[y_mean]],
+      color = treatment,
+      shape = source,
+      group = interaction(treatment, source)
+    )
+  ) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = .data[[y_low]], ymax = .data[[y_high]]),
+      width = 0,
+      position = pd,
+      linewidth = 2,
+      alpha = 0.6
+    ) +
+    ggplot2::geom_line(
+      data = d %>% dplyr::filter(source == "Modeled"),
+      position = pd,
+      linewidth = 1.2,
+      alpha = 0.9
+    ) +
+    ggplot2::geom_point(
+      position = pd,
+      size = 3,
+      stroke = 2
+    ) +
+    ggplot2::scale_color_manual(values = trt_cols) +
+    ggplot2::scale_shape_manual(values = c(Modeled = 16, Observed = 21)) +
+    ggplot2::scale_x_continuous(
+      breaks = sort(unique(d$Year)),
+      expand = ggplot2::expansion(mult = c(0.01, 0.02))
+    ) +
+    ggplot2::labs(
+      x = "Year",
+      y = ylab,
+      title = paste0(analyte_pick, ": annual ", metric, " by treatment"),
+      color = "Treatment",
+      shape = "Estimate type"
+    ) +
+    ggplot2::theme_classic(base_size = 14) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+      plot.title = ggplot2::element_text(face = "bold"),
+      legend.position = "right",
+      legend.box = "vertical",
+      legend.key.height = grid::unit(0.9, "lines"),
+      panel.grid.major.y = ggplot2::element_line(color = "grey90", linewidth = 0.4)
+    )
+}
+
+```
+
+```{r execute plot both}
+# Example usage:
+plot_annual_by_treatment_obs_vs_mod(annual_both, analyte_pick = "TP", metric = "load")
+
+```
+
+```{r save all plots}
+# Save images
+# ------------------------------------------------------------
+# Helper: make safe filenames from analyte names
+# ------------------------------------------------------------
+sanitize_slug <- function(x) {
+  x <- as.character(x)
+  x <- tolower(x)
+  x <- gsub("[[:space:]]+", "_", x)
+  x <- gsub("[^a-z0-9_]+", "", x)      # drop parentheses, slashes, etc.
+  x <- gsub("_+", "_", x)
+  x <- gsub("^_|_$", "", x)
+  x
+}
+
+# ------------------------------------------------------------
+# Batch: save obs vs modeled plots for EVERY analyte
+# ------------------------------------------------------------
+save_all_analyte_obs_vs_mod_plots <- function(
+  annual_both,
+  metric = c("load","conc","volume"),
+  out_dir = file.path("../figs", "annual_obs_vs_modeled"),
+  width = 9,
+  height = 5.5,
+  dpi = 300,
+  device = "png"
+) {
+  metric <- match.arg(metric)
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+  analytes <- sort(unique(as.character(annual_both$analyte)))
+
+  # keep a log of what was saved (and what was skipped)
+  log <- vector("list", length(analytes))
+
+  for (i in seq_along(analytes)) {
+    a <- analytes[i]
+    slug <- sanitize_slug(a)
+
+    p <- try(
+      plot_annual_by_treatment_obs_vs_mod(
+        annual_both = annual_both,
+        analyte_pick = a,
+        metric = metric
+      ),
+      silent = TRUE
+    )
+
+    if (inherits(p, "try-error")) {
+      log[[i]] <- tibble::tibble(
+        analyte = a,
+        saved = FALSE,
+        file = NA_character_,
+        error = as.character(p)
+      )
+      next
+    }
+
+    fname <- file.path(out_dir, paste0("annual_", metric, "_", slug, "_obs_vs_modeled.", device))
+
+    ggplot2::ggsave(
+      filename = fname,
+      plot = p,
+      width = width,
+      height = height,
+      dpi = dpi
+    )
+
+    log[[i]] <- tibble::tibble(
+      analyte = a,
+      saved = TRUE,
+      file = fname,
+      error = NA_character_
+    )
+  }
+
+  dplyr::bind_rows(log)
+}
+
+# Example:
+log_load <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "load")
+# log_conc <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "conc")
+# log_vol  <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "volume")
 ```
 
