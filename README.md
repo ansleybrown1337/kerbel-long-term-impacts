@@ -267,21 +267,38 @@ Together, these components produce a coherent inference framework that simultane
 
 
 ## Results and Discussion
+In summary:
+
+* Certain analytes seem to be very impacted by tillage (STIR)
+  * TP, TSS, OP, TKN primarily
+* There are temporal effects that persist between years
+  * For TP, TSS, OP, and TKN
+* Key theme: Solubility!
+* The Bayes model predictive ability performed best to worst in the same order as STIR analyte effect
+* Bayes also let us predict annual loads, even in years with no data, with honest uncertainty
+
 ### 1. STIR Effects on Concentration
 
-![STIR effects](./figs/load1p4_STIReffects.jpeg)
+![STIR effects](./figs/load1p5_STIReffects.jpeg)
 
 These results show **positive STIR slopes** for most analytes, with strongest effects for sediment-associated constituents.
 
 ---
 
-### 2. STIR → Load Relationships
+### 2a. STIR → Load Relationships
 
-![STIR load curves](./figs/load1p4_STIR_load_curves.jpeg)
+![STIR load curves](./figs/load1p5_STIR_load_curves.jpeg)
 
 Posterior predictive load curves indicate increasing event-scale loads with increasing seasonal STIR, especially for particulate species.
 
 ---
+
+### 2b. Annual Load Summaries
+![TP annual loads](./figs/annual_obs_vs_modeled/annual_load_tp_obs_vs_modeled.png)
+Annual TP load summaries show good agreement between observed and modeled loads across treatments and years, with uncertainty intervals reflecting all propagated sources of error.
+
+![NO3 annual loads](./figs/annual_obs_vs_modeled/annual_load_no3_obs_vs_modeled.png)
+NO3 loads exhibit more variability and less predictive accuracy, likely due to the weaker relationship with STIR.
 
 ### 3. Latent Year-to-Year Deviations (Multi-Output GP)
 
@@ -337,6 +354,6 @@ GPL‑2. Please credit the **Colorado State University Agricultural Water Qualit
 
 
 ## TODOS
-- [ ] fix flume labeling so that 10V and 10 V are consistent, rerun model
+- [X] fix flume labeling so that 10V and 10 V are consistent, rerun model
 - [X] add graph showing STIR impacts on runoff volume
 - [ ] add table of annual load summaries by analyte and treatment over study period

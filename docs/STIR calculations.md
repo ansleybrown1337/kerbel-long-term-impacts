@@ -1,4 +1,5 @@
 # STIR Calculations and Pipeline Workflow
+Created by A.J. Brown, October 2025
 
 ## Overview
 
