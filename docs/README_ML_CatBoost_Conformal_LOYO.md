@@ -22,6 +22,7 @@ Activate the ML environment:
 
 ```bash
 conda activate wq_ml
+cd C:\Users\ansle\OneDrive\Documents\GitHub\kerbel-long-term-impacts
 ```
 
 Run the LOYO training pipeline (from repo root or from `code/`):

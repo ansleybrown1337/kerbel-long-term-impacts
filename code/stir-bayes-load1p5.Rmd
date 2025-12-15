@@ -56,6 +56,8 @@ wq_clean <- clean_wq_stir(wq_raw)
 wq_clean <- wq_clean %>%
   mutate(orig_row = row_number())
 
+# Write to csv in 'out' folder
+write_csv(wq_clean, file = "../out/wq_cleaned.csv")
 
 glimpse(wq_clean)
 ```
