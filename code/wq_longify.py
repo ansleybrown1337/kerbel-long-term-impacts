@@ -217,6 +217,11 @@ def main():
     tssm_idx = cols.index("TSSMethod")
     load_block_cols = cols[flume_idx + 1 : tssm_idx]
 
+    # IMPORTANT: ensure Volume survives even if it sits inside the positional LOAD block
+    # (this protects OUT Volume too, and enables INF Volume pairing).
+    if "Volume" in load_block_cols:
+        load_block_cols = [c for c in load_block_cols if c != "Volume"]
+
     # Meta/ID columns = everything not in conc analytes and not in the load block
     id_cols = [c for c in cols if c not in conc_cols and c not in load_block_cols]
 
@@ -253,26 +258,34 @@ def main():
     # Keys for pairing inflow to outflow (ignore Treatment)
     key_cols = ["Year", "Date", "Irrigation", "Rep", "Analyte"]
 
-    # Build inflow lookup for Result and Flag
+    # Build inflow lookup for Result, Flag, and Volume
+    # (Volume must exist in df_long via id_cols; the safeguard above helps ensure that.)
+    inf_agg = {
+        "Result_mg_L": pick_first_token,
+        "Flag": pick_first_token
+    }
+    if "Volume" in inf_rows.columns:
+        inf_agg["Volume"] = pick_first_token
+
     inf_lookup = (
         inf_rows.groupby(key_cols, dropna=False)
-                .agg({
-                    "Result_mg_L": pick_first_token,
-                    "Flag": pick_first_token
-                })
+                .agg(inf_agg)
                 .reset_index()
                 .rename(columns={
                     "Result_mg_L": "Inflow_Result_mg_L",
-                    "Flag": "Inflow_Flag"
+                    "Flag": "Inflow_Flag",
+                    "Volume": "Inflow_Volume"
                 })
     )
 
-    # Merge inflow values/flag onto OUT rows only
+    # Merge inflow values/flag/volume onto OUT rows only
     out_joined = out_rows.merge(inf_lookup, on=key_cols, how="left")
 
     # Fill missing inflow fields with "NA"
     out_joined["Inflow_Result_mg_L"] = out_joined["Inflow_Result_mg_L"].fillna("NA")
     out_joined["Inflow_Flag"] = out_joined["Inflow_Flag"].fillna("NA")
+    if "Inflow_Volume" in out_joined.columns:
+        out_joined["Inflow_Volume"] = out_joined["Inflow_Volume"].fillna("NA")
 
     # Add Has_Inflow as TRUE/FALSE text token
     out_joined["Has_Inflow"] = out_joined["Inflow_Result_mg_L"].apply(
@@ -290,7 +303,6 @@ def main():
         return pd.Series(rlmdl)
 
     rlmdl_df = out_joined.apply(_attach, axis=1)
-
     out_joined = pd.concat([out_joined, rlmdl_df], axis=1)
 
     # Ensure all object columns keep tokens
@@ -309,7 +321,10 @@ def main():
     print(f"[INFO] Dropped load columns (count): {len(load_block_cols)}")
     print(f"[INFO] Melted analytes: {len(conc_cols)}  |  Meta columns kept: {len(id_cols)}")
     print(f"[INFO] Inflow paired onto OUT rows using keys: {key_cols}")
-    print(f"[INFO] Added columns: Inflow_Result_mg_L, Inflow_Flag, Has_Inflow")
+    added_cols = ["Inflow_Result_mg_L", "Inflow_Flag", "Has_Inflow"]
+    if "Inflow_Volume" in out_joined.columns:
+        added_cols.insert(2, "Inflow_Volume")
+    print(f"[INFO] Added columns: {', '.join(added_cols)}")
     print(f"[INFO] RL/MDL columns added: MDL_Provided, RL_Provided, RLMDL_Provided_Units, RLMDL_Method, MDL_mg_L, RL_mg_L, RLMDL_Source, RLMDL_Assumed")
     print(f"[INFO] Output rows (OUT only): {len(out_joined)}")
 

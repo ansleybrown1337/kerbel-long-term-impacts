@@ -11,7 +11,7 @@ The file `wq_with_stir_by_season.csv` represents the **fully harmonized dataset*
 Each record corresponds to a unique:
 
 ```
-Date × Treatment × Rep × Analyte
+Date × Treatment × Irrigation × Rep × Analyte
 ```
 
 and includes:
@@ -66,9 +66,10 @@ python code/main.py --debug
 | **Analyte**                                                      | Chemical or physical analyte name (e.g., Nitrate, TKN, OrthoP, TP, TSS).                                                                                   |
 | **Result_mg_L**                                                  | Measured analyte concentration in mg/L for the OUT (runoff) sample.                                                                                        |
 | **Inflow_Result_mg_L**                                           | Corresponding inflow analyte concentration (mg/L), if available; `"NA"` if not matched.                                                                    |
+| **Inflow_VolumeL**                                               | Corresponding inflow event volume (L), if available; "NA" if not matched.                                                                                  |
 | **Has_Inflow**                                                   | Boolean (`TRUE`/`FALSE`) indicating whether an inflow value was paired successfully.                                                                       |
 | **Flag**, **Inflow_Flag**                                        | QA/QC flags for OUT and INF records, respectively.                                                                                                         |
-| **Volume**                                                       | Measured runoff event volume (L).                                                                                                                          |
+| **Volume**                                                       | Measured runoff event OUTFLOW volume (L).                                                                                                                  |
 | **NoRunoff**                                                     | Logical flag for irrigation events where no runoff was observed.                                                                                           |
 | **FlumeMethod**, **MeasureMethod**, **IrrMethod**, **TSSMethod** | Field or laboratory method identifiers describing flow measurement and analytical approaches.                                                              |
 | **Lab**                                                          | Analytical laboratory responsible for chemical analyses.                                                                                                   |
@@ -94,21 +95,9 @@ python code/main.py --debug
 * Date parsing is strict; unparseable rows are dropped with a warning when `--debug` is enabled.
 * All `Treatment` and `System` labels are normalized to uppercase (`CT`, `MT`, `ST`) for consistent joins.
 * STIR values are dimensionless indices as defined by NRCS (0–1000 scale); larger values indicate higher surface disturbance intensity.
+* Inflow values are paired onto outflow records using Year × Date × Irrigation × Rep × Analyte (Treatment ignored), producing `Inflow_Result_mg_L`, `Inflow_Flag`, and `Inflow_Volume`.
 
----
-
-## 6. Example (abridged)
-
-| Date       | Treatment | Analyte | Result_mg_L | CumAll_STIR_toDate | Season_STIR_toDate | PlantDate  | HarvestDate | SeasonYear |
-| :--------- | :-------- | :------ | :---------: | :----------------: | :----------------: | :--------- | :---------- | :--------- |
-| 2011-06-30 | CT        | OrthoP  |    0.064    |         375        |         112        | 2011-05-01 | 2011-09-15  | 2011       |
-| 2011-06-30 | MT        | OrthoP  |    0.087    |         190        |         60         | 2011-05-01 | 2011-09-15  | 2011       |
-| 2011-07-01 | ST        | OrthoP  |    0.118    |         135        |         52         | 2011-05-01 | 2011-09-15  | 2011       |
-| 2013-07-28 | CT        | Nitrate |     1.54    |         690        |         184        | 2013-05-10 | 2013-09-10  | 2013       |
-
----
-
-## 7. Reproducibility
+## 6. Reproducibility
 
 To reproduce this dataset from the full pipeline:
 
@@ -122,11 +111,13 @@ Output files:
 ```
 out/wq_with_stir_by_season.csv
 out/wq_with_stir_unmatched.csv
+out/stir_events_long.csv
+out/kerbel_master_concentrations_long.csv
 ```
 
 ---
 
-**Last Updated:** November 2025
+**Last Updated:** December 2025
 **Author:** AJ Brown
 **Maintainer:** Agricultural Water Quality Program (CSU)
 

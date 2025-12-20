@@ -7,14 +7,14 @@ output: html_document
 library(dagitty)
 ```
 
-```{r}
+```{r fig.width=10}
 # DAG with STIR effects w/o latent soil properties
 dag <- dagitty(
 '
 dag {
 bb="-5.892,-5.356,4.412,6.847"
 "Conc. e" [latent,pos="-4.315,3.419"]
-"Crop Type" [pos="-0.217,-4.574"]
+"Crop Type" [exposure,pos="-0.217,-4.574"]
 "Depth measurement method" [pos="2.857,3.988"]
 "Inflow Conc." [exposure,pos="-3.320,-4.474"]
 "Inflow vol" [pos="3.591,-2.952"]
@@ -27,14 +27,17 @@ bb="-5.892,-5.356,4.412,6.847"
 "Vol. e " [latent,pos="3.787,2.850"]
 "duplicate status" [exposure,pos="-5.325,-1.189"]
 "flume type" [exposure,pos="-0.573,4.216"]
+"residue cover" [pos="-0.631,-0.212"]
 "source water" [pos="-5.056,-4.688"]
 Analyte [pos="-1.786,-3.109"]
 Block [exposure,pos="-0.587,2.651"]
 Load [outcome,pos="-0.587,5.994"]
-STIR [exposure,pos="-0.595,-1.388"]
+STIR [exposure,pos="-0.747,-1.959"]
 Year [exposure,pos="-1.372,-4.853"]
 "Conc. e" -> "Outflow Conc."
-"Crop Type" -> STIR
+"Crop Type" -> "Outflow Conc."
+"Crop Type" -> "Outflow vol"
+"Crop Type" -> "residue cover"
 "Depth measurement method" -> "Outflow vol"
 "Inflow Conc." -> "Outflow Conc."
 "Inflow Conc." -> Analyte
@@ -54,17 +57,22 @@ Year [exposure,pos="-1.372,-4.853"]
 "duplicate status" -> Analyte
 "flume type" -> "Outflow Conc."
 "flume type" -> "Outflow vol"
+"residue cover" -> "Outflow Conc."
+"residue cover" -> "Outflow vol"
+"residue cover" -> Analyte
 "source water" -> "Inflow Conc."
 Analyte -> "Outflow Conc."
 Block -> "Outflow Conc."
 Block -> "Outflow vol"
 STIR -> "Outflow Conc."
 STIR -> "Outflow vol"
+STIR -> "residue cover"
 STIR -> Analyte
 Year -> "Outflow Conc."
 Year -> "Outflow vol"
 Year -> Analyte
 }
+
 ')
 
 plot(dag)
@@ -99,55 +107,64 @@ adj_direc_vol
 
 
 
-```{r, eval=F}
+```{r fig.width=10, eval=F}
 # DAG with STIR effects including latent soil properties
 dag2 <- dagitty('
 dag {
 bb="-5.892,-5.356,4.412,6.847"
-"Conc. e" [latent,pos="-4.568,-3.064"]
-"Crop Type" [exposure,pos="1.574,-0.546"]
-"Depth measurement method" [exposure,pos="0.177,3.977"]
-"Inflow Conc." [exposure,pos="-1.484,-3.787"]
-"Inflow vol" [exposure,pos="-1.289,-0.605"]
-"Irrigation Method" [exposure,pos="0.375,1.380"]
-"Load e." [latent,pos="-5.102,0.612"]
-"Outflow Conc." [outcome,pos="-3.089,-2.367"]
-"Outflow vol" [outcome,pos="-1.647,2.641"]
-"Sampler Method" [exposure,pos="-3.282,-4.554"]
-"Soil Properties" [latent,pos="-0.305,-1.219"]
-"Vol. e " [latent,pos="-2.522,4.234"]
-"duplicate status" [exposure,pos="-3.968,-3.951"]
-"flume type" [exposure,pos="-2.005,-0.091"]
-"source water" [pos="-0.151,-4.951"]
-Analyte [exposure,pos="-2.626,-4.327"]
-Block [exposure,pos="-3.104,0.582"]
-Load [outcome,pos="-4.515,2.568"]
-STIR [exposure,pos="0.252,-3.050"]
+"Conc. e" [latent,pos="-4.315,3.419"]
+"Crop Type" [exposure,pos="-0.217,-4.574"]
+"Depth measurement method" [pos="2.857,3.988"]
+"Inflow Conc." [exposure,pos="-3.320,-4.474"]
+"Inflow vol" [pos="3.591,-2.952"]
+"Irrigation Count" [exposure,pos="-2.397,-4.895"]
+"Irrigation Method" [exposure,pos="1.011,-4.730"]
+"Load e." [latent,pos="-3.102,5.823"]
+"Outflow Conc." [outcome,pos="-4.213,0.646"]
+"Outflow vol" [outcome,pos="2.479,0.632"]
+"Sampler Method" [exposure,pos="-4.737,-3.336"]
+"Vol. e " [latent,pos="3.787,2.850"]
+"duplicate status" [exposure,pos="-5.325,-1.189"]
+"flume type" [exposure,pos="-0.573,4.216"]
+"source water" [pos="-5.056,-4.688"]
+Analyte [pos="-1.786,-3.109"]
+Block [exposure,pos="-0.587,2.651"]
+Load [outcome,pos="-0.587,5.994"]
+STIR [exposure,pos="-0.747,-1.959"]
+Year [exposure,pos="-1.372,-4.853"]
 "Conc. e" -> "Outflow Conc."
-"Crop Type" -> "Soil Properties"
+"Crop Type" -> STIR
 "Depth measurement method" -> "Outflow vol"
 "Inflow Conc." -> "Outflow Conc."
-"Inflow Conc." -> "Soil Properties"
-"Inflow vol" -> "Outflow Conc."
+"Inflow Conc." -> Analyte
 "Inflow vol" -> "Outflow vol"
-"Inflow vol" -> "Soil Properties"
+"Irrigation Count" -> "Outflow Conc."
+"Irrigation Count" -> "Outflow vol"
+"Irrigation Count" -> Analyte
 "Irrigation Method" -> "Inflow vol"
 "Load e." -> Load
 "Outflow Conc." -> Load
+"Outflow vol" -> "Outflow Conc."
 "Outflow vol" -> Load
 "Sampler Method" -> "Outflow Conc."
-"Soil Properties" -> "Outflow Conc."
-"Soil Properties" -> "Outflow vol"
+"Sampler Method" -> Analyte
 "Vol. e " -> "Outflow vol"
 "duplicate status" -> "Outflow Conc."
+"duplicate status" -> Analyte
 "flume type" -> "Outflow Conc."
 "flume type" -> "Outflow vol"
 "source water" -> "Inflow Conc."
 Analyte -> "Outflow Conc."
 Block -> "Outflow Conc."
 Block -> "Outflow vol"
-STIR -> "Soil Properties"
+STIR -> "Outflow Conc."
+STIR -> "Outflow vol"
+STIR -> Analyte
+Year -> "Outflow Conc."
+Year -> "Outflow vol"
+Year -> Analyte
 }
+
 ')
 
 plot(dag2)
