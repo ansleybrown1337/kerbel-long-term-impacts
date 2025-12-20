@@ -357,3 +357,4 @@ GPL‑2. Please credit the **Colorado State University Agricultural Water Qualit
 - [X] fix flume labeling so that 10V and 10 V are consistent, rerun model
 - [X] add graph showing STIR impacts on runoff volume
 - [ ] add table of annual load summaries by analyte and treatment over study period
+- [ ] add crop type and residue cover to both concentration and volume models
