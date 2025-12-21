@@ -129,7 +129,8 @@ def build_feature_frame(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     desired = [
         "Year", "Irrigation", "Rep",
         "Treatment", "Analyte",
-        "Inflow_Result_mg_L",     # keep per AJ request
+        "Inflow_Result_mg_L",
+        "Inflow_Volume",          # <-- ADD THIS
         "Flag", "Inflow_Flag",
         "FlumeMethod", "MeasureMethod", "IrrMethod", "TSSMethod",
         "Lab",
@@ -331,6 +332,8 @@ def main():
     df = add_time_features(df)
     df = ensure_treatment(df)
     df = coerce_bool(df, "NoRunoff")
+    df = coerce_bool(df, "Has_Inflow")
+
 
     if "Year" not in df.columns:
         if "Date" in df.columns:
