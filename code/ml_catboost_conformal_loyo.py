@@ -103,6 +103,11 @@ def parse_dates(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
+    if "Date" in df.columns:
+        df["DayOfYear"] = df["Date"].dt.dayofyear
+    else:
+        df["DayOfYear"] = np.nan
+
     if "Date" in df.columns and "PlantDate" in df.columns:
         df["DaysSincePlant"] = (df["Date"] - df["PlantDate"]).dt.days
     else:
@@ -112,7 +117,9 @@ def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
         df["DaysUntilHarvest"] = (df["HarvestDate"] - df["Date"]).dt.days
     else:
         df["DaysUntilHarvest"] = np.nan
+
     return df
+
 
 def coerce_bool(df: pd.DataFrame, col: str) -> pd.DataFrame:
     if col in df.columns:
@@ -137,6 +144,7 @@ def build_feature_frame(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         "SeasonYear", "Crop",
         "CumAll_STIR_toDate", "Season_STIR_toDate",
         "DaysSincePlant", "DaysUntilHarvest",
+        "DayOfYear",
     ]
     cols = [c for c in desired if c in df.columns]
     X = df[cols].copy()
