@@ -20,6 +20,9 @@ Expected inputs (produced by ml_catboost_conformal_loyo.py):
   out/ml_catboost_conformal_loyo/cv_predictions_samplelevel.csv
   out/ml_catboost_conformal_loyo/annual_load_summary.csv
 
+Optional (if imputation was run):
+  out/ml_catboost_conformal_loyo/wq_cleaned_ml_imputed.csv
+
 Also requires original data:
   out/wq_with_stir_by_season.csv
 
@@ -170,7 +173,208 @@ def compute_observed_annual_loads(data_csv: Path,
     return pd.DataFrame.from_records(records)
 
 
-def save_cv_rmse_jpg(outdir: Path, figdir: Path) -> None:
+def _sample_log_uniform(lo_log: np.ndarray,
+                        hi_log: np.ndarray,
+                        draws: int,
+                        rng: np.random.Generator) -> np.ndarray:
+    """Sample uniformly within [lo_log, hi_log] in log space. Returns shape (n, draws)."""
+    lo = np.asarray(lo_log, dtype=float)
+    hi = np.asarray(hi_log, dtype=float)
+    if lo.ndim != 1 or hi.ndim != 1:
+        raise ValueError("lo_log/hi_log must be 1D arrays.")
+    if lo.shape != hi.shape:
+        raise ValueError("lo_log and hi_log must have same length.")
+    u = rng.random((lo.size, draws))
+    return lo[:, None] + u * (hi[:, None] - lo[:, None])
+
+
+def compute_ml_imputed_annual_loads(imputed_csv: Path,
+                                   draws: int = 2000,
+                                   alpha: float = 0.05,
+                                   seed: int = 123) -> pd.DataFrame:
+    """
+    Compute ML annual loads including imputed rows (mg), using the imputed dataset
+    written by ml_catboost_conformal_loyo.py.
+
+    Point estimate:
+      event load = Result_mg_L_filled * Volume_filled
+      annual load = sum(event load) within Year x Treatment x Analyte
+
+    Uncertainty propagation (optional):
+      If draws > 0, draws are generated per row using prediction-interval bounds
+      for imputed values. Observed (non-imputed) values are treated as fixed (degenerate).
+
+    Returns:
+      DataFrame with columns:
+        Year, Treatment, Analyte, mean, median, low, high, n_events, n_draws
+    """
+    df = pd.read_csv(imputed_csv, na_values=["NA", "NaN", "nan", ""], keep_default_na=True)
+    df = parse_dates(df)
+    df = ensure_treatment(df)
+    df = coerce_bool(df, "NoRunoff")
+
+    if "Year" not in df.columns:
+        if "Date" in df.columns:
+            df["Year"] = pd.to_datetime(df["Date"], errors="coerce").dt.year
+        else:
+            raise ValueError("Imputed-loads require Year or Date in the imputed dataset.")
+
+    for c in ["Result_mg_L", "Volume", "Result_mg_L_filled", "Volume_filled"]:
+        if c not in df.columns:
+            raise ValueError(f"Missing required column in imputed dataset: {c}")
+        df[c] = safe_numeric(df[c])
+
+    if "NoRunoff" in df.columns:
+        df = df.loc[~df["NoRunoff"].fillna(False)].copy()
+
+    df = df.dropna(subset=["Year", "Treatment", "Analyte", "Result_mg_L_filled", "Volume_filled"]).copy()
+    df["Year"] = safe_numeric(df["Year"]).astype(int)
+
+    missC = df["Result_mg_L"].isna()
+    missV = df["Volume"].isna()
+
+    df["Load_point_mg"] = df["Result_mg_L_filled"] * df["Volume_filled"]
+
+    if int(draws) <= 0:
+        out = (df.groupby(["Year", "Treatment", "Analyte"], as_index=False)
+                 .agg(mean=("Load_point_mg", "sum"),
+                      median=("Load_point_mg", "sum"),
+                      low=("Load_point_mg", "sum"),
+                      high=("Load_point_mg", "sum"),
+                      n_events=("Load_point_mg", "size")))
+        out["n_draws"] = 0
+        return out
+
+    rng = np.random.default_rng(seed)
+    D = int(draws)
+    group_sums: dict[tuple[int, str, str], np.ndarray] = {}
+    group_counts: dict[tuple[int, str, str], int] = {}
+
+    def _get(key):
+        if key not in group_sums:
+            group_sums[key] = np.zeros(D, dtype=float)
+            group_counts[key] = 0
+        return group_sums[key]
+
+    # Observed-only rows: add constant to every draw
+    obs_mask = ~(missC | missV)
+    if obs_mask.any():
+        for (year, trt, an), g in df.loc[obs_mask].groupby(["Year", "Treatment", "Analyte"]):
+            key = (int(year), str(trt), str(an))
+            _get(key)[:] += float(g["Load_point_mg"].sum())
+            group_counts[key] += int(len(g))
+
+    # Rows with at least one imputed component
+    need_mask = (missC | missV)
+    if need_mask.any():
+        sub = df.loc[need_mask].copy()
+
+        # PI columns may be absent; create as NaN
+        for c in ["Result_mg_L_pi_low", "Result_mg_L_pi_high", "Volume_pi_low", "Volume_pi_high"]:
+            if c not in sub.columns:
+                sub[c] = np.nan
+            sub[c] = safe_numeric(sub[c])
+
+        for (year, trt, an), g in sub.groupby(["Year", "Treatment", "Analyte"]):
+            key = (int(year), str(trt), str(an))
+            vec = _get(key)
+            group_counts[key] += int(len(g))
+
+            C_filled = g["Result_mg_L_filled"].to_numpy(dtype=float)
+            V_filled = g["Volume_filled"].to_numpy(dtype=float)
+
+            # Default: degenerate draws at filled value
+            C_draw = np.repeat(C_filled[:, None], D, axis=1)
+            V_draw = np.repeat(V_filled[:, None], D, axis=1)
+
+            # If concentration missing, sample from PI when bounds exist
+            if g["Result_mg_L"].isna().any():
+                loC = g["Result_mg_L_pi_low"].to_numpy(dtype=float)
+                hiC = g["Result_mg_L_pi_high"].to_numpy(dtype=float)
+                ok = np.isfinite(loC) & np.isfinite(hiC) & (loC >= 0) & (hiC >= loC)
+                if ok.any():
+                    C_draw_log = _sample_log_uniform(np.log1p(loC[ok]), np.log1p(hiC[ok]), D, rng)
+                    C_draw[ok, :] = np.expm1(C_draw_log)
+
+            # If volume missing, sample from PI when bounds exist
+            if g["Volume"].isna().any():
+                loV = g["Volume_pi_low"].to_numpy(dtype=float)
+                hiV = g["Volume_pi_high"].to_numpy(dtype=float)
+                ok = np.isfinite(loV) & np.isfinite(hiV) & (loV >= 0) & (hiV >= loV)
+                if ok.any():
+                    V_draw_log = _sample_log_uniform(np.log1p(loV[ok]), np.log1p(hiV[ok]), D, rng)
+                    V_draw[ok, :] = np.expm1(V_draw_log)
+
+            vec += (C_draw * V_draw).sum(axis=0)
+
+    q_lo = float(alpha) / 2.0
+    q_hi = 1.0 - float(alpha) / 2.0
+
+    rows = []
+    for (year, trt, an), vec in group_sums.items():
+        rows.append({
+            "Year": int(year),
+            "Treatment": trt,
+            "Analyte": an,
+            "mean": float(np.mean(vec)),
+            "median": float(np.median(vec)),
+            "low": float(np.quantile(vec, q_lo)),
+            "high": float(np.quantile(vec, q_hi)),
+            "n_events": int(group_counts.get((year, trt, an), 0)),
+            "n_draws": int(D),
+        })
+    return pd.DataFrame.from_records(rows)
+
+
+
+def plot_feature_importance_csv(fi_csv: Path,
+                                figpath: Path,
+                                title: str,
+                                top_k: int = 25) -> None:
+    """
+    Plot feature importance from the CSV written by ml_catboost_conformal_loyo.py.
+
+    Expected columns:
+      - feature
+      - importance_mean
+    Optional:
+      - importance_sd
+    """
+    if not fi_csv.exists():
+        print(f"[WARN] Missing {fi_csv}; skipping feature-importance plot.", file=sys.stderr)
+        return
+
+    fi = pd.read_csv(fi_csv)
+    if fi.empty or "feature" not in fi.columns:
+        print(f"[WARN] {fi_csv} is empty or malformed; skipping feature-importance plot.", file=sys.stderr)
+        return
+
+    if "importance_mean" in fi.columns:
+        fi = fi.sort_values("importance_mean", ascending=False).head(int(top_k)).copy()
+        vals = safe_numeric(fi["importance_mean"]).to_numpy()
+        xlabel = "Mean importance"
+    elif "importance" in fi.columns:
+        fi = fi.sort_values("importance", ascending=False).head(int(top_k)).copy()
+        vals = safe_numeric(fi["importance"]).to_numpy()
+        xlabel = "Importance"
+    else:
+        print(f"[WARN] {fi_csv} missing importance column; skipping feature-importance plot.", file=sys.stderr)
+        return
+
+    features = fi["feature"].astype(str).to_numpy()[::-1]
+    vals = vals[::-1]
+
+    fig, ax = plt.subplots(figsize=(12, max(6, 0.35 * len(features) + 1)))
+    ax.barh(features, vals)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.grid(True, axis="x", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(figpath, dpi=220)
+    plt.close(fig)
+
+
+def save_cv_rmse_plots(outdir: Path, figdir: Path) -> None:
     metrics_path = outdir / "cv_metrics_by_year.csv"
     if not metrics_path.exists():
         print(f"[WARN] Missing {metrics_path}; skipping CV plot.", file=sys.stderr)
@@ -194,8 +398,8 @@ def save_cv_rmse_jpg(outdir: Path, figdir: Path) -> None:
     ax.legend()
     fig.tight_layout()
 
-    figpath = figdir / "cv_rmse_by_year.jpg"
-    fig.savefig(figpath, dpi=220)
+    figpath_jpg = figdir / "cv_rmse_by_year.jpg"
+    fig.savefig(figpath_jpg, dpi=220)
     plt.close(fig)
 
 
@@ -203,7 +407,9 @@ def annual_load_plots(ml_summary: pd.DataFrame,
                       obs: pd.DataFrame,
                       figdir: Path,
                       analytes: list[str] | None = None,
-                      units: str = "g") -> None:
+                      units: str = "g",
+                      out_suffix: str = "",
+                      title_suffix: str = "") -> None:
     """
     One figure per analyte: Observed vs ML annual load by treatment.
 
@@ -285,14 +491,14 @@ def annual_load_plots(ml_summary: pd.DataFrame,
                         linewidth=3, alpha=0.45, colors=ax.lines[-1].get_color()
                     )
 
-        ax.set_title(f"{an}: annual load by treatment (Observed vs ML)")
+        ax.set_title(f"{an}: annual load by treatment (Observed vs ML{title_suffix})")
         ax.set_xlabel("Year")
         ax.set_ylabel(ylabel)
         ax.grid(True, axis="y", alpha=0.3)
         ax.legend(ncol=2, frameon=True)
 
         fig.tight_layout()
-        fig.savefig(figdir / f"annual_load_{an.lower()}_obs_vs_ml.jpg", dpi=220)
+        fig.savefig(figdir / f"annual_load_{an.lower()}_obs_vs_ml{out_suffix}.jpg", dpi=220)
         plt.close(fig)
 
 
@@ -392,6 +598,42 @@ def main():
     ap.add_argument("--obs_boot", type=int, default=2000, help="Bootstrap replicates for observed annual loads.")
     ap.add_argument("--obs_alpha", type=float, default=0.05, help="Alpha for observed bootstrap intervals (0.05 -> 95%).")
     ap.add_argument("--seed", type=int, default=123, help="Random seed for bootstrap.")
+
+    ap.add_argument(
+    "--use_imputed",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help=(
+        "If true, and an imputed dataset exists, also create a second set of annual-load plots "
+        "that include imputed rows (suffix: _imputed). If the imputed file is missing, the script "
+        "falls back to CV-only plots."
+    )
+    )
+    ap.add_argument(
+    "--imputed_csv",
+    type=str,
+    default=None,
+    help=(
+        "Path to the imputed dataset written by ml_catboost_conformal_loyo.py "
+        "(default: <repo>/out/<out_subdir>/wq_cleaned_ml_imputed.csv)."
+    )
+    )
+    ap.add_argument(
+    "--imputed_draws",
+    type=int,
+    default=2000,
+    help=(
+        "Monte Carlo draws used to propagate PI uncertainty for the imputed-inclusive annual-load plots. "
+        "Set to 0 to disable and plot deterministic filled annual sums."
+    )
+    )
+    ap.add_argument(
+    "--ml_alpha",
+    type=float,
+    default=0.05,
+    help="Alpha used when summarizing the imputed-inclusive annual-load draws (0.05 -> 95%)."
+    )
+
     args = ap.parse_args()
 
     repo = Path(args.repo).resolve() if args.repo else find_repo_root(Path.cwd())
@@ -399,6 +641,9 @@ def main():
     outdir = repo / "out" / "ml_catboost_conformal_loyo"
     figdir = repo / "figs" / "ml_catboost_conformal_loyo"
     figdir.mkdir(parents=True, exist_ok=True)
+
+    imputed_csv = Path(args.imputed_csv).resolve() if args.imputed_csv else (outdir / "wq_cleaned_ml_imputed.csv")
+
 
     data_csv = repo / "out" / "wq_with_stir_by_season.csv"
     ml_summary_csv = outdir / "annual_load_summary.csv"
@@ -416,7 +661,7 @@ def main():
     print(f"[INFO] Writing figures to: {figdir}")
     print(f"[INFO] Observed bootstrap: B={args.obs_boot}, alpha={args.obs_alpha}")
 
-    save_cv_rmse_jpg(outdir, figdir)
+    save_cv_rmse_plots(outdir, figdir)
 
     obs = compute_observed_annual_loads(
         data_csv,
@@ -433,12 +678,57 @@ def main():
 
     annual_load_plots(ml, obs, figdir, analytes=analytes, units=args.units)
 
+    # Parity + PI coverage diagnostics (CV predictions)
     preds = pd.read_csv(preds_csv)
     parity_plots(preds, figdir)
     coverage_plot(preds, figdir)
 
-    print("[DONE] Post-processing figures created.")
+    # Feature importance plots (if CSVs exist)
+    plot_feature_importance_csv(
+        outdir / "feature_importance_logC.csv",
+        figdir / "feature_importance_logC.jpg",
+        title="Feature importance: logC model (mean across LOYO folds)",
+        top_k=25,
+    )
+    plot_feature_importance_csv(
+        outdir / "feature_importance_logV.csv",
+        figdir / "feature_importance_logV.jpg",
+        title="Feature importance: logV model (mean across LOYO folds)",
+        top_k=25,
+    )
 
+
+
+   
+
+
+    # Optional: imputed-inclusive annual-load plots (keeps CV-valid plots intact)
+    if bool(args.use_imputed):
+        if imputed_csv.exists():
+            try:
+                ml_imp = compute_ml_imputed_annual_loads(
+                    imputed_csv,
+                    draws=int(args.imputed_draws),
+                    alpha=float(args.ml_alpha),
+                    seed=int(args.seed) + 77,
+                )
+                annual_load_plots(
+                    ml_imp,
+                    obs,
+                    figdir,
+                    analytes=analytes,
+                    units=args.units,
+                    out_suffix="_imputed",
+                    title_suffix="; imputed-inclusive",
+                )
+                ml_imp.to_csv(outdir / "annual_load_summary_imputed.csv", index=False)
+                print(f"[INFO] Wrote imputed-inclusive annual summary: {outdir / 'annual_load_summary_imputed.csv'}")
+            except Exception as e:
+                print(f"[WARN] Failed to create imputed-inclusive plots: {e}", file=sys.stderr)
+        else:
+            print(f"[INFO] No imputed dataset found at: {imputed_csv}. Skipping imputed-inclusive plots.")
+
+    print("[DONE] Post-processing figures created.")
 
 if __name__ == "__main__":
     try:

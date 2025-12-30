@@ -1,0 +1,53 @@
+{
+  "target": "logC",
+  "alpha": 0.05,
+  "q_conformal": 0.8243347644917349,
+  "feature_cols": [
+    "Year",
+    "Irrigation",
+    "Rep",
+    "Treatment",
+    "Analyte",
+    "Inflow_Result_mg_L",
+    "Inflow_Volume",
+    "Flag",
+    "Inflow_Flag",
+    "FlumeMethod",
+    "MeasureMethod",
+    "IrrMethod",
+    "TSSMethod",
+    "Lab",
+    "SeasonYear",
+    "Crop",
+    "CumAll_STIR_toDate",
+    "Season_STIR_toDate",
+    "DaysSincePlant",
+    "DaysUntilHarvest",
+    "DayOfYear"
+  ],
+  "cat_cols": [
+    "Treatment",
+    "Analyte",
+    "Flag",
+    "Inflow_Flag",
+    "FlumeMethod",
+    "MeasureMethod",
+    "IrrMethod",
+    "TSSMethod",
+    "Lab",
+    "Crop"
+  ],
+  "cb_params": {
+    "loss_function": "RMSE",
+    "iterations": 3000,
+    "learning_rate": 0.05,
+    "depth": 8,
+    "l2_leaf_reg": 6.0,
+    "subsample": 0.8,
+    "colsample_bylevel": 0.8,
+    "eval_metric": "RMSE",
+    "thread_count": -1,
+    "verbose": false
+  },
+  "saved_utc": "2025-12-30T04:09:45Z"
+}

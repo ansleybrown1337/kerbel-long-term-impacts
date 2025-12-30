@@ -50,6 +50,8 @@ figs/ml_catboost_conformal_loyo/
 from __future__ import annotations
 
 import argparse
+import json
+import datetime
 import sys
 import time
 from pathlib import Path
@@ -170,6 +172,185 @@ def build_feature_frame(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     return X, cat_cols
 
 
+
+
+def save_model_artifacts(
+    model: CatBoostRegressor,
+    q: float,
+    feature_cols: list[str],
+    cat_cols: list[str],
+    model_path: Path,
+    meta_path: Path,
+    target_name: str,
+    cb_params: dict,
+    alpha: float,
+) -> None:
+    """Persist a fitted CatBoost model and conformal metadata needed to reproduce PIs."""
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    model.save_model(str(model_path))
+
+    meta = {
+        "target": target_name,
+        "alpha": float(alpha),
+        "q_conformal": float(q),
+        "feature_cols": list(feature_cols),
+        "cat_cols": list(cat_cols),
+        "cb_params": dict(cb_params),
+        "saved_utc": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z",
+    }
+    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+
+def load_model_artifacts(model_path: Path, meta_path: Path) -> tuple[CatBoostRegressor, dict]:
+    """Load a saved CatBoost model and its conformal metadata."""
+    if not model_path.exists():
+        raise FileNotFoundError(f"Missing saved model: {model_path}")
+    if not meta_path.exists():
+        raise FileNotFoundError(f"Missing saved metadata: {meta_path}")
+
+    cb = CatBoostRegressor()
+    cb.load_model(str(model_path))
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    return cb, meta
+
+
+def refit_full_and_impute(
+    df_model: pd.DataFrame,
+    X_all: pd.DataFrame,
+    cat_cols: list[str],
+    cb_params: dict,
+    alpha: float,
+    outdir: Path,
+    model_dir: Path,
+    save_models: bool,
+    impute_draws: int,
+    seed: int,
+) -> None:
+    """Refit models on all observed rows and impute missing y_logC/y_logV rows, saving outputs."""
+    rng = np.random.default_rng(seed)
+
+    # Ensure identifier
+    out_imp = df_model.copy()
+    if "_wq_idx" not in out_imp.columns:
+        out_imp["_wq_idx"] = out_imp.index.astype(int)
+
+    # Targets and missing masks
+    missC = out_imp["y_logC"].isna()
+    missV = out_imp["y_logV"].isna()
+    obsC = ~missC
+    obsV = ~missV
+
+    # Paths
+    model_dir.mkdir(parents=True, exist_ok=True)
+    modelC_path = model_dir / "model_logC.cbm"
+    metaC_path  = model_dir / "model_logC_meta.json"
+    modelV_path = model_dir / "model_logV.cbm"
+    metaV_path  = model_dir / "model_logV_meta.json"
+
+    # Concentration
+    if missC.any() and obsC.any():
+        cbC, qC = fit_catboost_split_conformal(
+            X_train=X_all.loc[obsC].copy(),
+            y_train=out_imp.loc[obsC, "y_logC"],
+            cat_cols=cat_cols,
+            alpha=alpha,
+            random_state=seed,
+            cb_params=cb_params,
+            calib_size=0.25,  # matches default; actual calib_size for refit is not used if you later run impute_only
+        )
+        if save_models:
+            save_model_artifacts(
+                model=cbC, q=qC, feature_cols=list(X_all.columns), cat_cols=cat_cols,
+                model_path=modelC_path, meta_path=metaC_path,
+                target_name="logC", cb_params=cb_params, alpha=alpha,
+            )
+
+        pred_log, lo_log, hi_log = predict_with_pi_manual(cbC, qC, X_all.loc[missC].copy())
+        out_imp["Result_mg_L_pred"] = np.nan
+        out_imp.loc[missC, "Result_mg_L_pred"] = safe_expm1(pred_log)
+        out_imp["Result_mg_L_pi_low"] = np.nan
+        out_imp.loc[missC, "Result_mg_L_pi_low"] = safe_expm1(lo_log)
+        out_imp["Result_mg_L_pi_high"] = np.nan
+        out_imp.loc[missC, "Result_mg_L_pi_high"] = safe_expm1(hi_log)
+        out_imp["q_conformal_logC"] = np.nan
+        out_imp.loc[missC, "q_conformal_logC"] = float(qC)
+    else:
+        # still save observed-only placeholders for consistency
+        out_imp["Result_mg_L_pred"] = np.nan
+        out_imp["Result_mg_L_pi_low"] = np.nan
+        out_imp["Result_mg_L_pi_high"] = np.nan
+        out_imp["q_conformal_logC"] = np.nan
+
+    # Volume
+    if missV.any() and obsV.any():
+        cbV, qV = fit_catboost_split_conformal(
+            X_train=X_all.loc[obsV].copy(),
+            y_train=out_imp.loc[obsV, "y_logV"],
+            cat_cols=cat_cols,
+            alpha=alpha,
+            random_state=seed,
+            cb_params=cb_params,
+            calib_size=0.25,
+        )
+        if save_models:
+            save_model_artifacts(
+                model=cbV, q=qV, feature_cols=list(X_all.columns), cat_cols=cat_cols,
+                model_path=modelV_path, meta_path=metaV_path,
+                target_name="logV", cb_params=cb_params, alpha=alpha,
+            )
+
+        pred_log, lo_log, hi_log = predict_with_pi_manual(cbV, qV, X_all.loc[missV].copy())
+        out_imp["Volume_pred"] = np.nan
+        out_imp.loc[missV, "Volume_pred"] = safe_expm1(pred_log)
+        out_imp["Volume_pi_low"] = np.nan
+        out_imp.loc[missV, "Volume_pi_low"] = safe_expm1(lo_log)
+        out_imp["Volume_pi_high"] = np.nan
+        out_imp.loc[missV, "Volume_pi_high"] = safe_expm1(hi_log)
+        out_imp["q_conformal_logV"] = np.nan
+        out_imp.loc[missV, "q_conformal_logV"] = float(qV)
+    else:
+        out_imp["Volume_pred"] = np.nan
+        out_imp["Volume_pi_low"] = np.nan
+        out_imp["Volume_pi_high"] = np.nan
+        out_imp["q_conformal_logV"] = np.nan
+
+    # Filled columns (only replace missing)
+    out_imp["Result_mg_L_filled"] = out_imp["Result_mg_L"]
+    out_imp.loc[out_imp["Result_mg_L_filled"].isna(), "Result_mg_L_filled"] = out_imp.loc[out_imp["Result_mg_L_filled"].isna(), "Result_mg_L_pred"]
+
+    out_imp["Volume_filled"] = out_imp["Volume"]
+    out_imp.loc[out_imp["Volume_filled"].isna(), "Volume_filled"] = out_imp.loc[out_imp["Volume_filled"].isna(), "Volume_pred"]
+
+    imputed_csv = outdir / "wq_cleaned_ml_imputed.csv"
+    out_imp.to_csv(imputed_csv, index=False)
+    print(f"[INFO] Wrote imputed dataset: {imputed_csv}")
+
+    # Optional per-row draws (only for imputed rows)
+    if impute_draws and impute_draws > 0:
+        draw_records = []
+
+        if missC.any() and out_imp["Result_mg_L_pi_low"].notna().any():
+            dC = out_imp.loc[missC & out_imp["Result_mg_L_pi_low"].notna(), ["_wq_idx", "Result_mg_L_pi_low", "Result_mg_L_pi_high"]].copy()
+            lo = np.log1p(dC["Result_mg_L_pi_low"].to_numpy())
+            hi = np.log1p(dC["Result_mg_L_pi_high"].to_numpy())
+            draws_log = sample_uniform_interval(lo, hi, int(impute_draws), rng)
+            draws = safe_expm1(draws_log)
+            for i, idx in enumerate(dC["_wq_idx"].to_numpy()):
+                draw_records.append({"_wq_idx": int(idx), "Target": "Result_mg_L", "draws": ",".join(map(str, draws[i, :]))})
+
+        if missV.any() and out_imp["Volume_pi_low"].notna().any():
+            dV = out_imp.loc[missV & out_imp["Volume_pi_low"].notna(), ["_wq_idx", "Volume_pi_low", "Volume_pi_high"]].copy()
+            lo = np.log1p(dV["Volume_pi_low"].to_numpy())
+            hi = np.log1p(dV["Volume_pi_high"].to_numpy())
+            draws_log = sample_uniform_interval(lo, hi, int(impute_draws), rng)
+            draws = safe_expm1(draws_log)
+            for i, idx in enumerate(dV["_wq_idx"].to_numpy()):
+                draw_records.append({"_wq_idx": int(idx), "Target": "Volume", "draws": ",".join(map(str, draws[i, :]))})
+
+        if draw_records:
+            draws_csv = outdir / "imputed_row_draws.csv"
+            pd.DataFrame(draw_records).to_csv(draws_csv, index=False)
+            print(f"[INFO] Wrote imputed row draws: {draws_csv}")
 def fit_catboost_split_conformal(
     X_train: pd.DataFrame,
     y_train: pd.Series,
@@ -305,6 +486,56 @@ def main():
     ap.add_argument("--fig_subdir", type=str, default="ml_catboost_conformal_loyo",
                     help="Subfolder under <repo>/figs/ for figures.")
 
+    # Model persistence / imputation
+    ap.add_argument(
+        "--model_subdir",
+        type=str,
+        default="models",
+        help="Subfolder under <repo>/out/<out_subdir>/ to save/load fitted full-data models and metadata."
+    )
+
+    ap.add_argument(
+        "--impute_missing",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "If true, after LOYO CV refit on all observed data and impute missing "
+            "Result_mg_L and/or Volume rows with saved conformal PIs. "
+            "Default: True."
+        )
+    )
+
+    ap.add_argument(
+        "--impute_only",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "If true, skip LOYO and only perform imputation using previously saved "
+            "models/metadata in --model_subdir."
+        )
+    )
+
+    ap.add_argument(
+        "--impute_draws",
+        type=int,
+        default=2000,
+        help=(
+            "Number of Monte Carlo draws to generate for imputed rows "
+            "(uniform within PI in log space). "
+            "Set to 0 to disable. Default: 2000."
+        )
+    )
+
+    ap.add_argument(
+        "--save_models",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "If true, save the refit full-data models (CatBoost .cbm) and "
+            "conformal metadata for reuse. Default: True."
+        )
+    )
+
     # Feature importance outputs
     ap.add_argument("--feature_importance", action="store_true",
                     help="If set, compute and save mean feature importance across LOYO folds for each target.")
@@ -335,7 +566,7 @@ def main():
     print(f"[INFO] Out dir   : {outdir}")
     print(f"[INFO] Fig dir   : {figdir}")
 
-    df = pd.read_csv(data_path)
+    df = pd.read_csv(data_path, na_values=['NA','NaN','nan',''], keep_default_na=True)
     df = parse_dates(df)
     df = add_time_features(df)
     df = ensure_treatment(df)
@@ -375,6 +606,149 @@ def main():
         raise ValueError("LOYO requires at least two years.")
 
     rng = np.random.default_rng(args.seed)
+
+    # ------------------------------------------------------------
+    # Explicit control flow
+    #   - impute_only: skip LOYO, load saved models, impute, then return
+    #   - otherwise: run LOYO, then (optionally) refit+impute at the end
+    # ------------------------------------------------------------
+    if args.impute_only:
+        if args.impute_missing:
+            print("[INFO] --impute_only set: skipping LOYO and using saved models/metadata for imputation.")
+        else:
+            # This case can happen if someone runs: --impute_only --no-impute-missing
+            # Make it explicit rather than silently doing nothing.
+            raise ValueError("--impute_only requires imputation to be enabled. Remove --no-impute-missing.")
+
+        model_dir = outdir / str(args.model_subdir)
+        modelC_path = model_dir / "model_logC.cbm"
+        metaC_path  = model_dir / "model_logC_meta.json"
+        modelV_path = model_dir / "model_logV.cbm"
+        metaV_path  = model_dir / "model_logV_meta.json"
+
+        for p in [modelC_path, metaC_path, modelV_path, metaV_path]:
+            if not p.exists():
+                raise FileNotFoundError(
+                    f"Missing saved model artifact: {p}\n"
+                    "Run without --impute_only first to train/refit and save models."
+                )
+
+        cbC, metaC = load_model_artifacts(modelC_path, metaC_path)
+        cbV, metaV = load_model_artifacts(modelV_path, metaV_path)
+
+        # Validate feature columns
+        featC = metaC.get("feature_cols", [])
+        featV = metaV.get("feature_cols", [])
+        if list(X_all.columns) != list(featC):
+            raise ValueError(
+                "Feature column mismatch for logC model. "
+                "This usually means the feature engineering changed since the model was saved. "
+                "Re-run without --impute_only to refit and resave the models."
+            )
+        if list(X_all.columns) != list(featV):
+            raise ValueError(
+                "Feature column mismatch for logV model. "
+                "This usually means the feature engineering changed since the model was saved. "
+                "Re-run without --impute_only to refit and resave the models."
+            )
+
+        qC = float(metaC["q_conformal"])
+        qV = float(metaV["q_conformal"])
+
+        # Predict missing
+        missC = df_model["y_logC"].isna()
+        missV = df_model["y_logV"].isna()
+
+        out_imp = df_model.copy()
+        if "_wq_idx" not in out_imp.columns:
+            out_imp["_wq_idx"] = out_imp.index.astype(int)
+
+        if missC.any():
+            pred_log = np.asarray(cbC.predict(X_all.loc[missC]))
+            lo_log = pred_log - qC
+            hi_log = pred_log + qC
+            out_imp["Result_mg_L_pred"] = np.nan
+            out_imp.loc[missC, "Result_mg_L_pred"] = safe_expm1(pred_log)
+            out_imp["Result_mg_L_pi_low"] = np.nan
+            out_imp.loc[missC, "Result_mg_L_pi_low"] = safe_expm1(lo_log)
+            out_imp["Result_mg_L_pi_high"] = np.nan
+            out_imp.loc[missC, "Result_mg_L_pi_high"] = safe_expm1(hi_log)
+            out_imp["q_conformal_logC"] = np.nan
+            out_imp.loc[missC, "q_conformal_logC"] = qC
+        else:
+            out_imp["Result_mg_L_pred"] = np.nan
+            out_imp["Result_mg_L_pi_low"] = np.nan
+            out_imp["Result_mg_L_pi_high"] = np.nan
+            out_imp["q_conformal_logC"] = np.nan
+
+        if missV.any():
+            pred_log = np.asarray(cbV.predict(X_all.loc[missV]))
+            lo_log = pred_log - qV
+            hi_log = pred_log + qV
+            out_imp["Volume_pred"] = np.nan
+            out_imp.loc[missV, "Volume_pred"] = safe_expm1(pred_log)
+            out_imp["Volume_pi_low"] = np.nan
+            out_imp.loc[missV, "Volume_pi_low"] = safe_expm1(lo_log)
+            out_imp["Volume_pi_high"] = np.nan
+            out_imp.loc[missV, "Volume_pi_high"] = safe_expm1(hi_log)
+            out_imp["q_conformal_logV"] = np.nan
+            out_imp.loc[missV, "q_conformal_logV"] = qV
+        else:
+            out_imp["Volume_pred"] = np.nan
+            out_imp["Volume_pi_low"] = np.nan
+            out_imp["Volume_pi_high"] = np.nan
+            out_imp["q_conformal_logV"] = np.nan
+
+        out_imp["Result_mg_L_filled"] = out_imp["Result_mg_L"]
+        out_imp.loc[out_imp["Result_mg_L_filled"].isna(), "Result_mg_L_filled"] = out_imp.loc[
+            out_imp["Result_mg_L_filled"].isna(), "Result_mg_L_pred"
+        ]
+
+        out_imp["Volume_filled"] = out_imp["Volume"]
+        out_imp.loc[out_imp["Volume_filled"].isna(), "Volume_filled"] = out_imp.loc[
+            out_imp["Volume_filled"].isna(), "Volume_pred"
+        ]
+
+        imputed_csv = outdir / "wq_cleaned_ml_imputed.csv"
+        out_imp.to_csv(imputed_csv, index=False)
+        print(f"[INFO] Wrote imputed dataset (impute_only): {imputed_csv}")
+
+        # Optional draws
+        if args.impute_draws and args.impute_draws > 0:
+            rng2 = np.random.default_rng(args.seed + 101)
+            draw_records = []
+            if missC.any() and out_imp["Result_mg_L_pi_low"].notna().any():
+                dC = out_imp.loc[
+                    missC & out_imp["Result_mg_L_pi_low"].notna(),
+                    ["_wq_idx", "Result_mg_L_pi_low", "Result_mg_L_pi_high"]
+                ].copy()
+                lo = np.log1p(dC["Result_mg_L_pi_low"].to_numpy())
+                hi = np.log1p(dC["Result_mg_L_pi_high"].to_numpy())
+                draws_log = sample_uniform_interval(lo, hi, int(args.impute_draws), rng2)
+                draws = safe_expm1(draws_log)
+                for i, idx in enumerate(dC["_wq_idx"].to_numpy()):
+                    draw_records.append({"_wq_idx": int(idx), "Target": "Result_mg_L", "draws": ",".join(map(str, draws[i, :]))})
+
+            if missV.any() and out_imp["Volume_pi_low"].notna().any():
+                dV = out_imp.loc[
+                    missV & out_imp["Volume_pi_low"].notna(),
+                    ["_wq_idx", "Volume_pi_low", "Volume_pi_high"]
+                ].copy()
+                lo = np.log1p(dV["Volume_pi_low"].to_numpy())
+                hi = np.log1p(dV["Volume_pi_high"].to_numpy())
+                draws_log = sample_uniform_interval(lo, hi, int(args.impute_draws), rng2)
+                draws = safe_expm1(draws_log)
+                for i, idx in enumerate(dV["_wq_idx"].to_numpy()):
+                    draw_records.append({"_wq_idx": int(idx), "Target": "Volume", "draws": ",".join(map(str, draws[i, :]))})
+
+            if draw_records:
+                draws_csv = outdir / "imputed_row_draws.csv"
+                pd.DataFrame(draw_records).to_csv(draws_csv, index=False)
+                print(f"[INFO] Wrote imputed row draws: {draws_csv}")
+
+        return
+    # If we got here, we are doing the full run (LOYO), optionally followed by refit+impute later.
+
 
     # FAST mode overrides (keeps CLI stable + documented)
     if args.fast:
@@ -603,6 +977,22 @@ def main():
             title="Feature importance: logV model (mean across LOYO folds)"
         )
 
+    
+    # Optional: refit on all observed data and impute missing rows, saving models for reuse
+    if args.impute_missing:
+        model_dir = outdir / str(args.model_subdir)
+        refit_full_and_impute(
+            df_model=df_model,
+            X_all=X_all,
+            cat_cols=cat_cols,
+            cb_params=cb_params,
+            alpha=float(args.alpha),
+            outdir=outdir,
+            model_dir=model_dir,
+            save_models=bool(args.save_models),
+            impute_draws=int(args.impute_draws),
+            seed=int(args.seed),
+        )
     print(f"[DONE] Outputs written to:\n  {outdir}\n  {figdir}")
 
 
