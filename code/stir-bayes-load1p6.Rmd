@@ -25,7 +25,7 @@ library(dplyr)
 library(ggplot2)
 ```
 
-# Model 1.5 (Concentration + Volume Joint Model)
+# Model 1.6 (Concentration + Volume Joint Model)
 
 * Joint Bayesian model for **OUT concentration and OUT volume** fit simultaneously
 * Model uses multivariate normal (MVN) hierarchical structure for analyte-specific parameters
@@ -39,6 +39,7 @@ library(ggplot2)
 * Supports **scenario-based simulation** for STIR → Load via generative functions (conditional or averaged scenarios)
 * Incorporates multi-output Gaussian Process (GP) on Year to capture temporal correlation in residuals for each analyte
 * v1.5 only has cmdstan model, no rethinking/ulam version
+* v1.6 adds crop type effects and residue cover at planting effects
 
 # 1. Load and clean STIR–WQ dataset
 
@@ -3140,9 +3141,15 @@ export_annual_draws <- function(
 #   n_draws = 400,
 #   seed = 1
 # )
-# draws_file <- file.path(export_dir, paste0("annual_load_draws_bayes_", model_version, ".csv"))
+# export_dir <- file.path(getwd(), "out")
+# dir.create(export_dir, showWarnings = FALSE, recursive = TRUE)
+# 
+# draws_file <- file.path(
+#   export_dir,
+#   paste0("annual_load_draws_bayes_", model_version, ".csv")
+# )
+# 
 # readr::write_csv(annual_draws, draws_file)
-# message("[OK] Wrote: ", draws_file)
 
 ```
 

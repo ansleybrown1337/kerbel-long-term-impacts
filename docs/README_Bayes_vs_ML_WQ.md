@@ -260,6 +260,129 @@ Disagreement between methods is informative and highlights where assumptions mat
 | Computational cost    | High upfront                | Moderate                  |
 | Deployment            | Research-focused            | Production-friendly       |
 | Best use              | Understanding processes     | Filling gaps, forecasting |
+---
 
+## 11. Quantitative model evaluation metrics
 
+To complement the qualitative comparison above, Bayesian and machine learning results were evaluated using **point-based and distribution-aware performance metrics** computed at the annual scale for each analyte and treatment. Metrics were calculated only for years with observed annual loads and then summarized across years and treatments.
 
+The intent of these metrics is **not to declare a single best model**, but to quantify how Bayesian and ML approaches differ in predictive accuracy, calibration, and uncertainty representation.
+
+### 11.1 Root Mean Squared Error (RMSE)
+
+RMSE measures average pointwise deviation between modeled and observed annual loads:
+
+$$
+\mathrm{RMSE} = \sqrt{ \frac{1}{N} \sum_{i=1}^{N} (\hat{y}_i - y_i)^2 }
+$$
+
+where:
+- $y_i$ is the observed annual load,
+- $\hat{y}_i$ is the modeled central estimate (posterior mean for Bayes, predictive mean for ML),
+- $N$ is the number of observed years.
+
+**Interpretation**
+- Lower RMSE indicates better point prediction accuracy.
+- RMSE disproportionately penalizes large errors.
+- RMSE ignores uncertainty width and distributional shape.
+
+---
+
+### 11.2 Normalized RMSE (NRMSE)
+
+To enable comparison across analytes with different magnitudes, RMSE was normalized in two ways.
+
+**Mean-normalized RMSE**
+
+$$
+\mathrm{NRMSE}_{\mu} = \frac{\mathrm{RMSE}}{\overline{|y|}}
+$$
+
+**Range-normalized RMSE**
+
+$$
+\mathrm{NRMSE}_{\text{range}} = \frac{\mathrm{RMSE}}{\max(y) - \min(y)}
+$$
+
+**Interpretation**
+- NRMSE expresses error relative to the scale of the data.
+- Useful for cross-analyte comparisons.
+- Like RMSE, NRMSE evaluates only point estimates.
+
+---
+
+### 11.3 Interval coverage
+
+Interval coverage evaluates how often observed values fall within modeled uncertainty intervals:
+
+$$
+\mathrm{Coverage} = \frac{1}{N} \sum_{i=1}^{N} \mathbb{I}(y_i \in [L_i, U_i])
+$$
+
+where $L_i$ and $U_i$ are lower and upper uncertainty bounds.
+
+**Interpretation**
+- Coverage near the nominal level (for example 0.95) indicates good calibration.
+- Coverage alone does not penalize overly wide intervals.
+- High coverage can be achieved by conservative uncertainty bounds.
+
+Coverage is therefore a **necessary but insufficient** uncertainty diagnostic.
+
+---
+
+### 11.4 Continuous Ranked Probability Score (CRPS)
+
+CRPS is a **proper scoring rule** that evaluates the entire predictive distribution against an observed value, rather than only a point estimate or interval.
+
+For a predictive cumulative distribution function $F$ and an observation $y$:
+
+$$
+\mathrm{CRPS}(F, y) = \int_{-\infty}^{\infty} [F(z) - \mathbb{I}(z \ge y)]^2 \, dz
+$$
+
+When predictive distributions are represented by Monte Carlo draws $x_1, \ldots, x_S$, CRPS can be approximated as:
+
+$$
+\mathrm{CRPS} \approx
+\frac{1}{S} \sum_{s=1}^{S} |x_s - y|
+- \frac{1}{2S^2} \sum_{s=1}^{S} \sum_{s'=1}^{S} |x_s - x_{s'}|
+$$
+
+This formulation follows Gneiting and Raftery (2007).
+
+**Interpretation**
+- Lower CRPS indicates a better probabilistic forecast.
+- CRPS rewards sharp distributions only when they are well calibrated.
+- Overconfident and overly diffuse distributions are both penalized.
+- CRPS directly reflects distributional spread, skewness, and variance.
+
+---
+
+### 11.5 Why CRPS is essential for Bayes versus ML comparison
+
+CRPS is particularly important in this study because:
+
+- The Bayesian model produces posterior predictive distributions with epistemic uncertainty that evolves through time.
+- The ML model produces empirically calibrated predictive distributions without explicit temporal uncertainty propagation.
+- RMSE and NRMSE collapse both approaches to a single central estimate.
+- Coverage ignores uncertainty sharpness.
+
+CRPS directly evaluates the **quality of uncertainty itself**, making it the most appropriate metric for comparing Bayesian and ML approaches when uncertainty realism is a central research objective.
+
+Gneiting, T., & Raftery, A. E. (2007).
+Strictly proper scoring rules, prediction, and estimation.
+Journal of the American Statistical Association, 102(477), 359–378.
+https://doi.org/10.1198/016214506000001437
+
+---
+
+### 11.6 Metric interpretation summary
+
+| Metric   | Uses uncertainty | Penalizes overconfidence | Penalizes wide intervals | Scale-aware |
+|---------|------------------|--------------------------|--------------------------|-------------|
+| RMSE    | No               | No                       | No                       | No          |
+| NRMSE   | No               | No                       | No                       | Yes         |
+| Coverage| Partially        | No                       | No                       | No          |
+| CRPS    | Yes              | Yes                      | Yes                      | Yes         |
+
+In this project, RMSE and NRMSE quantify point prediction accuracy, while CRPS quantifies probabilistic forecast quality. Together, these metrics provide a defensible and transparent comparison of Bayesian and machine learning approaches.
