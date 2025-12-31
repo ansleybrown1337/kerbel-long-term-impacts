@@ -50,7 +50,7 @@ where $\sigma_a$ is an analyte-specific residual standard deviation.
 
 The linear predictor is specified as:
 
-$$
+```math
 \mu_{i,a}
 =
 \alpha_a
@@ -59,7 +59,7 @@ $$
 + \beta_{\mathrm{vol},a} \, \log\left(V_{i}\right)
 + \mathbf{Z}_{i} \, \boldsymbol{\gamma}_a
 + f_a\left(\mathrm{Year}_i\right)
-$$
+```
 
 where:
 
@@ -86,10 +86,15 @@ The inclusion of latent “true” runoff volume and inflow concentration states
 Regression coefficients are modeled hierarchically across analytes:
 
 $$
-\boldsymbol{\beta}_a \sim \mathrm{MVN}\left(\boldsymbol{\mu}_{\beta},\, \Sigma_{\beta}\right)
+\boldsymbol{\beta}_a \sim \mathrm{MVN}\left(\boldsymbol{\mu}_{\beta},\, \sigma_{\beta}\right)
 $$
 
-where $\boldsymbol{\beta}_a$ includes, at minimum, the STIR, inflow, and volume effects for analyte $a$, and $\Sigma_{\beta}$ captures cross-analyte covariance. This structure allows strong analytes (for example TSS or TP) to inform weaker ones without forcing identical behavior.
+where:
+
+- **$\beta_a$** includes the STIR, inflow, and volume effects for analyte *a*
+- **$\sigma_{\beta}$** captures cross-analyte covariance across analytes
+
+
 
 ---
 
@@ -104,7 +109,7 @@ $$
 with:
 
 $$
-\mathbf{u}_a \sim \mathrm{MVN}\left(\mathbf{0},\, \Sigma_u\right)
+\mathbf{u}_a \sim \mathrm{MVN}\left(\mathbf{0},\, \sigma_u\right)
 $$
 
 This formulation supports analyte-specific sensitivity to sampling and infrastructure differences and allows correlated deviations across analytes.
