@@ -92,7 +92,7 @@ The Bayesian analysis is the primary inferential framework for this project. It 
 - Temporal persistence using Gaussian Processes
 
 📘 **Full Bayesian methods documentation:**  
-➡️ [`docs/README_Bayes_Methods.md`](./docs/README_Bayes_Methods.md)
+➡️ [`docs/README_bayes_methods.md`](./docs/README_bayes_methods.md)
 
 This separation keeps the main README concise while preserving methodological depth.
 
