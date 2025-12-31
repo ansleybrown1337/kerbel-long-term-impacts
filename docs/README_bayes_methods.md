@@ -2,7 +2,7 @@
 
 This document provides full technical documentation for the **hierarchical Bayesian modeling framework** used to analyze long-term (2011–2025) edge-of-field (EoF) water-quality responses to tillage disturbance (STIR) at the Kerbel agricultural research site. It is intended to serve as a methods appendix–level reference for manuscripts and dissertation chapters.
 
-The Bayesian framework is the primary inferential approach in this project and is explicitly designed for causal interpretation, uncertainty propagation, and temporal inference.
+**GitHub math rendering note:** equations are written using GitHub-compatible LaTeX (`$...$`, `$$...$$`).
 
 ---
 
@@ -10,12 +10,12 @@ The Bayesian framework is the primary inferential approach in this project and i
 
 The Bayesian models are constructed to:
 
-1. Quantify analyte-specific causal effects of tillage intensity (STIR) on runoff concentration, volume, and load
-2. Propagate measurement uncertainty in concentration and volume through to annual loads
-3. Separate management signals from sampler, laboratory, and infrastructure artifacts
-4. Share information across analytes using hierarchical partial pooling
-5. Capture multi-year temporal persistence and correlation across analytes
-6. Enable principled imputation of missing years with uncertainty that grows appropriately
+1. Quantify analyte-specific causal effects of tillage intensity (STIR) on runoff concentration, volume, and load  
+2. Propagate measurement uncertainty in concentration and volume through to annual loads  
+3. Separate management signals from sampler, laboratory, and infrastructure artifacts  
+4. Share information across analytes using hierarchical partial pooling  
+5. Capture multi-year temporal persistence and correlation across analytes  
+6. Enable principled imputation of missing years with uncertainty that grows appropriately  
 
 ---
 
@@ -32,9 +32,10 @@ The modeling framework is grounded in an explicit causal directed acyclic graph 
 
 ### Conceptual DAG
 
-Nodes include STIR (seasonal and cumulative), runoff volume, inflow concentration, outflow concentration, analyte identity, year (latent environmental state), and measurement/infrastructure factors (sampler, flume, lab, replication).
+This repository stores the DAG figure under `figs/` at the repository root.  
+If this Markdown file is located under `docs/`, image links must go up one directory:
 
-![Causal DAG](./figs/dagitty-model.jpeg)
+![Causal DAG](../figs/dagitty-model.jpeg)
 
 ---
 
@@ -96,13 +97,13 @@ $$
 \boldsymbol{\beta}_a \sim \mathrm{MVN}(\boldsymbol{\mu}_{\beta},\, \Sigma_{\beta})
 $$
 
-where $\boldsymbol{\beta}_a$ includes (at minimum) the STIR, inflow, and volume effects for analyte $a$, and $\Sigma_{\beta}$ captures cross-analyte covariance. This allows strong analytes (e.g., TSS, TP) to inform weaker ones without forcing identical behavior.
+where $\boldsymbol{\beta}_a$ includes (at minimum) the STIR, inflow, and volume effects for analyte $a$, and $\Sigma_{\beta}$ captures cross-analyte covariance. This allows strong analytes (for example TSS, TP) to inform weaker ones without forcing identical behavior.
 
 ---
 
 ## 6. Random effects for monitoring artifacts
 
-Random intercepts are included for multiple non-causal sources of variation. For a factor level $j$ (e.g., lab, sampler, flume, replication), we write:
+Random intercepts are included for multiple non-causal sources of variation. For a factor level $j$ (for example lab, sampler, flume, replication), we write:
 
 $$
 \alpha_{a,j} = \alpha_a + u_{a,j}
@@ -129,7 +130,7 @@ $$
 where:
 
 - $\Sigma_A$ is an analyte-to-analyte covariance matrix
-- $K_{\mathrm{year}}$ is a kernel over years (e.g., squared-exponential)
+- $K_{\mathrm{year}}$ is a kernel over years (for example squared-exponential)
 
 A common kernel choice is the squared-exponential:
 
@@ -196,7 +197,7 @@ This produces annual distributions suitable for direct comparison between modele
 - Typical fits involve on the order of tens of thousands of parameters and thousands to tens of thousands of observations, depending on model version.
 - Convergence is assessed using $\hat{R}$, effective sample size, trace diagnostics, and posterior predictive checks.
 
-Model versions are tracked in `docs/bayes-model_versions.md`.
+Model versions are tracked in: [`docs/bayes-model_versions.md`](./bayes-model_versions.md)
 
 ---
 
@@ -210,17 +211,20 @@ Machine-learning models are used strictly as a benchmark for pattern learning, n
 
 ## 12. Graphical results (representative)
 
+All figures below are stored under `figs/` at the repository root.  
+If this Markdown file is stored under `docs/`, the correct relative path is `../figs/...`.
+
 ### STIR effects on runoff volume
-![STIR volume effects](./figs/1p6_post_STIR_effect_on_volume.jpeg)
+![STIR volume effects](../figs/1p6_post_STIR_effect_on_volume.jpeg)
 
 ### Annual load curves conditioned on STIR
-![STIR load curves](./figs/load1p6_STIR_load_curves.jpeg)
+![STIR load curves](../figs/load1p6_STIR_load_curves.jpeg)
 
 ### Year-to-year latent deviations
-![Latent deviations](./figs/yearly_latent_deviations_v1p6.jpeg)
+![Latent deviations](../figs/yearly_latent_deviations_v1p6.jpeg)
 
 ### Year covariance structure
-![Year covariance](./figs/year_covariance_gp_v1p6.jpeg)
+![Year covariance](../figs/year_covariance_gp_v1p6.jpeg)
 
 ---
 
