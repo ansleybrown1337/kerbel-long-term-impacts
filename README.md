@@ -146,9 +146,13 @@ This study evaluates Bayesian and machine-learning approaches for estimating lon
 - From a practical standpoint, machine-learning implementation imposes relatively low upfront labor on the analyst, as models can be trained by supplying a broad set of covariates and allowing the algorithm to infer relationships. In contrast, the Bayesian framework requires substantial prior effort, including explicit causal reasoning, structural assumptions, and thoughtful model specification. This additional investment increases development time but yields greater interpretability, transparency, and scientific insight once the model is executed.
 - Together, these results demonstrate that ML models may be suitable for descriptive benchmarking or short-horizon interpolation, whereas Bayesian inference is required when uncertainty realism, temporal structure, and decision-relevant inference are primary objectives in environmental management, particularly in settings where observations are imperfect proxies for latent truth.
 
-*Figure 1. Faceted annual load estimates comparing Bayesian and machine-learning approaches for total phosphorus (TP) under no-till management. Shaded intervals represent 90% credible/prediction intervals.*
+*Figure 1. Faceted annual load estimates comparing Bayesian and machine-learning approaches for total phosphorus (TP) under no-till management. Shaded intervals represent 95% credible/prediction intervals.*
 
 ![Figure 1](./figs/annual_bayes_vs_ml_faceted_jpg/annual_load_tp_bayes_vs_ml_faceted.jpg)
+
+*Figure 2. Faceted annual load estimates comparing Bayesian and machine-learning approaches for nitrate (NO₃⁻) under conventional tillage management. Shaded intervals represent 95% credible/prediction intervals.*
+
+![Figure 2](./figs/annual_bayes_vs_ml_faceted_jpg/annual_load_no3_bayes_vs_ml_faceted.jpg)
 
 ### Summary of Key Differences Between Bayesian and Machine-Learning Approaches
 
