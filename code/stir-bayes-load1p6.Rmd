@@ -1,0 +1,3148 @@
+---
+title: "Bayesian Modeling of STIR Effects on Water Quality"
+author: "AJ Brown"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+# Load backend cleaning + functions
+getwd()
+source("./stir-bayes-backend.R")
+library(rethinking)
+library(posterior)
+library(cmdstanr)
+library(dplyr)
+library(ggplot2)
+```
+
+# Model 1.5 (Concentration + Volume Joint Model)
+
+* Joint Bayesian model for **OUT concentration and OUT volume** fit simultaneously
+* Model uses multivariate normal (MVN) hierarchical structure for analyte-specific parameters
+* Model is parametrized in **non-centered** form for better sampling efficiency
+* **Analyte-specific** intercepts, STIR slopes, and inflow-concentration slopes
+* **Volume** modeled as a function of STIR, with Bayesian imputation for missing VOL
+* **Inflow concentration (CIN)** now handled via Bayesian imputation (`CIN ~ dnorm(0,1)`), not zero-substitution
+* Includes all DAG-identified adjustment variables affecting concentration
+  * { Analyte, Block, Inflow Conc., Irrigation Count, Outflow vol, Sampler Method, duplicate status, flume type }
+* Full uncertainty propagation from CIN, VOL, STIR into analyte-specific concentration predictions
+* Supports **scenario-based simulation** for STIR → Load via generative functions (conditional or averaged scenarios)
+* Incorporates multi-output Gaussian Process (GP) on Year to capture temporal correlation in residuals for each analyte
+* v1.5 only has cmdstan model, no rethinking/ulam version
+
+# 1. Load and clean STIR–WQ dataset
+
+```{r load-clean}
+# Step 1: load raw merged dataset
+wq_raw <- load_wq_stir(
+  path = "out/wq_with_stir_by_season.csv",
+  year_max = Inf
+)
+
+# Step 2: clean, type-enforce, standardize (ALL done in backend)
+wq_clean <- clean_wq_stir(wq_raw)
+
+# Add original row number for tracking
+wq_clean <- wq_clean %>%
+  mutate(orig_row = row_number())
+
+# Write to csv in 'out' folder
+write_csv(wq_clean, file = "../out/wq_cleaned.csv")
+
+glimpse(wq_clean)
+```
+
+---
+
+# 2. Prepare model-ready dataset
+
+Select analytes for modeling:
+
+```{r subset-analytes}
+analytes_keep <- c(
+  "OP", "TP", "ICP", "NO3", "TN", "TSS",
+  "TKN", "TSP", "NH4", "NPOC", "Se", "NO2",
+  "NOx", "TDS"
+)
+
+d_mod <- wq_clean %>%
+  dplyr::filter(analyte_abbr %in% analytes_keep) %>%
+  dplyr::mutate(mod_row = dplyr::row_number()) %>%
+  droplevels()
+
+na_table <- d_mod %>%
+  dplyr::group_by(analyte_abbr) %>%
+  dplyr::summarize(
+    n_total   = dplyr::n(),
+    n_value   = sum(!is.na(Result_mg_L)),
+    n_na      = sum(is.na(Result_mg_L)),
+    prop_na   = n_na / n_total, #proportion missing
+    .groups   = "drop"
+  )
+
+na_table
+
+```
+
+Create analyte index and build data list for ulam:
+
+```{r make-stan-dat}
+# 2. Build indices and standardized predictors -----------------------------
+
+d_mod <- d_mod %>%
+  mutate(
+    # analyte index
+    A = as.integer(analyte_abbr),
+
+    # Block (Rep) index
+    B = as.integer(Rep),
+
+    # Sampler method index
+    S = as.integer(SampleMethod),
+
+    # Flume type index
+    Fu = as.integer(FlumeMethod),
+
+    # Irrigation count as numeric
+    irr_num = as.integer(Irrigation),
+
+    # Inflow concentration (standardized), keep NAs for Bayesian imputation
+    cin_std = cin_z,
+
+    # Duplicate status as 0/1
+    dup = as.integer(Duplicate),
+
+    # Year index
+    Y = as.integer(as.factor(Year)),
+
+    # Crop type index (categorical)
+    Cr = as.integer(Crop),
+
+    # Residue cover at planting (placeholder for now, percent ultimately)
+    # Padding with zeros means it is centered at 0 on the modeled scale and will not move estimates.
+    # NOTE: later this will be filled with actual data and standardized from the stir-bayes-backend.R and python dataflow
+    res_plant_z = 0
+  )
+
+
+# instantiate distance matrix for gaussian process on year
+years_used <- sort(unique(d_mod$Year))
+mat <- make_year_dist_mat(years_used)
+
+# lookup code for later
+analyte_lookup <- d_mod %>%
+  distinct(A, analyte_abbr) %>%
+  arrange(A)
+
+block_lookup <- d_mod %>%
+  distinct(B, Rep) %>%
+  arrange(B)
+
+sampler_lookup <- d_mod %>%
+  distinct(S, SampleMethod) %>%
+  arrange(S)
+
+flume_lookup <- d_mod %>%
+  distinct(Fu, FlumeMethod) %>%
+  arrange(Fu)
+
+irrigation_lookup <- d_mod %>%
+  distinct(irr_num, Irrigation) %>%
+  arrange(irr_num)
+
+duplicate_lookup <- d_mod %>%
+  distinct(dup, Duplicate) %>%
+  arrange(dup)
+
+crop_lookup <- d_mod %>%
+  distinct(Cr, Crop) %>%
+  arrange(Cr)
+
+
+# prepare data list for stan
+stan_dat <- list(
+  N    = nrow(d_mod),
+
+  # group counts
+  A_n  = length(unique(d_mod$A)),
+  B_n  = length(unique(d_mod$B)),
+  S_n  = length(unique(d_mod$S)),
+  F_n  = length(unique(d_mod$Fu)),
+  D_n  = length(unique(d_mod$dup)),
+  Y_n  = length(unique(d_mod$Y)),
+
+  # NEW: crop levels
+  Cr_n = length(unique(d_mod$Cr)),
+
+  # indices
+  A    = d_mod$A,
+  B    = d_mod$B,
+  S    = d_mod$S,
+  Fu   = d_mod$Fu,
+  Y    = d_mod$Y,
+
+  # NEW: crop index
+  Cr   = d_mod$Cr,
+
+  # distance matrix for year effects
+  D    = mat,
+
+  # outcome
+  C    = d_mod$cout_z,
+
+  # main exposure
+  STIR = d_mod$stir_season_z,
+
+  # other covariates from DAG
+  CIN  = d_mod$cin_std,
+  VOL  = d_mod$volume_z,
+  IRR  = d_mod$irr_num,
+  DUP  = d_mod$dup,
+
+  # NEW: residue cover at planting (placeholder, z-scale)
+  RES  = d_mod$res_plant_z
+)
+
+```
+
+```{r check-na-vars}
+# Identify the stan_dat entries that are vectors of length N (i.e., row-level variables)
+vec_names <- names(stan_dat)[sapply(stan_dat, function(x) length(x) == stan_dat$N)]
+
+# Loop through these and report NAs
+for (nm in vec_names) {
+  vals <- stan_dat[[nm]]
+  na_idx <- which(is.na(vals))
+
+  cat("\n==============================\n")
+  cat("Variable:", nm, "\n")
+
+  if (length(na_idx) == 0) {
+    cat("No NA values detected.\n")
+  } else {
+    cat("NA count:", length(na_idx), "\n")
+    cat("Rows with NA:", paste(head(na_idx, 25), collapse = ", "),
+        if (length(na_idx) > 25) "..." else "", "\n\n")
+
+    # Show the corresponding d_mod rows
+    cat("Example offending rows from d_mod:\n")
+    print(d_mod[na_idx[1:min(10, length(na_idx))], ])
+  }
+}
+
+```
+
+
+# 3. Hierarchical Bayesian model
+
+```{r cmdstan model fit}
+# using "m_stir_mogp_v1p6.stan" in ./code folder
+mod <- cmdstan_model("m_stir_mogp_v1p6.stan")
+
+# starting point: existing stan_dat built above
+# and the d_mod data frame used to build it
+stan_dat_cmd <- stan_dat  # copy so we do not break earlier objects
+
+# -------------------------------------------------------------------
+# 1) Pull row-level vectors (must all be length N)
+# -------------------------------------------------------------------
+C_vec    <- d_mod$cout_z
+CIN_vec  <- d_mod$cin_std
+VOL_vec  <- d_mod$volume_z
+
+# NEW (v1p6): crop index + residue placeholder/values
+Cr_vec   <- d_mod$Cr
+RES_vec  <- d_mod$res_plant_z
+
+stopifnot(
+  length(C_vec)   == stan_dat_cmd$N,
+  length(CIN_vec) == stan_dat_cmd$N,
+  length(VOL_vec) == stan_dat_cmd$N,
+  length(Cr_vec)  == stan_dat_cmd$N,
+  length(RES_vec) == stan_dat_cmd$N
+)
+
+# -------------------------------------------------------------------
+# 2) Helper: create missidx + cleaned vectors for Stan
+#    (Stan needs missidx as an integer array; and vectors with no NA)
+# -------------------------------------------------------------------
+impute_var <- function(x) {
+  missidx <- which(is.na(x))          # 1-based indices for Stan
+  x_clean <- x
+  x_clean[missidx] <- 0               # placeholder; overwritten by Stan parameters
+  list(
+    missidx = missidx,
+    N_miss  = length(missidx),
+    clean   = as.numeric(x_clean)
+  )
+}
+
+# -------------------------------------------------------------------
+# 3) Apply helper to C, CIN, VOL
+# -------------------------------------------------------------------
+imp_C   <- impute_var(C_vec)
+imp_CIN <- impute_var(CIN_vec)
+imp_VOL <- impute_var(VOL_vec)
+
+# Outcome C
+stan_dat_cmd$C_missidx <- if (imp_C$N_miss == 0) 1L else as.array(imp_C$missidx)
+stan_dat_cmd$N_C_miss  <- imp_C$N_miss
+stan_dat_cmd$C         <- imp_C$clean
+
+# Inflow concentration CIN
+stan_dat_cmd$CIN_missidx <- if (imp_CIN$N_miss == 0) 1L else as.array(imp_CIN$missidx)
+stan_dat_cmd$N_CIN_miss  <- imp_CIN$N_miss
+stan_dat_cmd$CIN         <- imp_CIN$clean
+
+# Volume VOL
+stan_dat_cmd$VOL_missidx <- if (imp_VOL$N_miss == 0) 1L else as.array(imp_VOL$missidx)
+stan_dat_cmd$N_VOL_miss  <- imp_VOL$N_miss
+stan_dat_cmd$VOL         <- imp_VOL$clean
+
+# -------------------------------------------------------------------
+# 4) NEW (v1p6): pass crop + residue into cmdstan data
+# -------------------------------------------------------------------
+stan_dat_cmd$Cr_n <- length(unique(Cr_vec))
+stan_dat_cmd$Cr   <- as.array(as.integer(Cr_vec))
+
+# residue is numeric (currently all zeros is fine)
+stan_dat_cmd$RES  <- as.numeric(RES_vec)
+
+# -------------------------------------------------------------------
+# 5) Quick consistency checks
+# -------------------------------------------------------------------
+stopifnot(
+  isTRUE(all(stan_dat_cmd$Cr >= 1L)),
+  isTRUE(all(stan_dat_cmd$Cr <= stan_dat_cmd$Cr_n))
+)
+
+cat("\n[INFO] Missing counts:\n")
+cat("  N_C_miss   =", stan_dat_cmd$N_C_miss, "\n")
+cat("  N_CIN_miss =", stan_dat_cmd$N_CIN_miss, "\n")
+cat("  N_VOL_miss =", stan_dat_cmd$N_VOL_miss, "\n")
+cat("[INFO] Crop levels (Cr_n) =", stan_dat_cmd$Cr_n, "\n")
+cat("[INFO] Residue summary:\n")
+print(summary(stan_dat_cmd$RES))
+
+# -------------------------------------------------------------------
+# 6) Sample with cmdstanr
+# -------------------------------------------------------------------
+fit <- mod$sample(
+  data            = stan_dat_cmd,
+  chains          = 4,
+  parallel_chains = 4,
+  iter_warmup     = 1000,
+  iter_sampling   = 1000
+)
+
+saveRDS(fit, file = "./out/fit_mogp_v1p6.rds")
+# fit <- readRDS("./out/fit_mogp_v1p6.rds")
+
+```
+
+
+---
+
+# 4. Posterior inspection
+
+```{r stan posterior summary}
+summarize_cmdstan <- function(fit, vars = NULL, n_show = 30) {
+  # cmdstanr summary
+  s <- if (is.null(vars)) {
+    fit$summary()
+  } else {
+    fit$summary(variables = vars)
+  }
+
+  # basic display
+  cat("\n=== Top", n_show, "rows of cmdstan summary ===\n")
+  print(head(s, n_show), row.names = FALSE)
+
+  # diagnostics (guard against missing columns depending on cmdstanr version)
+  rhat_vals <- if ("rhat" %in% names(s)) s$rhat else rep(NA_real_, nrow(s))
+  ess_vals  <- if ("ess_bulk" %in% names(s)) s$ess_bulk else rep(NA_real_, nrow(s))
+
+  # helper to avoid which.min/max on all-NA
+  safe_which_min <- function(x) if (all(is.na(x))) NA_integer_ else which.min(x)
+  safe_which_max <- function(x) if (all(is.na(x))) NA_integer_ else which.max(x)
+
+  i_min_rhat <- safe_which_min(rhat_vals)
+  i_max_rhat <- safe_which_max(rhat_vals)
+  i_min_ess  <- safe_which_min(ess_vals)
+  i_max_ess  <- safe_which_max(ess_vals)
+
+  cat("\n=== Rhat Diagnostics ===\n")
+  cat("Min Rhat:   ", suppressWarnings(min(rhat_vals, na.rm = TRUE)),
+      if (!is.na(i_min_rhat)) paste0(" (", s$variable[i_min_rhat], ")") else "", "\n")
+  cat("Median Rhat:", suppressWarnings(median(rhat_vals, na.rm = TRUE)), "\n")
+  cat("Max Rhat:   ", suppressWarnings(max(rhat_vals, na.rm = TRUE)),
+      if (!is.na(i_max_rhat)) paste0(" (", s$variable[i_max_rhat], ")") else "", "\n")
+
+  cat("\n=== Bulk ESS Diagnostics ===\n")
+  cat("Min ESS:    ", suppressWarnings(min(ess_vals, na.rm = TRUE)),
+      if (!is.na(i_min_ess)) paste0(" (", s$variable[i_min_ess], ")") else "", "\n")
+  cat("Median ESS: ", suppressWarnings(median(ess_vals, na.rm = TRUE)), "\n")
+  cat("Max ESS:    ", suppressWarnings(max(ess_vals, na.rm = TRUE)),
+      if (!is.na(i_max_ess)) paste0(" (", s$variable[i_max_ess], ")") else "", "\n")
+
+  # v1p6 convenience: highlight crop/residue blocks if present
+  # Names must match the Stan parameter names exactly
+  new_blocks <- c("beta_res_V", "beta_res_C", "gamma_Cr_V", "gamma_Cr")
+  
+  # cmdstanr summary uses rownames in $variable like:
+  #  beta_res_V
+  #  beta_res_C[1]
+  #  gamma_Cr_V[3]
+  #  gamma_Cr[2,5]
+  is_in_block <- function(v, base) grepl(paste0("^", base, "(\\[|$)"), v)
+  
+  sel <- Reduce(
+    `|`,
+    lapply(new_blocks, function(b) is_in_block(s$variable, b))
+  )
+  
+  if (any(sel)) {
+    cat("\n=== v1p6: Crop/Residue terms present in fit (first 50 rows) ===\n")
+    print(utils::head(s[sel, ], 50), row.names = FALSE)
+  
+    # quick counts by block (helps confirm dimensions at a glance)
+    cat("\n=== v1p6: Term counts by parameter block ===\n")
+    for (b in new_blocks) {
+      n_b <- sum(is_in_block(s$variable, b))
+      if (n_b > 0) cat(sprintf("%-12s : %d\n", b, n_b))
+    }
+  } else {
+    cat("\n[WARN] v1p6: No crop/residue parameters detected in fit summary.\n")
+    cat("[WARN] Expected blocks: beta_res_V, beta_res_C[...], gamma_Cr_V[...], gamma_Cr[...,...]\n")
+  }
+
+  invisible(s)
+}
+
+s_all <- summarize_cmdstan(fit, n_show = 50)
+
+```
+
+```{r stan analyte effects}
+## =====================================================================
+## Extract posterior samples from cmdstanr into a "rethinking-style" list
+## v1p6: correct analyte × crop effects for concentration + residue-safe outputs
+## =====================================================================
+
+dat_used <- if (exists("stan_dat_cmd")) stan_dat_cmd else stan_dat
+
+# Dimensions
+A_n  <- dat_used$A_n
+B_n  <- dat_used$B_n
+S_n  <- dat_used$S_n
+F_n  <- dat_used$F_n
+Y_n  <- dat_used$Y_n
+Cr_n <- dat_used$Cr_n
+
+# Residue placeholder check (all zeros means no supported effect yet)
+res_sd <- sd(dat_used$RES, na.rm = TRUE)
+res_is_placeholder <- is.na(res_sd) || res_sd == 0
+
+# Draws matrix
+draws_mat <- fit$draws(
+  variables = c(
+    # analyte-level fixed effects
+    "alpha", "beta_stir", "beta_cin", "beta_dup",
+
+    # random effects
+    "gamma_B", "gamma_S", "gamma_F",
+
+    # volume model terms
+    "beta_vol", "beta_irr", "a_V", "b_V", "sigma_V",
+
+    # residual terms
+    "sigma_analyte",
+
+    # GP on year
+    "F_year", "etasq_year", "rhosq_year",
+
+    # v1p6 residue terms
+    "beta_res_V", "beta_res_C",
+
+    # v1p6 crop terms
+    "gamma_Cr", "gamma_Cr_V",
+    "sigma_Cr", "sigma_Cr_V"
+  ),
+  format = "matrix"
+)
+
+n_draws <- nrow(draws_mat)
+
+get_param_mat <- function(draws_mat, par) {
+  sel <- grepl(paste0("^", par, "\\["), colnames(draws_mat))
+  if (!any(sel)) stop("No indexed columns found for parameter '", par, "'.")
+  draws_mat[, sel, drop = FALSE]
+}
+
+get_param_vec <- function(draws_mat, par) {
+  if (!(par %in% colnames(draws_mat))) stop("No scalar column found for parameter '", par, "'.")
+  draws_mat[, par]
+}
+
+# ---- analyte-level vectors (draws × A_n)
+alpha_mat      <- get_param_mat(draws_mat, "alpha")
+beta_stir_mat  <- get_param_mat(draws_mat, "beta_stir")
+beta_cin_mat   <- get_param_mat(draws_mat, "beta_cin")
+beta_dup_mat   <- get_param_mat(draws_mat, "beta_dup")
+beta_res_C_mat <- get_param_mat(draws_mat, "beta_res_C")
+
+# ---- analyte × block random effects: draws × A_n × B_n
+gamma_B_mat <- get_param_mat(draws_mat, "gamma_B")
+gamma_B_arr <- array(NA_real_, dim = c(n_draws, A_n, B_n))
+k <- 1L
+for (b in seq_len(B_n)) {
+  for (a in seq_len(A_n)) {
+    gamma_B_arr[, a, b] <- gamma_B_mat[, k]; k <- k + 1L
+  }
+}
+
+# ---- analyte × sampler random effects: draws × A_n × S_n
+gamma_S_mat <- get_param_mat(draws_mat, "gamma_S")
+gamma_S_arr <- array(NA_real_, dim = c(n_draws, A_n, S_n))
+k <- 1L
+for (s in seq_len(S_n)) {
+  for (a in seq_len(A_n)) {
+    gamma_S_arr[, a, s] <- gamma_S_mat[, k]; k <- k + 1L
+  }
+}
+
+# ---- analyte × flume random effects: draws × A_n × F_n
+gamma_F_mat <- get_param_mat(draws_mat, "gamma_F")
+gamma_F_arr <- array(NA_real_, dim = c(n_draws, A_n, F_n))
+k <- 1L
+for (f in seq_len(F_n)) {
+  for (a in seq_len(A_n)) {
+    gamma_F_arr[, a, f] <- gamma_F_mat[, k]; k <- k + 1L
+  }
+}
+
+# ---- GP year effects: draws × Y_n × A_n
+F_mat <- get_param_mat(draws_mat, "F_year")
+F_array <- array(NA_real_, dim = c(n_draws, Y_n, A_n))
+k <- 1L
+for (a in seq_len(A_n)) {
+  for (y in seq_len(Y_n)) {
+    F_array[, y, a] <- F_mat[, k]; k <- k + 1L
+  }
+}
+
+# ---- v1p6 crop effects
+# Concentration crop effect is analyte-specific: gamma_Cr[A, Cr]
+gamma_Cr_mat <- get_param_mat(draws_mat, "gamma_Cr")
+if (ncol(gamma_Cr_mat) != A_n * Cr_n) {
+  stop(
+    "gamma_Cr dimension mismatch: expected ", A_n * Cr_n, " columns (A_n * Cr_n) but found ",
+    ncol(gamma_Cr_mat), ". Check parameterization/naming in Stan."
+  )
+}
+gamma_Cr_arr <- array(NA_real_, dim = c(n_draws, A_n, Cr_n))
+k <- 1L
+for (cr in seq_len(Cr_n)) {
+  for (a in seq_len(A_n)) {
+    gamma_Cr_arr[, a, cr] <- gamma_Cr_mat[, k]; k <- k + 1L
+  }
+}
+
+# Volume crop effect is crop-only: gamma_Cr_V[Cr]
+gamma_Cr_V_mat <- get_param_mat(draws_mat, "gamma_Cr_V")
+if (ncol(gamma_Cr_V_mat) != Cr_n) {
+  stop(
+    "gamma_Cr_V dimension mismatch: expected ", Cr_n, " columns (Cr_n) but found ",
+    ncol(gamma_Cr_V_mat), ". Check parameterization/naming in Stan."
+  )
+}
+
+# ---- scalars
+beta_vol_vec    <- get_param_vec(draws_mat, "beta_vol")
+beta_irr_vec    <- get_param_vec(draws_mat, "beta_irr")
+a_V_vec         <- get_param_vec(draws_mat, "a_V")
+b_V_vec         <- get_param_vec(draws_mat, "b_V")
+sigma_V_vec     <- get_param_vec(draws_mat, "sigma_V")
+beta_res_V_vec  <- get_param_vec(draws_mat, "beta_res_V")
+
+sigma_Cr_mat   <- get_param_mat(draws_mat, "sigma_Cr")     # draws × A_n
+sigma_Cr_V_vec <- get_param_vec(draws_mat, "sigma_Cr_V")   # draws
+
+sigma_analyte_mat <- get_param_mat(draws_mat, "sigma_analyte")
+
+etasq_year_vec  <- get_param_vec(draws_mat, "etasq_year")
+rhosq_year_vec  <- get_param_vec(draws_mat, "rhosq_year")
+
+# ---- Assemble posterior list
+post <- list(
+  alpha        = alpha_mat,
+  beta_stir    = beta_stir_mat,
+  beta_cin     = beta_cin_mat,
+  beta_dup     = beta_dup_mat,
+  beta_res_C   = beta_res_C_mat,
+
+  gamma_B      = gamma_B_arr,
+  gamma_S      = gamma_S_arr,
+  gamma_F      = gamma_F_arr,
+
+  gamma_Cr     = gamma_Cr_arr,    # draws × A_n × Cr_n (conc crop effect)
+  gamma_Cr_V   = gamma_Cr_V_mat,  # draws × Cr_n (vol crop effect)
+
+  beta_vol     = beta_vol_vec,
+  beta_irr     = beta_irr_vec,
+  a_V          = a_V_vec,
+  b_V          = b_V_vec,
+  sigma_V      = sigma_V_vec,
+  beta_res_V   = beta_res_V_vec,
+
+  sigma_Cr     = sigma_Cr_vec,
+  sigma_Cr_V   = sigma_Cr_V_vec,
+  sigma_analyte = sigma_analyte_mat,
+
+  F_year       = F_array,
+  etasq_year   = etasq_year_vec,
+  rhosq_year   = rhosq_year_vec
+)
+
+## =====================================================================
+## Summaries
+## =====================================================================
+
+# --- STIR (analyte-specific)
+alpha_hat      <- colMeans(post$alpha)
+beta_stir_mean <- colMeans(post$beta_stir)
+beta_stir_hpdi <- apply(post$beta_stir, 2, HPDI, prob = 0.89)
+beta_stir_pi   <- apply(post$beta_stir, 2, PI,   prob = 0.95)
+
+# --- Residue on concentration (analyte-specific slope)
+# Coefficient exists now, but if RES is placeholder it is not identifiable; report supported effect as 0.
+beta_resC_coef_mean <- colMeans(post$beta_res_C)
+beta_resC_coef_hpdi <- apply(post$beta_res_C, 2, HPDI, prob = 0.89)
+beta_resC_coef_pi   <- apply(post$beta_res_C, 2, PI,   prob = 0.95)
+
+beta_resC_eff_mean  <- if (res_is_placeholder) rep(0, A_n) else beta_resC_coef_mean
+beta_resC_eff_hpdi  <- if (res_is_placeholder) rbind(rep(0, A_n), rep(0, A_n)) else beta_resC_coef_hpdi
+beta_resC_eff_pi    <- if (res_is_placeholder) rbind(rep(0, A_n), rep(0, A_n)) else beta_resC_coef_pi
+
+# --- Analyte effects table
+analyte_effects <- analyte_lookup %>%
+  mutate(
+    alpha_hat        = alpha_hat,
+
+    beta_stir_mean   = beta_stir_mean,
+    beta_stir_median = apply(post$beta_stir, 2, median),
+    beta_hpdi_low    = beta_stir_hpdi[1, ],
+    beta_hpdi_high   = beta_stir_hpdi[2, ],
+    beta_pi_low      = beta_stir_pi[1, ],
+    beta_pi_high     = beta_stir_pi[2, ],
+
+    beta_resC_mean      = beta_resC_eff_mean,
+    beta_resC_median    = if (res_is_placeholder) rep(0, A_n) else apply(post$beta_res_C, 2, median),
+    beta_resC_hpdi_low  = beta_resC_eff_hpdi[1, ],
+    beta_resC_hpdi_high = beta_resC_eff_hpdi[2, ],
+    beta_resC_pi_low    = beta_resC_eff_pi[1, ],
+    beta_resC_pi_high   = beta_resC_eff_pi[2, ],
+
+    residue_placeholder = res_is_placeholder
+  )
+
+analyte_effects
+
+# --- Crop effects on concentration: one row per (analyte, crop)
+# Requires crop_lookup (Cr, Crop) from your prep chunk.
+crop_effects_conc <- tidyr::expand_grid(
+  analyte_lookup %>% select(A, analyte_abbr),
+  crop_lookup %>% select(Cr, Crop)
+) %>%
+  arrange(A, Cr) %>%
+  mutate(
+    crop_eff_mean   = NA_real_,
+    crop_eff_median = NA_real_,
+    crop_low89      = NA_real_,
+    crop_high89     = NA_real_
+  )
+
+for (ii in seq_len(nrow(crop_effects_conc))) {
+  a  <- crop_effects_conc$A[ii]
+  cr <- crop_effects_conc$Cr[ii]
+  x  <- post$gamma_Cr[, a, cr]
+  h  <- HPDI(x, prob = 0.89)
+  crop_effects_conc$crop_eff_mean[ii]   <- mean(x)
+  crop_effects_conc$crop_eff_median[ii] <- median(x)
+  crop_effects_conc$crop_low89[ii]      <- h[1]
+  crop_effects_conc$crop_high89[ii]     <- h[2]
+}
+
+crop_effects_conc
+
+# --- Crop effects on volume: one row per crop
+crop_effects_vol <- crop_lookup %>%
+  mutate(
+    crop_eff_mean   = colMeans(post$gamma_Cr_V),
+    crop_eff_median = apply(post$gamma_Cr_V, 2, median),
+    crop_low89      = apply(post$gamma_Cr_V, 2, function(x) HPDI(x, prob = 0.89)[1]),
+    crop_high89     = apply(post$gamma_Cr_V, 2, function(x) HPDI(x, prob = 0.89)[2])
+  )
+
+crop_effects_vol
+
+# --- Residue effect on volume (scalar slope, supported effect is 0 if placeholder)
+beta_resV_coef_hpdi <- HPDI(post$beta_res_V, prob = 0.89)
+beta_resV_coef_pi   <- PI(post$beta_res_V,   prob = 0.95)
+
+residue_volume_effect <- tibble::tibble(
+  beta_resV_mean      = if (res_is_placeholder) 0 else mean(post$beta_res_V),
+  beta_resV_median    = if (res_is_placeholder) 0 else median(post$beta_res_V),
+  beta_resV_hpdi_low  = if (res_is_placeholder) 0 else beta_resV_coef_hpdi[1],
+  beta_resV_hpdi_high = if (res_is_placeholder) 0 else beta_resV_coef_hpdi[2],
+  beta_resV_pi_low    = if (res_is_placeholder) 0 else beta_resV_coef_pi[1],
+  beta_resV_pi_high   = if (res_is_placeholder) 0 else beta_resV_coef_pi[2],
+  residue_placeholder = res_is_placeholder
+)
+
+residue_volume_effect
+
+```
+
+
+---
+
+# 5. Plot posterior slopes for STIR effects on concentration
+
+```{r stir effects on conc}
+# Order analytes by estimated mean STIR effect
+analyte_effects_ord <- analyte_effects %>%
+  arrange(beta_stir_mean) %>%
+  mutate(A_plot = seq_len(n()))  # plotting index 1...A_n
+
+A_seq <- analyte_effects_ord$A_plot
+
+beta_mean <- analyte_effects_ord$beta_stir_mean
+beta_hpdi_low  <- analyte_effects_ord$beta_hpdi_low
+beta_hpdi_high <- analyte_effects_ord$beta_hpdi_high
+beta_pi_low    <- analyte_effects_ord$beta_pi_low
+beta_pi_high   <- analyte_effects_ord$beta_pi_high
+
+labels <- analyte_effects_ord$analyte_abbr
+
+# Color helper (robust: does not require rethinking::col.alpha)
+col_alpha <- function(col, alpha = 1) {
+  grDevices::adjustcolor(col, alpha.f = alpha)
+}
+
+# Plot function used for both file + inline display
+plot_stir_effects <- function() {
+  plot(
+    A_seq, beta_mean,
+    xaxt = "n",
+    pch  = 16,
+    col  = "darkred",
+    ylim = range(c(beta_pi_low, beta_pi_high), finite = TRUE),
+    ylab = "Effect of STIR on Concentration (z-scale)",
+    xlab = "Analyte (ordered by mean effect)",
+    main = "Analyte-specific STIR effects with 89% HPDI and 95% PI"
+  )
+
+  axis(1, at = A_seq, labels = labels, las = 2)
+
+  # 95% PI bands (lighter)
+  for (i in seq_along(A_seq)) {
+    lines(
+      x = c(A_seq[i], A_seq[i]),
+      y = c(beta_pi_low[i], beta_pi_high[i]),
+      col = col_alpha("darkred", 0.20),
+      lwd = 5
+    )
+  }
+
+  # 89% HPDI bands (darker)
+  for (i in seq_along(A_seq)) {
+    lines(
+      x = c(A_seq[i], A_seq[i]),
+      y = c(beta_hpdi_low[i], beta_hpdi_high[i]),
+      col = col_alpha("darkred", 0.40),
+      lwd = 5
+    )
+  }
+
+  points(A_seq, beta_mean, pch = 16, col = "darkred")
+  abline(h = 0, lty = 2)
+}
+
+# Save as JPEG in figs folder (v1p6 filename)
+jpeg("../figs/load1p6_STIReffects.jpeg", width = 2000, height = 1300, res = 200)
+plot_stir_effects()
+dev.off()
+
+# Also show inline in the knitted report
+plot_stir_effects()
+```
+
+```{r stir effects on volume}
+plot_stir_volume_effect <- function(fit, param = "b_V",
+                                    file = NULL,
+                                    main = "Posterior effect of STIR on runoff volume",
+                                    xlab = "Effect of STIR on runoff volume (z-scale)",
+                                    ylab = "Density") {
+
+  if (inherits(fit, "CmdStanMCMC")) {
+    draws <- fit$draws(variables = param, format = "matrix")
+    if (!(param %in% colnames(draws))) {
+      stop("Parameter '", param, "' not found in cmdstan draws.")
+    }
+    b <- as.numeric(draws[, param])
+  } else if (inherits(fit, "stanfit")) {
+    s <- rstan::extract(fit, pars = param, permuted = TRUE)
+    if (!(param %in% names(s))) stop("Parameter '", param, "' not found in stanfit.")
+    b <- as.numeric(s[[param]])
+  } else if (is.numeric(fit)) {
+    b <- as.numeric(fit)
+  } else {
+    stop("Unsupported object type for 'fit'. Use a CmdStanMCMC, stanfit, or numeric vector.")
+  }
+
+  b <- b[is.finite(b)]
+
+  if (!is.null(file)) {
+    jpeg(file, width = 2000, height = 1300, res = 200)
+    on.exit(dev.off(), add = TRUE)
+  }
+
+  dens <- stats::density(b)
+
+  plot(
+    dens,
+    type = "l",
+    lwd  = 4,
+    col  = "darkred",
+    xlab = xlab,
+    ylab = ylab,
+    main = main,
+    bty  = "l"
+  )
+
+  abline(v = 0, lty = 2)
+
+  invisible(b)
+}
+
+# Plot to device
+plot_stir_volume_effect(fit, param = "b_V")
+
+# Save to file (v1p6 filename)
+plot_stir_volume_effect(
+  fit,
+  param = "b_V",
+  file = "../figs/1p6_post_STIR_effect_on_volume.jpeg"
+)
+
+```
+
+
+## 6. Generative STIR → Load curves by analyte --------------------------------
+
+```{r load-generative-curves}
+## Scenario-based STIR -> Load link functions -----------------------------
+## v1p6: includes crop (Cr) and residue (RES) in both volume + concentration
+
+# 1. Back-transform stats (only computed once)
+c_stats <- d_mod %>%
+  dplyr::group_by(A) %>%
+  dplyr::summarize(
+    c_mean = mean(Result_mg_L, na.rm = TRUE),
+    c_sd   = sd(Result_mg_L,   na.rm = TRUE),
+    .groups = "drop"
+  )
+
+V_mean <- mean(d_mod$Volume, na.rm = TRUE)
+V_sd   <- sd(d_mod$Volume,   na.rm = TRUE)
+
+# STIR raw mean/sd for Season_STIR_toDate
+stir_mean <- mean(d_mod$Season_STIR_toDate, na.rm = TRUE)
+stir_sd   <- sd(d_mod$Season_STIR_toDate,   na.rm = TRUE)
+
+# Empirical means for averaging when left NULL
+IRR_bar <- mean(d_mod$irr_num, na.rm = TRUE)
+DUP_bar <- mean(d_mod$dup,     na.rm = TRUE)
+
+# Crop weights for "average over crops" scenario (uses observed crop frequencies)
+crop_wts <- d_mod %>%
+  dplyr::count(Cr, name = "n") %>%
+  dplyr::mutate(w = n / sum(n)) %>%
+  dplyr::arrange(Cr)
+
+# Helper: one analyte, one scenario --------------------------------------
+simulate_load_curve_single <- function(
+  post,
+  analyte,
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block      = NULL,
+  sampler    = NULL,
+  flume      = NULL,
+  irrigation = NULL,
+  duplicate  = NULL,
+  crop       = NULL,     # NEW v1p6: crop label (must match crop_lookup$Crop); NULL averages over crops
+  res_z      = 0,        # NEW v1p6: residue (z-scale). Placeholder runs use 0.
+  cin_z      = 0,
+  year       = NULL,
+  n_draws    = 2000,
+  ci_prob    = 0.95
+) {
+
+  if (!is.numeric(ci_prob) || length(ci_prob) != 1L || ci_prob <= 0 || ci_prob >= 1) {
+    stop("ci_prob must be a single numeric value strictly between 0 and 1.")
+  }
+
+  # Map analyte label -> index A
+  j_idx <- analyte_lookup$A[analyte_lookup$analyte_abbr == analyte]
+  if (length(j_idx) != 1L) stop("analyte not found in analyte_lookup")
+
+  # Stats for this analyte
+  stats_j  <- dplyr::filter(c_stats, A == j_idx)
+  c_mean_j <- stats_j$c_mean
+  c_sd_j   <- stats_j$c_sd
+
+  # STIR in z units
+  STIR_z_seq <- (STIR_raw_seq - stir_mean) / stir_sd
+
+  # Total draws and subsample index
+  n_draws_total <- nrow(post$alpha)
+  draw_idx <- if (n_draws_total > n_draws) sample.int(n_draws_total, n_draws) else seq_len(n_draws_total)
+
+  # ---------------- Random effects / covariate settings ----------------
+
+  # Block (Rep)
+  if (is.null(block)) {
+    gamma_B_draws <- post$gamma_B[draw_idx, j_idx, , drop = FALSE]   # draws × 1 × B_n
+    gamma_B_star  <- apply(gamma_B_draws, 1, mean)                   # draws
+    block_label   <- "avg_all_blocks"
+  } else {
+    B_idx <- block_lookup$B[block_lookup$Rep == block]
+    if (length(B_idx) != 1L) stop("block not found in block_lookup")
+    gamma_B_star <- post$gamma_B[draw_idx, j_idx, B_idx]
+    block_label  <- as.character(block)
+  }
+
+  # Sampler method
+  if (is.null(sampler)) {
+    gamma_S_draws <- post$gamma_S[draw_idx, j_idx, , drop = FALSE]
+    gamma_S_star  <- apply(gamma_S_draws, 1, mean)
+    sampler_label <- "avg_all_samplers"
+  } else {
+    S_idx <- sampler_lookup$S[sampler_lookup$SampleMethod == sampler]
+    if (length(S_idx) != 1L) stop("sampler not found in sampler_lookup")
+    gamma_S_star  <- post$gamma_S[draw_idx, j_idx, S_idx]
+    sampler_label <- as.character(sampler)
+  }
+
+  # Flume type
+  if (is.null(flume)) {
+    gamma_F_draws <- post$gamma_F[draw_idx, j_idx, , drop = FALSE]
+    gamma_F_star  <- apply(gamma_F_draws, 1, mean)
+    flume_label   <- "avg_all_flumes"
+  } else {
+    Fu_idx <- flume_lookup$Fu[flume_lookup$FlumeMethod == flume]
+    if (length(Fu_idx) != 1L) stop("flume not found in flume_lookup")
+    gamma_F_star  <- post$gamma_F[draw_idx, j_idx, Fu_idx]
+    flume_label   <- as.character(flume)
+  }
+
+  # Irrigation
+  if (is.null(irrigation)) {
+    IRR_star         <- IRR_bar
+    irrigation_label <- "avg_all_irrigations"
+  } else {
+    irr_val <- irrigation_lookup$irr_num[irrigation_lookup$Irrigation == irrigation]
+    if (length(irr_val) != 1L) stop("irrigation not found in irrigation_lookup")
+    IRR_star         <- irr_val
+    irrigation_label <- as.character(irrigation)
+  }
+
+  # Duplicate status
+  if (is.null(duplicate)) {
+    DUP_star        <- DUP_bar
+    duplicate_label <- "avg_duplicates"
+  } else {
+    DUP_star        <- as.numeric(duplicate)
+    duplicate_label <- ifelse(as.logical(duplicate), "TRUE", "FALSE")
+  }
+
+  # Crop (NEW v1p6): affects BOTH volume and concentration
+  if (is.null(crop)) {
+    # weighted average over observed crop frequencies
+    w <- crop_wts$w
+    if (length(w) != ncol(post$gamma_Cr_V)) stop("crop weight length != Cr_n for gamma_Cr_V")
+    if (length(w) != dim(post$gamma_Cr)[3]) stop("crop weight length != Cr_n for gamma_Cr")
+
+    # volume crop intercept: draws × Cr_n -> draws
+    cropV_draws <- post$gamma_Cr_V[draw_idx, , drop = FALSE]
+    gamma_CrV_star <- as.numeric(cropV_draws %*% w)
+
+    # concentration crop intercept for this analyte: draws × Cr_n -> draws
+    cropC_draws <- post$gamma_Cr[draw_idx, j_idx, , drop = FALSE]  # draws × 1 × Cr_n
+    cropC_mat   <- matrix(cropC_draws, nrow = length(draw_idx), ncol = length(w))
+    gamma_CrC_star <- as.numeric(cropC_mat %*% w)
+
+    crop_label <- "avg_over_crops_weighted"
+  } else {
+    Cr_idx <- crop_lookup$Cr[crop_lookup$Crop == crop]
+    if (length(Cr_idx) != 1L) stop("crop not found in crop_lookup (check exact spelling/levels)")
+    gamma_CrV_star <- post$gamma_Cr_V[draw_idx, Cr_idx]
+    gamma_CrC_star <- post$gamma_Cr[draw_idx, j_idx, Cr_idx]
+    crop_label <- as.character(crop)
+  }
+
+  # Residue (NEW v1p6): affects BOTH volume and concentration
+  RES_star <- as.numeric(res_z)
+  if (!is.finite(RES_star) || length(RES_star) != 1L) stop("res_z must be a single finite numeric value")
+
+  # ---------------- Posterior pieces for this analyte ----------------
+
+  alpha_j      <- post$alpha[draw_idx, j_idx]
+  beta_stirj   <- post$beta_stir[draw_idx, j_idx]
+  beta_cinj    <- post$beta_cin[draw_idx, j_idx]
+  beta_dupj    <- post$beta_dup[draw_idx, j_idx]
+  beta_resC_j  <- post$beta_res_C[draw_idx, j_idx]
+
+  beta_vol <- post$beta_vol[draw_idx]
+  beta_irr <- post$beta_irr[draw_idx]
+
+  # v1p6 volume STIR params (b_V is the STIR slope; a_V is intercept)
+  a_V <- if (!is.null(post$a_V)) post$a_V[draw_idx] else {
+    as.numeric(fit$draws(variables = "a_V", format = "matrix")[draw_idx, "a_V"])
+  }
+  b_V <- if (!is.null(post$b_V)) post$b_V[draw_idx] else {
+    as.numeric(fit$draws(variables = "b_V", format = "matrix")[draw_idx, "b_V"])
+  }
+
+  beta_res_V <- if (!is.null(post$beta_res_V)) post$beta_res_V[draw_idx] else {
+    as.numeric(fit$draws(variables = "beta_res_V", format = "matrix")[draw_idx, "beta_res_V"])
+  }
+
+  # GP on year: analyte-specific effect, consistent with draw_idx
+  if (is.null(year)) {
+    F_sub  <- post$F_year[draw_idx, , j_idx, drop = FALSE]  # draws × Y × 1
+    k_star <- apply(F_sub, 1, mean)
+    year_label <- "avg_all_years"
+  } else {
+    Y_idx <- match(year, years_used)
+    if (is.na(Y_idx)) stop("requested year not in years_used")
+    k_star <- post$F_year[draw_idx, Y_idx, j_idx]
+    year_label <- as.character(year)
+  }
+
+  # ---------------- Loop over STIR values ----------------
+  n_x <- length(STIR_z_seq)
+  load_mean <- numeric(n_x)
+  load_low  <- numeric(n_x)
+  load_high <- numeric(n_x)
+
+  for (k in seq_len(n_x)) {
+    stz <- STIR_z_seq[k]
+
+    # Volume model (z scale): includes STIR, residue, crop
+    muV_z <- a_V +
+      b_V * stz +
+      beta_res_V * RES_star +
+      gamma_CrV_star
+
+    # Concentration model (z scale): includes crop and residue
+    muC_z <- alpha_j +
+      beta_stirj * stz +
+      beta_cinj  * cin_z +
+      beta_vol   * muV_z +
+      beta_irr   * IRR_star +
+      beta_dupj  * DUP_star +
+      beta_resC_j * RES_star +
+      gamma_CrC_star +
+      gamma_B_star +
+      gamma_S_star +
+      gamma_F_star +
+      k_star
+
+    # Back transform to raw units
+    C_raw <- c_mean_j + c_sd_j * muC_z
+    V_raw <- V_mean   + V_sd   * muV_z
+
+    # Load (mg) converted to g
+    L_s <- C_raw * V_raw / 1000
+
+    load_mean[k] <- mean(L_s)
+    hpdi_k       <- HPDI(L_s, prob = ci_prob)
+    load_low[k]  <- hpdi_k[1]
+    load_high[k] <- hpdi_k[2]
+  }
+
+  data.frame(
+    analyte          = analyte,
+    STIR_raw         = STIR_raw_seq,
+    load_mean        = load_mean,
+    load_low         = load_low,
+    load_high        = load_high,
+    block_level      = block_label,
+    sampler_level    = sampler_label,
+    flume_level      = flume_label,
+    irrigation_level = irrigation_label,
+    duplicate_level  = duplicate_label,
+    crop_level       = crop_label,
+    res_z            = RES_star,
+    cin_z            = cin_z,
+    year_level       = year_label,
+    ci_prob          = ci_prob
+  )
+}
+
+# Wrapper: multiple analytes (default = all) -----------------------------
+simulate_load_curves <- function(
+  post,
+  analytes     = NULL,
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  crop         = NULL,   # NEW v1p6
+  res_z        = 0,      # NEW v1p6
+  cin_z        = 0,
+  year         = NULL,
+  n_draws      = 2000,
+  ci_prob      = 0.95
+) {
+  if (is.null(analytes)) analytes <- as.character(analyte_lookup$analyte_abbr)
+
+  res_list <- lapply(analytes, function(an) {
+    simulate_load_curve_single(
+      post         = post,
+      analyte      = an,
+      STIR_raw_seq = STIR_raw_seq,
+      block        = block,
+      sampler      = sampler,
+      flume        = flume,
+      irrigation   = irrigation,
+      duplicate    = duplicate,
+      crop         = crop,
+      res_z        = res_z,
+      cin_z        = cin_z,
+      year         = year,
+      n_draws      = n_draws,
+      ci_prob      = ci_prob
+    )
+  })
+
+  dplyr::bind_rows(res_list)
+}
+
+## ------------------------------------------------------------------
+## Helpers: observed loads under a given scenario
+## ------------------------------------------------------------------
+
+compute_observed_load_points_single <- function(
+  d_mod,
+  analyte,
+  block      = NULL,
+  sampler    = NULL,
+  flume      = NULL,
+  irrigation = NULL,
+  duplicate  = NULL,
+  crop       = NULL,   # NEW v1p6
+  year       = NULL,
+  stir_var   = "Season_STIR_toDate",
+  conc_var   = "Result_mg_L",
+  vol_var    = "Volume"
+) {
+
+  d_sub <- d_mod %>%
+    dplyr::filter(analyte_abbr == analyte)
+
+  if (!is.null(block))      d_sub <- d_sub %>% dplyr::filter(Rep == block)
+  if (!is.null(sampler))    d_sub <- d_sub %>% dplyr::filter(SampleMethod == sampler)
+  if (!is.null(flume))      d_sub <- d_sub %>% dplyr::filter(FlumeMethod == flume)
+  if (!is.null(irrigation)) d_sub <- d_sub %>% dplyr::filter(irr_num == irrigation)
+  if (!is.null(duplicate))  d_sub <- d_sub %>% dplyr::filter(dup == as.numeric(duplicate))
+  if (!is.null(crop))       d_sub <- d_sub %>% dplyr::filter(Crop == crop)
+  if (!is.null(year))       d_sub <- d_sub %>% dplyr::filter(Year == year)
+
+  d_sub <- d_sub %>%
+    dplyr::filter(
+      !is.na(.data[[stir_var]]),
+      !is.na(.data[[conc_var]]),
+      !is.na(.data[[vol_var]])
+    )
+
+  block_label      <- if (is.null(block))      "avg_all_blocks"      else as.character(block)
+  sampler_label    <- if (is.null(sampler))    "avg_all_samplers"    else as.character(sampler)
+  flume_label      <- if (is.null(flume))      "avg_all_flumes"      else as.character(flume)
+  irrigation_label <- if (is.null(irrigation)) "avg_all_irrigations" else as.character(irrigation)
+  duplicate_label  <- if (is.null(duplicate))  "avg_duplicates"      else ifelse(as.logical(duplicate), "TRUE", "FALSE")
+  crop_label       <- if (is.null(crop))       "all_crops"           else as.character(crop)
+  year_label       <- if (is.null(year))       "all_years"           else as.character(year)
+
+  if (nrow(d_sub) == 0L) {
+    return(tibble::tibble(
+      analyte          = character(0),
+      STIR_raw         = numeric(0),
+      load_obs         = numeric(0),
+      n_obs            = integer(0),
+      block_level      = character(0),
+      sampler_level    = character(0),
+      flume_level      = character(0),
+      irrigation_level = character(0),
+      duplicate_level  = character(0),
+      crop_level       = character(0),
+      year_level       = character(0)
+    ))
+  }
+
+  d_sub <- d_sub %>%
+    dplyr::mutate(
+      STIR_raw = .data[[stir_var]],
+      load_g   = .data[[conc_var]] * .data[[vol_var]] / 1000
+    )
+
+  d_sum <- d_sub %>%
+    dplyr::group_by(STIR_raw) %>%
+    dplyr::summarize(
+      load_obs = mean(load_g, na.rm = TRUE),
+      n_obs    = dplyr::n(),
+      .groups  = "drop"
+    )
+
+  d_sum %>%
+    dplyr::mutate(
+      analyte          = analyte,
+      block_level      = block_label,
+      sampler_level    = sampler_label,
+      flume_level      = flume_label,
+      irrigation_level = irrigation_label,
+      duplicate_level  = duplicate_label,
+      crop_level       = crop_label,
+      year_level       = year_label
+    )
+}
+
+compute_observed_load_points <- function(
+  d_mod,
+  analytes     = NULL,
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  crop         = NULL,   # NEW v1p6
+  year         = NULL,
+  stir_var     = "Season_STIR_toDate",
+  conc_var     = "Result_mg_L",
+  vol_var      = "Volume"
+) {
+  if (is.null(analytes)) analytes <- unique(d_mod$analyte_abbr)
+
+  d_list <- lapply(analytes, function(an) {
+    compute_observed_load_points_single(
+      d_mod      = d_mod,
+      analyte    = an,
+      block      = block,
+      sampler    = sampler,
+      flume      = flume,
+      irrigation = irrigation,
+      duplicate  = duplicate,
+      crop       = crop,
+      year       = year,
+      stir_var   = stir_var,
+      conc_var   = conc_var,
+      vol_var    = vol_var
+    )
+  })
+
+  dplyr::bind_rows(d_list)
+}
+
+# Pred + obs merger function --------------------------------------------
+simulate_load_curves_with_obs <- function(
+  post,
+  d_mod,
+  analytes     = NULL,
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,
+  sampler      = NULL,
+  flume        = NULL,
+  irrigation   = NULL,
+  duplicate    = NULL,
+  crop         = NULL,   # NEW v1p6
+  res_z        = 0,      # NEW v1p6
+  cin_z        = 0,
+  year         = NULL,
+  n_draws      = 2000,
+  ci_prob      = 0.95
+) {
+
+  pred <- simulate_load_curves(
+    post         = post,
+    analytes     = analytes,
+    STIR_raw_seq = STIR_raw_seq,
+    block        = block,
+    sampler      = sampler,
+    flume        = flume,
+    irrigation   = irrigation,
+    duplicate    = duplicate,
+    crop         = crop,
+    res_z        = res_z,
+    cin_z        = cin_z,
+    year         = year,
+    n_draws      = n_draws,
+    ci_prob      = ci_prob
+  )
+
+  obs <- compute_observed_load_points(
+    d_mod      = d_mod,
+    analytes   = unique(pred$analyte),
+    block      = block,
+    sampler    = sampler,
+    flume      = flume,
+    irrigation = irrigation,
+    duplicate  = duplicate,
+    crop       = crop,
+    year       = year
+  )
+
+  list(pred = pred, obs = obs)
+}
+```
+
+## Scenario-based STIR → Load Simulation Functions
+
+### Parameter definitions and behavior
+
+The simulation functions allow you to generate posterior predicted analyte loads across a range of STIR values under different user-defined “scenarios.” Each scenario variable may be explicitly specified or left blank. When a parameter is left blank (NULL), the model automatically averages over that variable by using the posterior mean of its random effect or the empirical mean of the covariate.
+
+**analyte**
+
+* Character analyte abbreviation (for example, `"TP"`, `"NO3"`, `"TDS"`).
+* Default behavior: uses *all analytes*.
+* Valid levels come from `analyte_lookup$analyte_abbr`:
+  NH4, ICP, NO3, NOx, NO2, NPOC, OP, Se, TDS, TKN, TN, TP, TSP, TSS.
+
+**block**
+
+* Field block or replication factor, matching `block_lookup$Rep` (typically `"1"` or `"2"`).
+* If left NULL: averaged over blocks via the posterior mean of the random effect `gamma_B`.
+
+**sampler**
+
+* Sampler method type, matching `sampler_lookup$SampleMethod` (GB, GB3, GBH, GBW, ISC, LC).
+* If left NULL: averaged over sampler methods via the posterior mean of `gamma_S`.
+
+**flume**
+
+* Flume hardware type, matching `flume_lookup$FlumeMethod`:
+  “10 V”, “10V”, “60 V Trap”, “7 V”, “8 V”, “Weir”.
+* If left NULL: averaged using the posterior mean of `gamma_F`.
+
+**irrigation**
+
+* Irrigation-event identity, matching `irrigation_lookup$Irrigation`:
+  1, 10, 2, 3, 4, 5, 6, 7, 8, 9, S1, S2.
+* IRR is a fixed-effect covariate, not a random effect.
+* If left NULL: the function uses the empirical mean of `irr_num` in the dataset.
+
+**duplicate**
+
+* Laboratory duplicate indicator (TRUE or FALSE).
+* If NULL: uses the empirical mean duplicate rate across the dataset.
+
+**cin_z**
+
+* Standardized inflow concentration for the selected analyte.
+* Defaults to 0 (“average inflow concentration”).
+
+**STIR_raw_seq**
+
+* The raw STIR values over which predictions are generated (for example, 0–300).
+
+**n_draws**
+
+* Number of posterior samples used for simulation, for computational efficiency.
+
+**ci_prob**
+
+* Credible interval probability for load estimates (default 0.95).
+
+---
+
+
+### Output
+
+The functions return a tidy data frame containing:
+
+* analyte
+* STIR_raw
+* load_mean (posterior mean load in mg)
+* load_low (lower 89 percent HPDI)
+* load_high (upper 89 percent HPDI)
+
+This output is designed for straightforward faceted visualization in `ggplot2`.
+
+```{r load-generative-curves-user-guide}
+###############################################################
+## USER INPUT GUIDE FOR `simulate_load_curves_with_obs()` (v1p6)
+## -----------------------------------------------------------
+## This block summarizes all allowable inputs and their valid
+## levels for running scenario-based STIR → Load simulations.
+##
+## NEW in v1p6:
+##   - crop  : crop type affects BOTH concentration and volume
+##   - res_z : residue cover (z-scale) affects BOTH concentration and volume
+###############################################################
+
+## -----------------------------------------------------------
+## analytes
+## -----------------------------------------------------------
+## Character vector of analyte abbreviations, e.g.:
+## c("NH4","NO3","TN","TP","TSS","OP", ...)
+##
+## Use:
+##   analytes = NULL   → use ALL analytes in analyte_lookup
+##
+## Valid names:
+##   unique(analyte_lookup$analyte_abbr)
+
+## -----------------------------------------------------------
+## block (field replication)
+## -----------------------------------------------------------
+## Rep levels from block_lookup$Rep (typically 1, 2, ...)
+##
+## Use:
+##   block = NULL  → posterior mean across all blocks
+##
+## Or specify:
+##   block = 1
+
+## -----------------------------------------------------------
+## sampler (sampler method)
+## -----------------------------------------------------------
+## Valid methods from sampler_lookup$SampleMethod
+##
+## Use:
+##   sampler = NULL → average across sampler types (posterior mean gamma_S)
+
+## -----------------------------------------------------------
+## flume (flume hardware type)
+## -----------------------------------------------------------
+## Valid levels from flume_lookup$FlumeMethod
+##
+## Use:
+##   flume = NULL → average across flumes (posterior mean gamma_F)
+
+## -----------------------------------------------------------
+## irrigation (irrigation count / event identity)
+## -----------------------------------------------------------
+## Values come from irrigation_lookup$irr_num / irrigation_lookup$Irrigation
+##
+## Use:
+##   irrigation = NULL → mean(d_mod$irr_num)
+##
+## Or specify:
+##   irrigation = 3
+
+## -----------------------------------------------------------
+## duplicate (lab duplicate indicator)
+## -----------------------------------------------------------
+## Use TRUE or FALSE.
+##
+## Or:
+##   duplicate = NULL → empirical mean duplicate rate (DUP_bar)
+
+## -----------------------------------------------------------
+## crop (NEW v1p6: crop type)
+## -----------------------------------------------------------
+## Must match crop_lookup$Crop (e.g., "grain corn", ...)
+##
+## Use:
+##   crop = NULL → weighted average over crops using observed frequencies
+##
+## Or specify:
+##   crop = "grain corn"
+
+## -----------------------------------------------------------
+## res_z (NEW v1p6: residue cover at planting, z-scale)
+## -----------------------------------------------------------
+## Numeric z-score. Use:
+##   res_z = 0 → average residue cover (placeholder runs: keep 0)
+##
+## Sensitivity:
+##   res_z = +1 or -1
+
+## -----------------------------------------------------------
+## cin_z (standardized inflow concentration)
+## -----------------------------------------------------------
+## Z-scored CIN. Use numeric values:
+##   cin_z = 0  → average inflow concentration on the z-scale
+##
+## Sensitivity:
+##   cin_z = +1 or -1
+
+## -----------------------------------------------------------
+## year (calendar year for temporal effect)
+## -----------------------------------------------------------
+## Must match values from years_used (model year index):
+##
+## Use:
+##   year = NULL → average across all modeled years (mean F_year)
+##
+## Or specify:
+##   year = 2016
+
+## -----------------------------------------------------------
+## STIR_raw_seq
+## -----------------------------------------------------------
+## A numeric vector of raw (unstandardized) STIR values.
+##
+## Default:
+##   seq(0, 300, length.out = 60)
+
+## ======================================================================
+## Example scenario run (v1p6 defaults, averages over most factors)
+## ======================================================================
+
+res_scenario <- simulate_load_curves_with_obs(
+  post         = post,
+  d_mod        = d_mod,
+  analytes     = NULL,                          # all analytes
+  STIR_raw_seq = seq(0, 300, length.out = 60),
+  block        = NULL,                          # avg over blocks
+  sampler      = NULL,                          # avg over sampler methods
+  flume        = NULL,                          # avg over flume types
+  irrigation   = NULL,                          # avg over irrigations
+  duplicate    = NULL,                          # avg over duplicate status
+  crop         = NULL,                          # avg over crops (weighted)
+  res_z        = 0,                             # average residue (placeholder OK)
+  cin_z        = 0,                             # average inflow (z)
+  year         = NULL,                          # avg over years
+  ci_prob      = 0.95
+)
+
+# Example conditioning scenario (uncomment and edit levels as desired)
+# res_scenario <- simulate_load_curves_with_obs(
+#   post         = post,
+#   d_mod        = d_mod,
+#   analytes     = NULL,
+#   STIR_raw_seq = seq(0, 300, length.out = 60),
+#   block        = 1,
+#   sampler      = "ISC",
+#   flume        = "10 V",
+#   irrigation   = 1,
+#   duplicate    = FALSE,
+#   crop         = "grain corn",
+#   res_z        = 0,
+#   cin_z        = 0,
+#   year         = 2016,
+#   ci_prob      = 0.95
+# )
+
+load_pred_scenario <- res_scenario$pred
+load_obs_scenario  <- res_scenario$obs
+
+# Build a dynamic subtitle from scenario labels
+scenario_info <- load_pred_scenario %>%
+  dplyr::distinct(
+    year_level,
+    block_level, sampler_level, flume_level,
+    irrigation_level, duplicate_level,
+    crop_level, res_z, cin_z
+  )
+
+subtitle_text <- sprintf(
+  "Year: %s; Block: %s; Sampler: %s;\nFlume: %s; Irrigation: %s;\nDuplicate: %s; Crop: %s; Residue(z)=%.2f; Inflow(z)=%.2f",
+  scenario_info$year_level,
+  scenario_info$block_level,
+  scenario_info$sampler_level,
+  scenario_info$flume_level,
+  scenario_info$irrigation_level,
+  scenario_info$duplicate_level,
+  scenario_info$crop_level,
+  scenario_info$res_z,
+  scenario_info$cin_z
+)
+
+ci_pct <- round(100 * unique(load_pred_scenario$ci_prob)[1])
+
+# Plot: predicted curves + observed points
+p_load <- ggplot(load_pred_scenario, aes(x = STIR_raw, y = load_mean)) +
+  geom_ribbon(aes(ymin = load_low, ymax = load_high),
+              fill = "gray60", alpha = 0.35, linewidth = 0) +
+  geom_line(linewidth = 1.1) +
+  geom_point(data = load_obs_scenario,
+             aes(x = STIR_raw, y = load_obs),
+             inherit.aes = FALSE,
+             size = 2.0, alpha = 0.9) +
+  facet_wrap(~ analyte, scales = "free_y", ncol = 4) +
+  labs(
+    x = "Seasonal STIR",
+    y = sprintf("Expected Load (g per event, with %d%% HPDI)", ci_pct),
+    title = "STIR → Load curves by analyte",
+    subtitle = subtitle_text
+  ) +
+  theme_classic(base_size = 18) +
+  theme(
+    strip.text    = element_text(size = 16, face = "bold"),
+    axis.text     = element_text(size = 14),
+    axis.title    = element_text(size = 18),
+    plot.title    = element_text(size = 22, face = "bold"),
+    plot.subtitle = element_text(size = 16),
+    panel.spacing = unit(1.2, "lines"),
+    plot.margin   = margin(15, 20, 15, 20)
+  )
+
+p_load
+
+```
+
+
+```{r save load fig}
+# Save to figs folder
+ggsave(
+  filename = "../figs/load1p6_STIR_load_curves.jpeg",
+  plot = p_load,
+  width = 12, height = 10, dpi = 300
+)
+```
+
+Plot effects of time (i.e., Year)
+```{r year covar plot}
+## ============================================================
+## Year-distance covariance functions (prior vs posterior) v1p6
+## ============================================================
+
+# sequence of distances in years
+d_max <- max(dist(years_used))
+x_seq <- seq(0, d_max, length.out = 200)
+
+# number of curves to plot
+n_prior <- 50
+n_post  <- 50
+
+# local alpha-color helper (robust if rethinking::col.alpha not attached)
+col_alpha <- function(col, alpha = 1) {
+  grDevices::adjustcolor(col, alpha.f = alpha)
+}
+
+# prior draws (match Stan priors)
+etasq_prior <- rexp(n_prior, rate = 2)        # exponential(2)
+rhosq_prior <- rexp(n_prior, rate = 0.5)      # exponential(0.5)
+
+# posterior draws (from post list)
+etasq_all <- as.numeric(post$etasq_year)
+rhosq_all <- as.numeric(post$rhosq_year)
+
+# subsample posterior draws (avoid ordering artifacts)
+set.seed(1)
+post_idx <- if (length(etasq_all) > n_post) sample.int(length(etasq_all), n_post) else seq_along(etasq_all)
+etasq_post <- etasq_all[post_idx]
+rhosq_post <- rhosq_all[post_idx]
+
+# plot y-limits (safe)
+y_max <- max(
+  etasq_prior,
+  etasq_post,
+  na.rm = TRUE
+) * 1.10
+
+# function for covariance at distance x
+cov_fun <- function(etasq, rhosq, x) etasq * exp(-rhosq * x^2)
+
+# ---------------------------------
+# Save figure
+# ---------------------------------
+jpeg("../figs/year_covariance_gp_v1p6.jpeg", width = 2000, height = 1500, res = 220)
+
+plot(
+  NULL,
+  xlab = "distance (years)",
+  ylab = "covariance",
+  xlim = c(0, d_max),
+  ylim = c(0, y_max),
+  main = "Year GP covariance: prior vs posterior"
+)
+
+# PRIOR curves (grey/black)
+for (i in seq_len(n_prior)) {
+  curve(
+    cov_fun(etasq_prior[i], rhosq_prior[i], x),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col_alpha("black", 0.20),
+    lwd = 2
+  )
+}
+
+# POSTERIOR curves (red)
+for (i in seq_len(n_post)) {
+  curve(
+    cov_fun(etasq_post[i], rhosq_post[i], x),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col_alpha("firebrick", 0.35),
+    lwd = 2
+  )
+}
+
+# Posterior mean curve across *all* posterior draws (more stable)
+pm_cov <- sapply(
+  x_seq,
+  function(x) cov_fun(etasq_all, rhosq_all, x)
+)
+lines(x_seq, colMeans(pm_cov, na.rm = TRUE), col = "firebrick", lwd = 4)
+
+legend(
+  "topright",
+  legend = c("Prior draws", "Posterior draws", "Posterior mean"),
+  col    = c(col_alpha("black", 0.4), col_alpha("firebrick", 0.5), "firebrick"),
+  lwd    = c(2, 2, 4),
+  bty    = "n"
+)
+
+dev.off()
+
+# ---------------------------------
+# Also display inline
+# ---------------------------------
+plot(
+  NULL,
+  xlab = "distance (years)",
+  ylab = "covariance",
+  xlim = c(0, d_max),
+  ylim = c(0, y_max),
+  main = "Year GP covariance: prior vs posterior"
+)
+
+for (i in seq_len(n_prior)) {
+  curve(
+    cov_fun(etasq_prior[i], rhosq_prior[i], x),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col_alpha("black", 0.20),
+    lwd = 2
+  )
+}
+
+for (i in seq_len(n_post)) {
+  curve(
+    cov_fun(etasq_post[i], rhosq_post[i], x),
+    from = 0, to = d_max,
+    add = TRUE,
+    col = col_alpha("firebrick", 0.35),
+    lwd = 2
+  )
+}
+
+lines(x_seq, colMeans(pm_cov, na.rm = TRUE), col = "firebrick", lwd = 4)
+
+legend(
+  "topright",
+  legend = c("Prior draws", "Posterior draws", "Posterior mean"),
+  col    = c(col_alpha("black", 0.4), col_alpha("firebrick", 0.5), "firebrick"),
+  lwd    = c(2, 2, 4),
+  bty    = "n"
+)
+
+```
+
+```{r analyte persistence plot}
+## ============================================================
+## Analyte persistence: lag-1 correlation of latent year effect
+## v1p6 (uses post$F_year: draws × Y × A)
+## ============================================================
+
+F_arr <- post$F_year
+stopifnot(length(dim(F_arr)) == 3)
+
+n_draws <- dim(F_arr)[1]
+Y_n     <- dim(F_arr)[2]
+A_n     <- dim(F_arr)[3]
+
+# compute lag-1 correlations for each analyte and draw
+lag1_mat <- matrix(NA_real_, nrow = n_draws, ncol = A_n)
+
+for (a in seq_len(A_n)) {
+  Fa <- F_arr[, , a]  # draws × Y
+
+  for (s in seq_len(n_draws)) {
+    z <- Fa[s, ]
+    if (is.finite(sd(z)) && sd(z) > 0) {
+      lag1_mat[s, a] <- stats::cor(z[-Y_n], z[-1])
+    }
+  }
+}
+
+# posterior summaries by analyte
+lag1_mean <- apply(lag1_mat, 2, mean, na.rm = TRUE)
+lag1_hpdi <- apply(lag1_mat, 2, HPDI, prob = 0.89)
+
+persistence_df <- analyte_lookup %>%
+  dplyr::mutate(
+    lag1_mean = lag1_mean,
+    lag1_low  = lag1_hpdi[1, ],
+    lag1_high = lag1_hpdi[2, ]
+  )
+
+gg_persist <- ggplot(
+  persistence_df,
+  aes(x = reorder(analyte_abbr, lag1_mean), y = lag1_mean)
+) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_segment(
+    aes(
+      xend = reorder(analyte_abbr, lag1_mean),
+      y    = lag1_low,
+      yend = lag1_high
+    ),
+    linewidth = 1
+  ) +
+  geom_point(size = 2) +
+  coord_flip() +
+  labs(
+    x = "Analyte",
+    y = "Lag-1 correlation of latent year effect (F_year)",
+    title = "Analyte-specific persistence of temporal deviations"
+  ) +
+  theme_classic(base_size = 14)
+
+gg_persist
+
+# Save to figs folder (v1p6 filename)
+ggsave(
+  filename = "../figs/analyte_persistence_precis_v1p6.jpeg",
+  plot = gg_persist,
+  width = 12, height = 10, dpi = 300
+)
+
+```
+
+```{r year effects plot}
+## ============================================================
+## Year effects plot: F_year by analyte (v1p6)
+## post$F_year is draws × Y × A
+## ============================================================
+
+F_arr <- post$F_year
+stopifnot(length(dim(F_arr)) == 3)
+
+Y_n <- dim(F_arr)[2]
+A_n <- dim(F_arr)[3]
+
+# posterior means and intervals for F_year
+F_mean <- apply(F_arr, c(2, 3), mean, na.rm = TRUE)             # Y × A
+F_hpdi <- apply(F_arr, c(2, 3), HPDI, prob = 0.89)              # 2 × Y × A
+
+# Build long data frame
+F_df <- expand.grid(
+  Y = seq_len(Y_n),
+  A = seq_len(A_n)
+) %>%
+  dplyr::mutate(
+    effect_mean = as.vector(F_mean),          # length Y*A
+    hpdi_low    = as.vector(F_hpdi[1, , ]),   # length Y*A
+    hpdi_high   = as.vector(F_hpdi[2, , ])    # length Y*A
+  ) %>%
+  dplyr::left_join(analyte_lookup, by = "A") %>%
+  dplyr::mutate(Year = years_used[Y])
+
+gg_F <- ggplot(
+  F_df,
+  aes(x = Year, y = effect_mean, ymin = hpdi_low, ymax = hpdi_high)
+) +
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_ribbon(alpha = 0.25) +
+  geom_line(linewidth = 0.8) +
+  facet_wrap(~ analyte_abbr, scales = "free_y", ncol = 4) +
+  labs(
+    x = "Year",
+    y = "Latent temporal deviation (z concentration scale)",
+    title = "Year-to-year latent deviations by analyte"
+  ) +
+  theme_classic(base_size = 14)
+
+gg_F
+
+# Save to figs folder (v1p6 filename)
+ggsave(
+  filename = "../figs/yearly_latent_deviations_v1p6.jpeg",
+  plot = gg_F,
+  width = 12, height = 10, dpi = 300
+)
+
+```
+
+
+## Annual Load Table and Plot
+
+```{r pred data generation}
+# ============================================================
+# v1p6: Build a prediction frame that includes "missing chemistry years"
+# Drop-in replacement with:
+#   1) robust irrigation mapping (keeps S1/S2, avoids coercion warnings)
+#   2) diagnostics explaining why years/rows get dropped
+#   3) optional cin_z fill (default: NA cin_z -> 0)
+#   4) NEW v1p6 fields: Crop + residue placeholder (RES_z)
+#      - Crop is required for v1p6 Stan (Cr index)
+#      - Residue is required for v1p6 Stan (RES predictor)
+#        For now we set RES_z = 0 (placeholder; no impact)
+# ============================================================
+build_d_pred <- function(
+  wq_clean,
+  event_id_col = "orig_row",
+  keep_outflow_only = TRUE,
+  drop_no_runoff = TRUE,
+  cin_na_to_zero = TRUE,
+  diagnostics = TRUE,
+  res_na_to_zero = TRUE  # NEW: if RES_z ever exists, fill NA -> 0
+) {
+
+  # v1p6 required columns (some may be added later, e.g., residue)
+  needed <- c(
+    "Year","Treatment","analyte_abbr","Season_STIR_toDate",
+    "Rep","SampleMethod","FlumeMethod","Irrigation","Duplicate","cin_z",
+    "Crop",  # NEW v1p6 (for Cr)
+    event_id_col
+  )
+  miss <- setdiff(needed, names(wq_clean))
+  if (length(miss) > 0) stop("wq_clean missing columns: ", paste(miss, collapse = ", "))
+
+  d0 <- wq_clean
+
+  if (diagnostics) {
+    message("\n---- Year coverage in raw wq_clean (before any filters) ----")
+    print(wq_clean %>% dplyr::count(Year) %>% dplyr::arrange(Year))
+  }
+
+  # ------------------------------------------------------------
+  # Filters (apply BEFORE transmute)
+  # ------------------------------------------------------------
+  if (keep_outflow_only && "InflowOutflow" %in% names(d0)) {
+    d0 <- d0 %>% dplyr::filter(.data$InflowOutflow == "OUT")
+  }
+
+  if (drop_no_runoff && "NoRunoff" %in% names(d0)) {
+    d0 <- d0 %>% dplyr::filter(!isTRUE(.data$NoRunoff))
+  }
+
+  if (diagnostics) {
+    message("\n---- Year coverage after keep_outflow_only / drop_no_runoff filters ----")
+    print(d0 %>% dplyr::count(Year) %>% dplyr::arrange(Year))
+
+    message("\n---- Years removed by filters (raw vs filtered) ----")
+    raw_years  <- wq_clean %>% dplyr::distinct(Year)
+    kept_years <- d0       %>% dplyr::distinct(Year)
+    removed <- dplyr::anti_join(raw_years, kept_years, by = "Year") %>% dplyr::arrange(Year)
+    print(removed)
+  }
+
+  # ------------------------------------------------------------
+  # Robust irrigation mapping (no "NAs introduced by coercion")
+  # ------------------------------------------------------------
+  irr_levels <- sort(unique(as.character(d0$Irrigation)))
+
+  irr_map <- tibble::tibble(Irrigation_chr = irr_levels) %>%
+    dplyr::mutate(
+      irr_num = dplyr::case_when(
+        Irrigation_chr == "S1" ~ 11,
+        Irrigation_chr == "S2" ~ 12,
+        TRUE ~ readr::parse_number(Irrigation_chr)
+      )
+    )
+
+  if (diagnostics) {
+    bad_irr <- irr_map %>% dplyr::filter(is.na(irr_num))
+    if (nrow(bad_irr) > 0) {
+      message("Unmapped Irrigation levels (these rows will be dropped): ",
+              paste(bad_irr$Irrigation_chr, collapse = ", "))
+    } else {
+      message("All Irrigation levels mapped successfully (including S1/S2 if present).")
+    }
+  }
+
+  d1 <- d0 %>%
+    dplyr::mutate(Irrigation_chr = as.character(Irrigation)) %>%
+    dplyr::left_join(irr_map, by = "Irrigation_chr")
+
+  # ------------------------------------------------------------
+  # Residue placeholder (v1p6 requires RES predictor)
+  # If a residue z-score column exists, use it; otherwise create 0.
+  # You can later replace "RES_z" here with your real residue column.
+  # ------------------------------------------------------------
+  if ("RES_z" %in% names(d1)) {
+    if (res_na_to_zero) d1 <- d1 %>% dplyr::mutate(RES_z = dplyr::if_else(is.na(RES_z), 0, RES_z))
+  } else if ("residue_z" %in% names(d1)) {
+    d1 <- d1 %>% dplyr::mutate(RES_z = .data$residue_z)
+    if (res_na_to_zero) d1 <- d1 %>% dplyr::mutate(RES_z = dplyr::if_else(is.na(RES_z), 0, RES_z))
+  } else {
+    d1 <- d1 %>% dplyr::mutate(RES_z = 0)
+  }
+
+  # ------------------------------------------------------------
+  # Diagnostics BEFORE final dropping
+  # ------------------------------------------------------------
+  if (diagnostics) {
+
+    na_irr_by_year <- d1 %>%
+      dplyr::summarise(
+        .by = Year,
+        n = dplyr::n(),
+        n_irr_na = sum(is.na(irr_num)),
+        frac_irr_na = n_irr_na / n
+      ) %>%
+      dplyr::arrange(dplyr::desc(frac_irr_na))
+
+    message("\n---- Diagnostic: NA irr_num by Year (top 10) ----")
+    print(utils::head(na_irr_by_year, 10))
+
+    diag_by_year <- d1 %>%
+      dplyr::transmute(
+        Year,
+        na_event = is.na(.data[[event_id_col]]),
+        na_stir  = is.na(Season_STIR_toDate),
+        na_rep   = is.na(Rep),
+        na_samp  = is.na(SampleMethod),
+        na_flume = is.na(FlumeMethod),
+        na_dup   = is.na(Duplicate),
+        na_cin   = is.na(cin_z),
+        na_crop  = is.na(Crop),
+        na_res   = is.na(RES_z)
+      ) %>%
+      dplyr::summarise(
+        .by = Year,
+        n = dplyr::n(),
+        frac_na_event = mean(na_event),
+        frac_na_stir  = mean(na_stir),
+        frac_na_rep   = mean(na_rep),
+        frac_na_samp  = mean(na_samp),
+        frac_na_flume = mean(na_flume),
+        frac_na_dup   = mean(na_dup),
+        frac_na_cin   = mean(na_cin),
+        frac_na_crop  = mean(na_crop),
+        frac_na_res   = mean(na_res)
+      ) %>%
+      dplyr::arrange(Year)
+
+    message("\n---- Diagnostic: missing predictor fractions by Year ----")
+    print(diag_by_year)
+  }
+
+  # ------------------------------------------------------------
+  # Build final d_pred with model-ready columns
+  # ------------------------------------------------------------
+  d <- d1 %>%
+    dplyr::transmute(
+      event_id = .data[[event_id_col]],
+      Year,
+      Treatment,
+      analyte_abbr,
+      Crop,                          # NEW v1p6
+      STIR_raw = Season_STIR_toDate,
+      Rep,
+      SampleMethod,
+      FlumeMethod,
+      irr_num,
+      dup   = as.numeric(Duplicate),
+      cin_z = if (cin_na_to_zero) dplyr::if_else(is.na(cin_z), 0, cin_z) else cin_z,
+      RES_z = if (res_na_to_zero) dplyr::if_else(is.na(RES_z), 0, RES_z) else RES_z
+    ) %>%
+    dplyr::filter(
+      !is.na(event_id),
+      !is.na(Year),
+      !is.na(Treatment),
+      !is.na(analyte_abbr),
+      !is.na(Crop),
+      !is.na(STIR_raw),
+      !is.na(Rep),
+      !is.na(SampleMethod),
+      !is.na(FlumeMethod),
+      !is.na(irr_num),
+      !is.na(dup),
+      !is.na(cin_z),
+      !is.na(RES_z)
+    )
+
+  if (diagnostics) {
+    message("\n---- Final d_pred coverage by Year (after dropping incomplete rows) ----")
+    print(d %>% dplyr::count(Year) %>% dplyr::arrange(Year))
+  }
+
+  d
+}
+
+# Run it
+d_pred <- build_d_pred(wq_clean, event_id_col = "orig_row")
+
+```
+
+
+```{r real data generation}
+make_annual_observed_table_all_treatments <- function(
+  wq_clean,
+  analyte_pick = NULL,
+  keep_outflow_only = TRUE,
+  drop_no_runoff = TRUE,
+  B = 600,
+  prob_ci = 0.95,
+  seed = 1
+) {
+  needed <- c("Year","Treatment","analyte_abbr","Result_mg_L","Volume","orig_row")
+  miss <- setdiff(needed, names(wq_clean))
+  if (length(miss) > 0) stop("wq_clean missing columns: ", paste(miss, collapse = ", "))
+
+  d0 <- wq_clean
+
+  if (keep_outflow_only && "InflowOutflow" %in% names(d0)) {
+    d0 <- d0 %>% dplyr::filter(.data$InflowOutflow == "OUT")
+  }
+  if (drop_no_runoff && "NoRunoff" %in% names(d0)) {
+    d0 <- d0 %>% dplyr::filter(!isTRUE(.data$NoRunoff))
+  }
+  if (!is.null(analyte_pick)) {
+    d0 <- d0 %>% dplyr::filter(as.character(.data$analyte_abbr) == analyte_pick)
+  }
+
+  # rows usable for observed load
+  d_obs <- d0 %>%
+    dplyr::filter(!is.na(.data$Result_mg_L), !is.na(.data$Volume)) %>%
+    dplyr::mutate(
+      Year = as.integer(.data$Year),
+      analyte = as.character(.data$analyte_abbr),
+      treatment = as.character(.data$Treatment),
+      event_id = .data$orig_row,
+      load_g = (.data$Result_mg_L * .data$Volume) / 1000,  # mg -> g
+      vol_L  = .data$Volume
+    ) %>%
+    dplyr::select(.data$Year, .data$analyte, .data$treatment, .data$event_id, .data$load_g, .data$vol_L)
+
+  q_lo <- (1 - prob_ci) / 2
+  q_hi <- 1 - q_lo
+
+  set.seed(seed)
+
+  out <- d_obs %>%
+    dplyr::group_by(.data$Year, .data$analyte, .data$treatment) %>%
+    dplyr::group_modify(~{
+      dat <- dplyr::distinct(.x, .data$event_id, .keep_all = TRUE)
+      n_events <- nrow(dat)
+
+      if (n_events == 0) {
+        return(tibble::tibble(
+          load_mean = NA_real_, load_low = NA_real_, load_high = NA_real_,
+          volume_mean = NA_real_, volume_low = NA_real_, volume_high = NA_real_,
+          conc_mean = NA_real_, conc_low = NA_real_, conc_high = NA_real_,
+          n_events = 0L,
+          prob_ci = prob_ci
+        ))
+      }
+
+      # point estimates (annual totals)
+      L_sum <- sum(dat$load_g, na.rm = TRUE)
+      V_sum <- sum(dat$vol_L,  na.rm = TRUE)
+      C_fw  <- if (is.finite(V_sum) && V_sum > 0) (L_sum * 1000 / V_sum) else NA_real_
+
+      # If only one event, bootstrap is degenerate, CI == point estimate
+      if (n_events == 1 || B <= 1) {
+        return(tibble::tibble(
+          load_mean = L_sum, load_low = L_sum, load_high = L_sum,
+          volume_mean = V_sum, volume_low = V_sum, volume_high = V_sum,
+          conc_mean = C_fw, conc_low = C_fw, conc_high = C_fw,
+          n_events = as.integer(n_events),
+          prob_ci = prob_ci
+        ))
+      }
+
+      # bootstrap indices: n_events x B matrix
+      idx_mat <- matrix(
+        sample.int(n_events, size = n_events * B, replace = TRUE),
+        nrow = n_events, ncol = B
+      )
+
+      load_mat <- matrix(dat$load_g[idx_mat], nrow = n_events, ncol = B)
+      vol_mat  <- matrix(dat$vol_L[idx_mat],  nrow = n_events, ncol = B)
+
+      Lb <- colSums(load_mat, na.rm = TRUE)
+      Vb <- colSums(vol_mat,  na.rm = TRUE)
+      Cb <- ifelse(Vb > 0, (Lb * 1000 / Vb), NA_real_)
+
+      tibble::tibble(
+        load_mean = L_sum,
+        load_low  = stats::quantile(Lb, probs = q_lo, na.rm = TRUE, names = FALSE),
+        load_high = stats::quantile(Lb, probs = q_hi, na.rm = TRUE, names = FALSE),
+
+        volume_mean = V_sum,
+        volume_low  = stats::quantile(Vb, probs = q_lo, na.rm = TRUE, names = FALSE),
+        volume_high = stats::quantile(Vb, probs = q_hi, na.rm = TRUE, names = FALSE),
+
+        conc_mean = C_fw,
+        conc_low  = stats::quantile(Cb, probs = q_lo, na.rm = TRUE, names = FALSE),
+        conc_high = stats::quantile(Cb, probs = q_hi, na.rm = TRUE, names = FALSE),
+
+        n_events = as.integer(n_events),
+        prob_ci = prob_ci
+      )
+    }) %>%
+    dplyr::ungroup()
+
+  out
+}
+
+# Example:
+annual_tbl_obs <- make_annual_observed_table_all_treatments(
+  wq_clean = wq_clean,
+  B = 600,
+  prob_ci = 0.95
+)
+
+```
+
+
+```{r pred data table}
+# ============================================================
+# v1p6: Annual table from posterior predictions summed over d_pred
+# Adds Crop + Residue (RES_z) effects in BOTH volume and concentration.
+#
+# Assumes d_pred created by build_d_pred() (v1p6) includes:
+#   Crop, RES_z
+# ============================================================
+make_annual_load_table_all_treatments_pred <- function(
+  post,
+  d_pred,
+  years_used,
+  analyte_lookup,
+  block_lookup,
+  sampler_lookup,
+  flume_lookup,
+  crop_lookup,
+  c_stats,
+  V_mean, V_sd,
+  stir_mean, stir_sd,
+  n_draws = 1500,
+  prob_ci = 0.95
+) {
+  needed_cols <- c(
+    "event_id","Year","Treatment","analyte_abbr","STIR_raw",
+    "Rep","SampleMethod","FlumeMethod","irr_num","dup","cin_z",
+    "Crop","RES_z"
+  )
+  miss <- setdiff(needed_cols, names(d_pred))
+  if (length(miss) > 0) stop("d_pred is missing columns: ", paste(miss, collapse = ", "))
+
+  # draw subsample
+  n_total <- nrow(post$alpha)
+  draw_idx <- if (n_total > n_draws) sample.int(n_total, n_draws) else seq_len(n_total)
+  D <- length(draw_idx)
+
+  q_lo <- (1 - prob_ci) / 2
+  q_hi <- 1 - q_lo
+  ci <- function(x) stats::quantile(x, probs = c(q_lo, q_hi), na.rm = TRUE, names = FALSE)
+
+  # map indices + stats
+  dat <- d_pred %>%
+    dplyr::left_join(analyte_lookup %>% dplyr::select(A, analyte_abbr), by = "analyte_abbr") %>%
+    dplyr::left_join(block_lookup   %>% dplyr::select(B, Rep),          by = "Rep") %>%
+    dplyr::left_join(sampler_lookup %>% dplyr::select(S, SampleMethod), by = "SampleMethod") %>%
+    dplyr::left_join(flume_lookup   %>% dplyr::select(Fu, FlumeMethod), by = "FlumeMethod") %>%
+    dplyr::left_join(crop_lookup    %>% dplyr::select(Cr, Crop),        by = "Crop") %>%
+    dplyr::left_join(c_stats %>% dplyr::select(A, c_mean, c_sd) %>% dplyr::distinct(), by = "A") %>%
+    dplyr::mutate(
+      Y      = match(Year, years_used),
+      STIR_z = (STIR_raw - stir_mean) / stir_sd
+    )
+
+  if (anyNA(dat$A))  stop("Some analyte_abbr not found in analyte_lookup.")
+  if (anyNA(dat$B))  stop("Some Rep not found in block_lookup.")
+  if (anyNA(dat$S))  stop("Some SampleMethod not found in sampler_lookup.")
+  if (anyNA(dat$Fu)) stop("Some FlumeMethod not found in flume_lookup.")
+  if (anyNA(dat$Cr)) stop("Some Crop not found in crop_lookup.")
+  if (anyNA(dat$Y))  stop("Some Year not found in years_used.")
+  if (anyNA(dat$c_mean) || anyNA(dat$c_sd)) stop("Missing c_stats for some analytes (A).")
+
+  # Integer indices for fast indexing
+  dat <- dat %>%
+    dplyr::mutate(
+      A  = as.integer(A),
+      B  = as.integer(B),
+      S  = as.integer(S),
+      Fu = as.integer(Fu),
+      Y  = as.integer(Y),
+      Cr = as.integer(Cr)
+    )
+
+  # Groups: all treatments automatically
+  groups <- dat %>%
+    dplyr::distinct(Year, analyte_abbr, Treatment) %>%
+    dplyr::arrange(analyte_abbr, Year, Treatment)
+
+  out <- vector("list", nrow(groups))
+
+  for (g in seq_len(nrow(groups))) {
+
+    yr <- groups$Year[g]
+    an <- groups$analyte_abbr[g]
+    tr <- groups$Treatment[g]
+
+    dsub <- dat %>% dplyr::filter(Year == yr, analyte_abbr == an, Treatment == tr)
+    if (nrow(dsub) == 0) next
+
+    # Row-level predictors
+    A  <- dsub$A;  B <- dsub$B;  S <- dsub$S;  Fu <- dsub$Fu;  Y <- dsub$Y;  Cr <- dsub$Cr
+    stz <- dsub$STIR_z
+    cin <- dsub$cin_z
+    irr <- dsub$irr_num
+    dup <- dsub$dup
+    res <- dsub$RES_z
+    c_mean <- dsub$c_mean
+    c_sd   <- dsub$c_sd
+
+    # Event-level ledger for volumes (avoid double-counting)
+    ev <- dsub %>%
+      dplyr::distinct(event_id, Year, Treatment, STIR_z, Crop, RES_z, Rep, SampleMethod, FlumeMethod, irr_num, dup) %>%
+      dplyr::left_join(crop_lookup    %>% dplyr::select(Cr, Crop),        by = "Crop") %>%
+      dplyr::left_join(block_lookup   %>% dplyr::select(B, Rep),          by = "Rep") %>%
+      dplyr::left_join(sampler_lookup %>% dplyr::select(S, SampleMethod), by = "SampleMethod") %>%
+      dplyr::left_join(flume_lookup   %>% dplyr::select(Fu, FlumeMethod), by = "FlumeMethod") %>%
+      dplyr::mutate(
+        Cr = as.integer(Cr),
+        B  = as.integer(B),
+        S  = as.integer(S),
+        Fu = as.integer(Fu)
+      )
+
+    stz_ev <- ev$STIR_z
+    res_ev <- ev$RES_z
+    Cr_ev  <- ev$Cr
+
+    V_ann   <- numeric(D)
+    L_ann_g <- numeric(D)
+    C_fw    <- numeric(D)
+
+    for (dd in seq_len(D)) {
+      s <- draw_idx[dd]
+
+      # ---- Predict volume per event ----
+      muV_z_ev <- post$a_V[s] +
+        post$b_V[s]       * stz_ev +
+        post$beta_res_V[s] * res_ev +
+        post$gamma_Cr_V[s, Cr_ev]
+
+      V_ev_raw <- V_mean + V_sd * muV_z_ev
+      Vsum <- sum(V_ev_raw, na.rm = TRUE)
+
+      # ---- Predict concentration per analyte row ----
+      muV_z_row <- post$a_V[s] +
+        post$b_V[s]       * stz +
+        post$beta_res_V[s] * res +
+        post$gamma_Cr_V[s, Cr]  # include volume crop effect in the VOL term
+
+      gB <- post$gamma_B[s, , , drop = TRUE][cbind(A, B)]
+      gS <- post$gamma_S[s, , , drop = TRUE][cbind(A, S)]
+      gF <- post$gamma_F[s, , , drop = TRUE][cbind(A, Fu)]
+      kY <- post$F_year[s, , , drop = TRUE][cbind(Y, A)]
+
+      # crop effect on concentration is analyte-specific: gamma_Cr[draw, A, Cr]
+      gCrC <- post$gamma_Cr[s, , , drop = TRUE][cbind(A, Cr)]
+
+      muC_z <- post$alpha[s, A] +
+        post$beta_stir[s, A] * stz +
+        post$beta_cin[s, A]  * cin +
+        post$beta_vol[s]     * muV_z_row +
+        post$beta_irr[s]     * irr +
+        post$beta_dup[s, A]  * dup +
+        post$beta_res_C[s, A] * res +
+        gCrC +
+        gB + gS + gF + kY
+
+      C_raw <- c_mean + c_sd * muC_z
+
+      # ---- Annual load for this analyte: sum over analyte rows ----
+      V_row_raw <- V_mean + V_sd * muV_z_row
+      Lmg <- sum(C_raw * V_row_raw, na.rm = TRUE)
+      Lg  <- Lmg / 1000
+
+      V_ann[dd]   <- Vsum
+      L_ann_g[dd] <- Lg
+      C_fw[dd]    <- if (is.finite(Vsum) && Vsum > 0) ((Lg * 1000) / Vsum) else NA_real_
+    }
+
+    out[[g]] <- tibble::tibble(
+      Year = yr,
+      analyte = an,
+      treatment = tr,
+      volume_mean   = mean(V_ann,   na.rm = TRUE),
+      volume_low    = ci(V_ann)[1],
+      volume_high   = ci(V_ann)[2],
+      conc_mean     = mean(C_fw,    na.rm = TRUE),
+      conc_low      = ci(C_fw)[1],
+      conc_high     = ci(C_fw)[2],
+      load_mean     = mean(L_ann_g, na.rm = TRUE),
+      load_low      = ci(L_ann_g)[1],
+      load_high     = ci(L_ann_g)[2],
+      n_events      = nrow(ev),
+      n_rows        = nrow(dsub),
+      prob_ci       = prob_ci
+    )
+  }
+
+  dplyr::bind_rows(out) %>%
+    dplyr::arrange(analyte, Year, treatment)
+}
+
+# Example usage:
+annual_tbl_pred <- make_annual_load_table_all_treatments_pred(
+  post = post,
+  d_pred = d_pred,
+  years_used = years_used,
+  analyte_lookup = analyte_lookup,
+  block_lookup = block_lookup,
+  sampler_lookup = sampler_lookup,
+  flume_lookup = flume_lookup,
+  crop_lookup = crop_lookup,
+  c_stats = c_stats,
+  V_mean = V_mean, V_sd = V_sd,
+  stir_mean = stir_mean, stir_sd = stir_sd
+)
+
+```
+
+
+```{r plot annual loads fxn}
+plot_annual_by_treatment_pretty <- function(
+  annual_tbl,
+  analyte_pick,
+  metric = c("load","conc","volume"),
+  source_label = NULL,        # optional title suffix, e.g. "Modeled" or "Observed"
+  draw_line = TRUE,           # TRUE for modeled trajectories, often FALSE for observed-only
+  show_points = TRUE,
+  dodge = 0.20,
+  prob_ci = NULL              # NEW v1p6: if annual_tbl has prob_ci column, auto-use it in ylab
+) {
+  metric <- match.arg(metric)
+
+  stopifnot(all(c("Year","analyte","treatment") %in% names(annual_tbl)))
+
+  # v1p6 tables use *_low/*_high (no fixed "95" in the name)
+  y_mean <- paste0(metric, "_mean")
+  y_low  <- paste0(metric, "_low")
+  y_high <- paste0(metric, "_high")
+
+  # Backward compatibility: accept old *_low95/*_high95
+  if (!all(c(y_low, y_high) %in% names(annual_tbl))) {
+    y_low  <- paste0(metric, "_low95")
+    y_high <- paste0(metric, "_high95")
+  }
+
+  stopifnot(all(c(y_mean, y_low, y_high) %in% names(annual_tbl)))
+
+  d <- annual_tbl %>%
+    dplyr::filter(as.character(analyte) == analyte_pick) %>%
+    dplyr::mutate(
+      Year = as.integer(Year),
+      treatment = factor(treatment, levels = c("CT","MT","ST"))
+    ) %>%
+    dplyr::arrange(Year, treatment)
+
+  if (nrow(d) == 0) stop("No rows found for analyte = '", analyte_pick, "'.")
+
+  # determine CI label
+  if (is.null(prob_ci)) {
+    if ("prob_ci" %in% names(d)) prob_ci <- unique(d$prob_ci)[1]
+  }
+  ci_txt <- if (!is.null(prob_ci) && is.finite(prob_ci)) {
+    sprintf(" (%.0f%% interval)", 100 * prob_ci)
+  } else {
+    ""
+  }
+
+  ylab <- switch(
+    metric,
+    "load"   = paste0("Annual load (g)", ci_txt),
+    "conc"   = paste0("Flow-weighted concentration (mg/L)", ci_txt),
+    "volume" = paste0("Annual volume (L)", ci_txt)
+  )
+
+  pd <- ggplot2::position_dodge(width = dodge)
+
+  # Okabe–Ito colorblind-safe palette
+  trt_cols <- c(
+    CT = "#0072B2",
+    MT = "#E69F00",
+    ST = "#009E73"
+  )
+
+  ttl <- paste0(analyte_pick, ": annual ", metric, " by treatment")
+  if (!is.null(source_label)) ttl <- paste0(ttl, " (", source_label, ")")
+
+  p <- ggplot2::ggplot(
+    d,
+    ggplot2::aes(
+      x = Year,
+      y = .data[[y_mean]],
+      color = treatment,
+      group = treatment
+    )
+  ) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = .data[[y_low]], ymax = .data[[y_high]]),
+      width = 0,
+      position = pd,
+      linewidth = 1.6,
+      alpha = 0.7
+    )
+
+  if (draw_line) {
+    p <- p + ggplot2::geom_line(
+      position = pd,
+      linewidth = 1.1,
+      alpha = 0.9
+    )
+  }
+
+  if (show_points) {
+    p <- p + ggplot2::geom_point(
+      position = pd,
+      size = 2.7,
+      stroke = 0.2,
+      shape = 16
+    )
+  }
+
+  p +
+    ggplot2::scale_color_manual(values = trt_cols) +
+    ggplot2::scale_x_continuous(
+      breaks = sort(unique(d$Year)),
+      expand = ggplot2::expansion(mult = c(0.01, 0.02))
+    ) +
+    ggplot2::labs(
+      x = "Year",
+      y = ylab,
+      title = ttl,
+      color = "Treatment"
+    ) +
+    ggplot2::theme_classic(base_size = 14) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+      plot.title = ggplot2::element_text(face = "bold"),
+      legend.position = "right",
+      legend.box = "vertical",
+      legend.key.height = grid::unit(0.9, "lines"),
+      panel.grid.major.y = ggplot2::element_line(color = "grey90", linewidth = 0.4)
+    )
+}
+```
+
+```{r plot annual loads execution}
+# Modeled-only (v1p6 annual_tbl_pred)
+p_mod <- plot_annual_by_treatment_pretty(
+  annual_tbl = annual_tbl_pred,
+  analyte_pick = "TSS",
+  metric = "load",
+  source_label = "Modeled",
+  draw_line = TRUE
+)
+
+ggplot2::ggsave(
+  filename = "../figs/TSS_annual_load_modeled_only_v1p6.png",
+  plot = p_mod,
+  width = 8,
+  height = 5,
+  dpi = 300
+)
+
+# Observed-only (v1p6 annual_tbl_obs)
+p_obs <- plot_annual_by_treatment_pretty(
+  annual_tbl = annual_tbl_obs,
+  analyte_pick = "TSS",
+  metric = "load",
+  source_label = "Observed",
+  draw_line = FALSE
+)
+
+ggplot2::ggsave(
+  filename = "../figs/TSS_annual_load_observed_only_v1p6.png",
+  plot = p_obs,
+  width = 8,
+  height = 5,
+  dpi = 300
+)
+
+
+```
+
+
+```{r bind obs and modeled}
+bind_observed_modeled <- function(annual_tbl_pred, annual_tbl_obs) {
+
+  # ----------------------------
+  # Helper: normalize CI columns to *_low95/*_high95
+  # ----------------------------
+  normalize_ci <- function(df, prefix, source_label) {
+
+    mean_nm <- paste0(prefix, "_mean")
+    low95_nm  <- paste0(prefix, "_low95")
+    high95_nm <- paste0(prefix, "_high95")
+    low_nm    <- paste0(prefix, "_low")
+    high_nm   <- paste0(prefix, "_high")
+
+    if (all(c(mean_nm, low95_nm, high95_nm) %in% names(df))) return(df)
+
+    if (all(c(mean_nm, low_nm, high_nm) %in% names(df))) {
+      df[[low95_nm]]  <- df[[low_nm]]
+      df[[high95_nm]] <- df[[high_nm]]
+      return(df)
+    }
+
+    stop(
+      sprintf(
+        "%s table is missing CI columns for '%s'. Expected either (%s,%s,%s) or (%s,%s,%s). Present: %s",
+        source_label, prefix,
+        mean_nm, low95_nm, high95_nm,
+        mean_nm, low_nm, high_nm,
+        paste(names(df), collapse = ", ")
+      )
+    )
+  }
+
+  # ---- normalize both inputs ----
+  annual_tbl_pred <- normalize_ci(annual_tbl_pred, "load",   "Modeled")
+  annual_tbl_pred <- normalize_ci(annual_tbl_pred, "conc",   "Modeled")
+  annual_tbl_pred <- normalize_ci(annual_tbl_pred, "volume", "Modeled")
+
+  annual_tbl_obs  <- normalize_ci(annual_tbl_obs,  "load",   "Observed")
+  annual_tbl_obs  <- normalize_ci(annual_tbl_obs,  "conc",   "Observed")
+  annual_tbl_obs  <- normalize_ci(annual_tbl_obs,  "volume", "Observed")
+
+  # ----------------------------
+  # Build n safely (non-vectorized column-existence checks)
+  # ----------------------------
+  if ("n_events" %in% names(annual_tbl_pred)) {
+    annual_tbl_pred$n <- annual_tbl_pred$n_events
+  } else if ("n_rows" %in% names(annual_tbl_pred)) {
+    annual_tbl_pred$n <- annual_tbl_pred$n_rows
+  } else {
+    annual_tbl_pred$n <- NA_integer_
+  }
+
+  if ("n_events" %in% names(annual_tbl_obs)) {
+    annual_tbl_obs$n <- annual_tbl_obs$n_events
+  } else if ("n_rows" %in% names(annual_tbl_obs)) {
+    annual_tbl_obs$n <- annual_tbl_obs$n_rows
+  } else {
+    annual_tbl_obs$n <- NA_integer_
+  }
+
+  # ---- modeled ----
+  mod <- annual_tbl_pred %>%
+    dplyr::transmute(
+      Year      = as.integer(Year),
+      analyte   = as.character(analyte),
+      treatment = as.character(treatment),
+      source    = "Modeled",
+
+      load_mean,   load_low95,   load_high95,
+      conc_mean,   conc_low95,   conc_high95,
+      volume_mean, volume_low95, volume_high95,
+
+      n = as.integer(n)
+    )
+
+  # ---- observed ----
+  obs <- annual_tbl_obs %>%
+    dplyr::transmute(
+      Year      = as.integer(Year),
+      analyte   = as.character(analyte),
+      treatment = as.character(treatment),
+      source    = "Observed",
+
+      load_mean,   load_low95,   load_high95,
+      conc_mean,   conc_low95,   conc_high95,
+      volume_mean, volume_low95, volume_high95,
+
+      n = as.integer(n)
+    )
+
+  dplyr::bind_rows(mod, obs) %>%
+    dplyr::mutate(
+      treatment = factor(treatment, levels = c("CT","MT","ST")),
+      source    = factor(source, levels = c("Modeled","Observed"))
+    ) %>%
+    dplyr::arrange(analyte, Year, treatment, source)
+}
+
+
+# Combine modeled and observed annual tables
+annual_both <- bind_observed_modeled(annual_tbl_pred, annual_tbl_obs)
+
+```
+
+
+```{r plot obs and mod}
+plot_annual_by_treatment_obs_vs_mod <- function(
+  annual_both,
+  analyte_pick,
+  metric = c("load","conc","volume"),
+  dodge = 0.20
+) {
+  metric <- match.arg(metric)
+
+  y_mean <- paste0(metric, "_mean")
+  y_low  <- paste0(metric, "_low95")
+  y_high <- paste0(metric, "_high95")
+
+  stopifnot(all(c("Year","analyte","treatment","source", y_mean, y_low, y_high) %in% names(annual_both)))
+
+  d <- annual_both %>%
+    dplyr::filter(as.character(analyte) == analyte_pick) %>%
+    dplyr::mutate(
+      Year = as.integer(Year),
+      treatment = factor(treatment, levels = c("CT","MT","ST")),
+      source = factor(source, levels = c("Modeled","Observed"))
+    ) %>%
+    dplyr::arrange(Year, treatment, source)
+
+  if (nrow(d) == 0) stop("No rows found for analyte = '", analyte_pick, "'.")
+
+  ylab <- switch(
+    metric,
+    "load"   = "Annual load (g)",
+    "conc"   = "Flow-weighted concentration (mg/L)",
+    "volume" = "Annual volume (L)"
+  )
+
+  pd <- ggplot2::position_dodge(width = dodge)
+
+  trt_cols <- c(
+    CT = "#0072B2",
+    MT = "#E69F00",
+    ST = "#009E73"
+  )
+
+  ggplot2::ggplot(
+    d,
+    ggplot2::aes(
+      x = Year,
+      y = .data[[y_mean]],
+      color = treatment,
+      shape = source,
+      group = interaction(treatment, source)
+    )
+  ) +
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = .data[[y_low]], ymax = .data[[y_high]]),
+      width = 0,
+      position = pd,
+      linewidth = 1.6,
+      alpha = 0.7
+    ) +
+    ggplot2::geom_line(
+      data = d %>% dplyr::filter(source == "Modeled"),
+      position = pd,
+      linewidth = 1.1,
+      alpha = 0.9
+    ) +
+    ggplot2::geom_point(
+      position = pd,
+      size = 2.7,
+      stroke = 0.2
+    ) +
+    ggplot2::scale_color_manual(values = trt_cols) +
+    ggplot2::scale_shape_manual(values = c(Modeled = 16, Observed = 21)) +
+    ggplot2::scale_x_continuous(
+      breaks = sort(unique(d$Year)),
+      expand = ggplot2::expansion(mult = c(0.01, 0.02))
+    ) +
+    ggplot2::labs(
+      x = "Year",
+      y = ylab,
+      title = paste0(analyte_pick, ": annual ", metric, " by treatment"),
+      color = "Treatment",
+      shape = "Estimate type"
+    ) +
+    ggplot2::theme_classic(base_size = 14) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+      plot.title = ggplot2::element_text(face = "bold"),
+      legend.position = "right",
+      legend.box = "vertical",
+      legend.key.height = grid::unit(0.9, "lines"),
+      panel.grid.major.y = ggplot2::element_line(color = "grey90", linewidth = 0.4)
+    )
+}
+
+```
+
+```{r execute plot both}
+# Example usage:
+plot_annual_by_treatment_obs_vs_mod(annual_both, analyte_pick = "TP", metric = "load")
+
+```
+
+```{r save all plots}
+# ------------------------------------------------------------
+# Save images (v1p6 compatible)
+# ------------------------------------------------------------
+sanitize_slug <- function(x) {
+  x <- as.character(x)
+  x <- tolower(x)
+  x <- gsub("[[:space:]]+", "_", x)
+  x <- gsub("[^a-z0-9_]+", "", x)
+  x <- gsub("_+", "_", x)
+  x <- gsub("^_|_$", "", x)
+  x
+}
+
+save_all_analyte_obs_vs_mod_plots <- function(
+  annual_both,
+  metric = c("load","conc","volume"),
+  out_dir = file.path("../figs", "annual_obs_vs_modeled_v1p6"),
+  width = 9,
+  height = 5.5,
+  dpi = 300,
+  device = "png"
+) {
+  metric <- match.arg(metric)
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+  analytes <- sort(unique(as.character(annual_both$analyte)))
+
+  log <- vector("list", length(analytes))
+
+  for (i in seq_along(analytes)) {
+    a <- analytes[i]
+    slug <- sanitize_slug(a)
+
+    p <- try(
+      plot_annual_by_treatment_obs_vs_mod(
+        annual_both = annual_both,
+        analyte_pick = a,
+        metric = metric
+      ),
+      silent = TRUE
+    )
+
+    if (inherits(p, "try-error")) {
+      log[[i]] <- tibble::tibble(
+        analyte = a,
+        saved = FALSE,
+        file = NA_character_,
+        error = as.character(p)
+      )
+      next
+    }
+
+    fname <- file.path(out_dir, paste0("annual_", metric, "_", slug, "_obs_vs_modeled_v1p6.", device))
+
+    ggplot2::ggsave(
+      filename = fname,
+      plot = p,
+      width = width,
+      height = height,
+      dpi = dpi,
+      device = device
+    )
+
+    log[[i]] <- tibble::tibble(
+      analyte = a,
+      saved = TRUE,
+      file = fname,
+      error = NA_character_
+    )
+  }
+
+  dplyr::bind_rows(log)
+}
+
+# Example:
+log_load <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "load")
+# log_conc <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "conc")
+# log_vol  <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "volume")
+
+```
+
+```{r export bayes annual predictions}
+# ============================================================
+# v1p6: Export annual posterior predictions (and optional observed)
+# Designed to mirror an ML-style annual summary table with:
+#   - mean + interval bounds
+#   - n_events / n_rows
+#   - metadata (model version, interval probability)
+#   - optional per-draw export for downstream Python uncertainty graphics
+#
+# Inputs assumed available from your workflow:
+#   annual_tbl_pred   # from make_annual_load_table_all_treatments_pred()
+#   annual_tbl_obs    # from make_annual_observed_table_all_treatments()
+#   years_used
+# ============================================================
+
+export_dir <- "../out"
+dir.create(export_dir, recursive = TRUE, showWarnings = FALSE)
+
+model_version <- "v1p6"
+
+# ---- 1) Annual posterior summary (Modeled) ----
+# annual_tbl_pred uses: *_mean, *_low, *_high, plus prob_ci
+annual_pred_out <- annual_tbl_pred %>%
+  dplyr::mutate(
+    model_version = model_version,
+    source = "Bayes_Modeled",
+    interval_prob = dplyr::coalesce(prob_ci, 0.95)
+  ) %>%
+  dplyr::select(
+    model_version, source, interval_prob,
+    Year, analyte, treatment,
+    n_events, n_rows,
+    volume_mean, volume_low, volume_high,
+    conc_mean,   conc_low,   conc_high,
+    load_mean,   load_low,   load_high
+  ) %>%
+  dplyr::arrange(analyte, Year, treatment)
+
+pred_file <- file.path(export_dir, paste0("annual_load_summary_bayes_", model_version, ".csv"))
+readr::write_csv(annual_pred_out, pred_file)
+message("[OK] Wrote: ", pred_file)
+
+# ---- 2) Observed annual summary in same schema ----
+# Accept either *_low95/*_high95 OR *_low/*_high (dynamic CI)
+pick_ci_cols <- function(df, prefix) {
+  mean_nm  <- paste0(prefix, "_mean")
+  low95_nm <- paste0(prefix, "_low95")
+  high95_nm <- paste0(prefix, "_high95")
+  low_nm   <- paste0(prefix, "_low")
+  high_nm  <- paste0(prefix, "_high")
+
+  if (all(c(mean_nm, low95_nm, high95_nm) %in% names(df))) {
+    list(mean = mean_nm, low = low95_nm, high = high95_nm)
+  } else if (all(c(mean_nm, low_nm, high_nm) %in% names(df))) {
+    list(mean = mean_nm, low = low_nm, high = high_nm)
+  } else {
+    stop(
+      sprintf(
+        "Observed table missing CI columns for '%s'. Need (%s,%s,%s) or (%s,%s,%s). Present: %s",
+        prefix,
+        mean_nm, low95_nm, high95_nm,
+        mean_nm, low_nm, high_nm,
+        paste(names(df), collapse = ", ")
+      )
+    )
+  }
+}
+
+vol_cols  <- pick_ci_cols(annual_tbl_obs, "volume")
+conc_cols <- pick_ci_cols(annual_tbl_obs, "conc")
+load_cols <- pick_ci_cols(annual_tbl_obs, "load")
+
+annual_obs_out <- annual_tbl_obs %>%
+  dplyr::mutate(
+    model_version = model_version,
+    source = "Observed",
+    interval_prob = if ("prob_ci" %in% names(.)) dplyr::coalesce(prob_ci, 0.95) else 0.95
+  ) %>%
+  dplyr::transmute(
+    model_version, source, interval_prob,
+    Year,
+    analyte   = as.character(analyte),
+    treatment = as.character(treatment),
+    n_events,
+    n_rows = NA_integer_,
+
+    volume_mean = .data[[vol_cols$mean]],
+    volume_low  = .data[[vol_cols$low]],
+    volume_high = .data[[vol_cols$high]],
+
+    conc_mean = .data[[conc_cols$mean]],
+    conc_low  = .data[[conc_cols$low]],
+    conc_high = .data[[conc_cols$high]],
+
+    load_mean = .data[[load_cols$mean]],
+    load_low  = .data[[load_cols$low]],
+    load_high = .data[[load_cols$high]]
+  ) %>%
+  dplyr::arrange(analyte, Year, treatment)
+
+
+# ---- 3) Combined (Modeled + Observed) ----
+annual_combined_out <- dplyr::bind_rows(annual_pred_out, annual_obs_out) %>%
+  dplyr::arrange(source, analyte, Year, treatment)
+
+comb_file <- file.path(export_dir, paste0("annual_load_summary_bayes_plus_observed_", model_version, ".csv"))
+readr::write_csv(annual_combined_out, comb_file)
+message("[OK] Wrote: ", comb_file)
+
+# ---- 4) Optional: per-draw export (for Python fan charts / method-comparison) ----
+# This produces a long table:
+#   draw, Year, analyte, treatment, volume, conc_fw, load_g
+# It can get large: draws * groups. Keep n_draws modest.
+export_annual_draws <- function(
+  post,
+  d_pred,
+  years_used,
+  analyte_lookup,
+  block_lookup,
+  sampler_lookup,
+  flume_lookup,
+  crop_lookup,
+  c_stats,
+  V_mean, V_sd,
+  stir_mean, stir_sd,
+  n_draws = 400,         # keep modest, adjust as needed
+  seed = 1
+) {
+  needed_cols <- c(
+    "event_id","Year","Treatment","analyte_abbr","STIR_raw",
+    "Rep","SampleMethod","FlumeMethod","irr_num","dup","cin_z",
+    "Crop","RES_z"
+  )
+  miss <- setdiff(needed_cols, names(d_pred))
+  if (length(miss) > 0) stop("d_pred is missing columns: ", paste(miss, collapse = ", "))
+
+  set.seed(seed)
+
+  # draw subsample
+  n_total <- nrow(post$alpha)
+  draw_idx <- if (n_total > n_draws) sample.int(n_total, n_draws) else seq_len(n_total)
+  D <- length(draw_idx)
+
+  dat <- d_pred %>%
+    dplyr::left_join(analyte_lookup %>% dplyr::select(A, analyte_abbr), by = "analyte_abbr") %>%
+    dplyr::left_join(block_lookup   %>% dplyr::select(B, Rep),          by = "Rep") %>%
+    dplyr::left_join(sampler_lookup %>% dplyr::select(S, SampleMethod), by = "SampleMethod") %>%
+    dplyr::left_join(flume_lookup   %>% dplyr::select(Fu, FlumeMethod), by = "FlumeMethod") %>%
+    dplyr::left_join(crop_lookup    %>% dplyr::select(Cr, Crop),        by = "Crop") %>%
+    dplyr::left_join(c_stats %>% dplyr::select(A, c_mean, c_sd) %>% dplyr::distinct(), by = "A") %>%
+    dplyr::mutate(
+      Y      = match(Year, years_used),
+      STIR_z = (STIR_raw - stir_mean) / stir_sd
+    ) %>%
+    dplyr::mutate(
+      A  = as.integer(A),
+      B  = as.integer(B),
+      S  = as.integer(S),
+      Fu = as.integer(Fu),
+      Y  = as.integer(Y),
+      Cr = as.integer(Cr)
+    )
+
+  if (anyNA(dat$A) || anyNA(dat$B) || anyNA(dat$S) || anyNA(dat$Fu) || anyNA(dat$Cr) || anyNA(dat$Y)) {
+    stop("Index mapping produced NAs; check lookup tables and years_used alignment.")
+  }
+
+  groups <- dat %>%
+    dplyr::distinct(Year, analyte_abbr, Treatment) %>%
+    dplyr::arrange(analyte_abbr, Year, Treatment)
+
+  out <- vector("list", length = D * nrow(groups))
+  kk <- 1L
+
+  for (dd in seq_len(D)) {
+    s <- draw_idx[dd]
+
+    for (g in seq_len(nrow(groups))) {
+
+      yr <- groups$Year[g]
+      an <- groups$analyte_abbr[g]
+      tr <- groups$Treatment[g]
+
+      dsub <- dat %>% dplyr::filter(Year == yr, analyte_abbr == an, Treatment == tr)
+      if (nrow(dsub) == 0) next
+
+      # Row-level predictors
+      A  <- dsub$A;  B <- dsub$B;  S <- dsub$S;  Fu <- dsub$Fu;  Y <- dsub$Y;  Cr <- dsub$Cr
+      stz <- dsub$STIR_z
+      cin <- dsub$cin_z
+      irr <- dsub$irr_num
+      dup <- dsub$dup
+      res <- dsub$RES_z
+      c_mean <- dsub$c_mean
+      c_sd   <- dsub$c_sd
+
+      # Event-level ledger for volumes
+      ev <- dsub %>%
+        dplyr::distinct(event_id, STIR_z, RES_z, Crop) %>%
+        dplyr::left_join(crop_lookup %>% dplyr::select(Cr, Crop), by = "Crop") %>%
+        dplyr::mutate(Cr = as.integer(Cr))
+
+      muV_z_ev <- post$a_V[s] +
+        post$b_V[s]        * ev$STIR_z +
+        post$beta_res_V[s] * ev$RES_z +
+        post$gamma_Cr_V[s, ev$Cr]
+
+      Vsum <- sum(V_mean + V_sd * muV_z_ev, na.rm = TRUE)
+
+      muV_z_row <- post$a_V[s] +
+        post$b_V[s]        * stz +
+        post$beta_res_V[s] * res +
+        post$gamma_Cr_V[s, Cr]
+
+      gB <- post$gamma_B[s, , , drop = TRUE][cbind(A, B)]
+      gS <- post$gamma_S[s, , , drop = TRUE][cbind(A, S)]
+      gF <- post$gamma_F[s, , , drop = TRUE][cbind(A, Fu)]
+      kY <- post$F_year[s, , , drop = TRUE][cbind(Y, A)]
+      gCrC <- post$gamma_Cr[s, , , drop = TRUE][cbind(A, Cr)]
+
+      muC_z <- post$alpha[s, A] +
+        post$beta_stir[s, A] * stz +
+        post$beta_cin[s, A]  * cin +
+        post$beta_vol[s]     * muV_z_row +
+        post$beta_irr[s]     * irr +
+        post$beta_dup[s, A]  * dup +
+        post$beta_res_C[s, A] * res +
+        gCrC + gB + gS + gF + kY
+
+      C_raw <- c_mean + c_sd * muC_z
+      V_row_raw <- V_mean + V_sd * muV_z_row
+
+      Lmg <- sum(C_raw * V_row_raw, na.rm = TRUE)
+      Lg  <- Lmg / 1000
+      Cfw <- if (is.finite(Vsum) && Vsum > 0) ((Lg * 1000) / Vsum) else NA_real_
+
+      out[[kk]] <- tibble::tibble(
+        draw = dd,
+        draw_id = s,
+        Year = yr,
+        analyte = an,
+        treatment = tr,
+        volume_L = Vsum,
+        conc_fw_mg_L = Cfw,
+        load_g = Lg
+      )
+      kk <- kk + 1L
+    }
+  }
+
+  dplyr::bind_rows(out[seq_len(kk - 1L)]) %>%
+    dplyr::arrange(analyte, Year, treatment, draw)
+}
+
+# Uncomment to write per-draw table (can be big):
+# annual_draws <- export_annual_draws(
+#   post = post,
+#   d_pred = d_pred,
+#   years_used = years_used,
+#   analyte_lookup = analyte_lookup,
+#   block_lookup = block_lookup,
+#   sampler_lookup = sampler_lookup,
+#   flume_lookup = flume_lookup,
+#   crop_lookup = crop_lookup,
+#   c_stats = c_stats,
+#   V_mean = V_mean, V_sd = V_sd,
+#   stir_mean = stir_mean, stir_sd = stir_sd,
+#   n_draws = 400,
+#   seed = 1
+# )
+# draws_file <- file.path(export_dir, paste0("annual_load_draws_bayes_", model_version, ".csv"))
+# readr::write_csv(annual_draws, draws_file)
+# message("[OK] Wrote: ", draws_file)
+
+```
+

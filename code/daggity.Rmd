@@ -38,6 +38,7 @@ Year [exposure,pos="-1.372,-4.853"]
 "Crop Type" -> "Outflow Conc."
 "Crop Type" -> "Outflow vol"
 "Crop Type" -> "residue cover"
+"Crop Type" -> Analyte
 "Depth measurement method" -> "Outflow vol"
 "Inflow Conc." -> "Outflow Conc."
 "Inflow Conc." -> Analyte
@@ -106,9 +107,8 @@ adj_direc_vol
 ```
 
 
-
 ```{r fig.width=10, eval=F}
-# DAG with STIR effects including latent soil properties
+# DAG with STIR effects including latent measurement error nodes
 dag2 <- dagitty('
 dag {
 bb="-5.892,-5.356,4.412,6.847"
@@ -119,22 +119,26 @@ bb="-5.892,-5.356,4.412,6.847"
 "Inflow vol" [pos="3.591,-2.952"]
 "Irrigation Count" [exposure,pos="-2.397,-4.895"]
 "Irrigation Method" [exposure,pos="1.011,-4.730"]
-"Load e." [latent,pos="-3.102,5.823"]
-"Outflow Conc." [outcome,pos="-4.213,0.646"]
-"Outflow vol" [outcome,pos="2.479,0.632"]
+"Out Conc. Obs" [outcome,pos="-5.282,0.836"]
+"Outflow Conc." [latent,pos="-4.213,0.646"]
+"Outflow vol" [latent,pos="2.479,0.632"]
+"Outflow vol. Obs" [outcome,pos="3.431,0.501"]
 "Sampler Method" [exposure,pos="-4.737,-3.336"]
 "Vol. e " [latent,pos="3.787,2.850"]
 "duplicate status" [exposure,pos="-5.325,-1.189"]
 "flume type" [exposure,pos="-0.573,4.216"]
+"residue cover" [pos="-0.631,-0.212"]
 "source water" [pos="-5.056,-4.688"]
 Analyte [pos="-1.786,-3.109"]
 Block [exposure,pos="-0.587,2.651"]
 Load [outcome,pos="-0.587,5.994"]
 STIR [exposure,pos="-0.747,-1.959"]
 Year [exposure,pos="-1.372,-4.853"]
-"Conc. e" -> "Outflow Conc."
-"Crop Type" -> STIR
-"Depth measurement method" -> "Outflow vol"
+"Conc. e" -> "Out Conc. Obs"
+"Crop Type" -> "Outflow Conc."
+"Crop Type" -> "Outflow vol"
+"Crop Type" -> "residue cover"
+"Depth measurement method" -> "Vol. e "
 "Inflow Conc." -> "Outflow Conc."
 "Inflow Conc." -> Analyte
 "Inflow vol" -> "Outflow vol"
@@ -142,31 +146,63 @@ Year [exposure,pos="-1.372,-4.853"]
 "Irrigation Count" -> "Outflow vol"
 "Irrigation Count" -> Analyte
 "Irrigation Method" -> "Inflow vol"
-"Load e." -> Load
+"Outflow Conc." -> "Out Conc. Obs"
 "Outflow Conc." -> Load
 "Outflow vol" -> "Outflow Conc."
+"Outflow vol" -> "Outflow vol. Obs"
 "Outflow vol" -> Load
 "Sampler Method" -> "Outflow Conc."
 "Sampler Method" -> Analyte
-"Vol. e " -> "Outflow vol"
+"Vol. e " -> "Outflow vol. Obs"
 "duplicate status" -> "Outflow Conc."
 "duplicate status" -> Analyte
 "flume type" -> "Outflow Conc."
 "flume type" -> "Outflow vol"
+"residue cover" -> "Outflow Conc."
+"residue cover" -> "Outflow vol"
+"residue cover" -> Analyte
 "source water" -> "Inflow Conc."
 Analyte -> "Outflow Conc."
 Block -> "Outflow Conc."
 Block -> "Outflow vol"
 STIR -> "Outflow Conc."
 STIR -> "Outflow vol"
+STIR -> "residue cover"
 STIR -> Analyte
 Year -> "Outflow Conc."
 Year -> "Outflow vol"
 Year -> Analyte
 }
 
+
 ')
 
 plot(dag2)
 ```
 
+```{r}
+# Idenfity adjustment sets for STIR effects on concentration
+adj_direc_conc2 <- adjustmentSets(
+  dag2,
+  exposure = "STIR",
+  outcome  = "Outflow Conc.",
+  effect   = "direct",    # direct or total
+)
+
+adj_direc_conc2
+
+```
+
+
+
+```{r}
+# Idenfity adjustment sets for STIR effects on volume
+adj_direc_vol2 <- adjustmentSets(
+  dag2,
+  exposure = "STIR",
+  outcome  = "Outflow vol",
+  effect   = "direct",
+)
+
+adj_direc_vol2
+```

@@ -279,7 +279,7 @@ In summary:
 
 ### 1. STIR Effects on Concentration
 
-![STIR effects](./figs/load1p5_STIReffects.jpeg)
+![STIR effects](./figs/load1p6_STIReffects.jpeg)
 
 These results show **positive STIR slopes** for most analytes, with strongest effects for sediment-associated constituents.
 
@@ -287,22 +287,22 @@ These results show **positive STIR slopes** for most analytes, with strongest ef
 
 ### 2a. STIR → Load Relationships
 
-![STIR load curves](./figs/load1p5_STIR_load_curves.jpeg)
+![STIR load curves](./figs/load1p6_STIR_load_curves.jpeg)
 
 Posterior predictive load curves indicate increasing event-scale loads with increasing seasonal STIR, especially for particulate species.
 
 ---
 
 ### 2b. Annual Load Summaries
-![TP annual loads](./figs/annual_obs_vs_modeled/annual_load_tp_obs_vs_modeled.png)
+![TP annual loads](./figs/annual_obs_vs_modeled_v1p6/annual_load_no3_obs_vs_modeled_v1p6.png)
 Annual TP load summaries show good agreement between observed and modeled loads across treatments and years, with uncertainty intervals reflecting all propagated sources of error.
 
-![NO3 annual loads](./figs/annual_obs_vs_modeled/annual_load_no3_obs_vs_modeled.png)
+![NO3 annual loads](./figs/annual_obs_vs_modeled_v1p6/annual_load_tp_obs_vs_modeled_v1p6.png)
 NO3 loads exhibit more variability and less predictive accuracy, likely due to the weaker relationship with STIR.
 
 ### 3. Latent Year-to-Year Deviations (Multi-Output GP)
 
-![latent deviations](./figs/yearly_latent_deviations.jpeg)
+![latent deviations](./figs/yearly_latent_deviations_v1p6.jpeg)
 
 The multi-output GP reveals analyte-specific baseline shifts after adjusting for all covariates. Particulate nutrients show clear multi-year structure.
 
@@ -310,7 +310,7 @@ The multi-output GP reveals analyte-specific baseline shifts after adjusting for
 
 ### 4. Persistence of Temporal Deviations (Lag-1 Autocorrelation)
 
-![persistence](./figs/analyte_persistence_precis.jpeg)
+![persistence](./figs/analyte_persistence_precis_v1p6.jpeg)
 
 Particulate analytes (TP, OP, TKN, TSS) show **moderate to strong temporal persistence**, suggesting multi-year ecological or management drivers.
 
@@ -318,7 +318,7 @@ Particulate analytes (TP, OP, TKN, TSS) show **moderate to strong temporal persi
 
 ### 5. GP Kernel: Prior vs Posterior
 
-![GP kernel](./figs/year_covariance_gp.jpeg)
+![GP kernel](./figs/year_covariance_gp_v1p6.jpeg)
 
 Posterior draws indicate strong shrinkage toward shorter-range temporal dependence compared with prior assumptions.
 

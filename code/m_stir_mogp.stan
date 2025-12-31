@@ -33,6 +33,7 @@ data {
     int S_n;
     int B_n;
     int A_n;
+    int Cr_n;
     int N;
 
     // outcome with missingness
@@ -46,6 +47,7 @@ data {
     array[N] int<lower=1, upper=S_n>  S;
     array[N] int<lower=1, upper=B_n>  B;
     array[N] int<lower=1, upper=A_n>  A;
+    array[N] int<lower=1, upper=Cr_n> Cr;
     array[N] int DUP;  // 0 or 1, treated as numeric
     array[N] int IRR;  // irrigation count, treated as numeric
 
@@ -57,6 +59,7 @@ data {
     // predictors
     vector[N] STIR;
     vector[N] CIN;
+    vector[N] RES;  // residue cover at planting (z-scale for now)
     int<lower=0> N_CIN_miss;
     array[N_CIN_miss] int<lower=1, upper=N> CIN_missidx;
 
@@ -89,8 +92,16 @@ parameters {
     // fixed effects
     real beta_vol;
     real beta_irr;
+    real beta_res_V;
+    vector[A_n] beta_res_C;
     real a_V;
     real b_V;
+
+    // crop effects
+    vector[Cr_n] gamma_Cr_V;            // volume crop intercepts
+    matrix[A_n, Cr_n] gamma_Cr;         // analyte-specific crop intercepts
+    real<lower=0> sigma_Cr_V;
+    vector<lower=0>[A_n] sigma_Cr;
 
     // residual scales
     vector<lower = 0>[A_n] sigma_analyte;
@@ -178,6 +189,17 @@ model {
     beta_irr ~ normal(0, 1);
     beta_vol ~ normal(0, 1);
 
+    beta_res_V ~ normal(0, 1);
+    beta_res_C ~ normal(0, 1);
+
+    sigma_Cr_V ~ exponential(1);
+    gamma_Cr_V ~ normal(0, sigma_Cr_V);
+
+    sigma_Cr   ~ exponential(1);
+    for (a in 1:A_n) {
+        gamma_Cr[a] ~ normal(0, sigma_Cr[a]);
+    }
+
     sigma_F      ~ exponential(1);
     L_F          ~ lkj_corr_cholesky(2);
     to_vector(Z_F) ~ normal(0, 1);
@@ -201,7 +223,7 @@ model {
 
     // Volume model with missing data
     for (i in 1:N) {
-        mu_V[i] = a_V + b_V * STIR[i];
+        mu_V[i] = a_V + b_V * STIR[i] + beta_res_V * RES[i] + gamma_Cr_V[Cr[i]];
     }
     VOL_merge = merge_missing(VOL_missidx, VOL, VOL_impute);
     VOL_merge ~ normal(mu_V, sigma_V);
@@ -215,6 +237,8 @@ model {
             beta_vol * VOL_merge[i] +
             beta_irr * IRR[i] +
             beta_dup[A[i]] * DUP[i] +
+            beta_res_C[A[i]] * RES[i] +
+            gamma_Cr[A[i], Cr[i]] +
             gamma_B[A[i], B[i]] +
             gamma_S[A[i], S[i]] +
             gamma_F[A[i], Fu[i]] +
