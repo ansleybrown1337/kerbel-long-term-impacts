@@ -8,7 +8,7 @@ library(dagitty)
 ```
 
 ```{r fig.width=10}
-# DAG with STIR effects w/o latent soil properties
+# DAG with STIR effects
 dag <- dagitty(
 '
 dag {
@@ -99,6 +99,17 @@ adj_direc_conc
 adj_direc_vol <- adjustmentSets(
   dag,
   exposure = "STIR",
+  outcome  = "Outflow vol",
+  effect   = "direct",
+)
+
+adj_direc_vol
+```
+```{r}
+# Idenfity adjustment sets for residue effects on volume
+adj_direc_vol <- adjustmentSets(
+  dag,
+  exposure = "residue cover",
   outcome  = "Outflow vol",
   effect   = "direct",
 )

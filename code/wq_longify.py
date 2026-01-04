@@ -194,9 +194,19 @@ def fetch_rlmdl(analyte: str, source_key: str):
     return out
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Longify Kerbel WQ master table into OUT-only long format with inflow pairing and RL/MDL metadata.")
+    parser.add_argument("--in", dest="src", default=None, help="Input raw master WQ CSV. Default: data/Master_WaterQuality_Kerbel_LastUpdated_10272025.csv")
+    parser.add_argument("--out", dest="dst", default=None, help="Output long-format CSV. Default: out/kerbel_master_concentrations_long.csv")
+    parser.add_argument("--debug", action="store_true", help="Verbose diagnostics (reserved).")
+    args = parser.parse_args()
+
     repo = Path(__file__).resolve().parents[1]
-    src = repo / "data" / "Master_WaterQuality_Kerbel_LastUpdated_10272025.csv"
-    dst = repo / "out" / "kerbel_master_concentrations_long.csv"
+    src = Path(args.src) if args.src else (repo / "data" / "Master_WaterQuality_Kerbel_LastUpdated_10272025.csv")
+    dst = Path(args.dst) if args.dst else (repo / "out" / "kerbel_master_concentrations_long.csv")
+
+    if not src.exists():
+        raise FileNotFoundError(f"Input file not found: {src}")
 
     # Use row 2 as headers; skip row 3 (units). Keep literal tokens like "NA".
     df = pd.read_csv(src, header=1, skiprows=[2], keep_default_na=False)
@@ -218,7 +228,6 @@ def main():
     load_block_cols = cols[flume_idx + 1 : tssm_idx]
 
     # IMPORTANT: ensure Volume survives even if it sits inside the positional LOAD block
-    # (this protects OUT Volume too, and enables INF Volume pairing).
     if "Volume" in load_block_cols:
         load_block_cols = [c for c in load_block_cols if c != "Volume"]
 
@@ -259,7 +268,6 @@ def main():
     key_cols = ["Year", "Date", "Irrigation", "Rep", "Analyte"]
 
     # Build inflow lookup for Result, Flag, and Volume
-    # (Volume must exist in df_long via id_cols; the safeguard above helps ensure that.)
     inf_agg = {
         "Result_mg_L": pick_first_token,
         "Flag": pick_first_token
@@ -292,11 +300,7 @@ def main():
         lambda x: "FALSE" if str(x) == "NA" else "TRUE"
     )
 
-    # --------------------------
     # Attach RL/MDL to each row
-    # --------------------------
-    # Decide source (ALS_2023plus, ALS_pre2023, CSU_assumed_from_ALS_pre2023) per row
-    # based on Year and Lab name.
     def _attach(row):
         source_key = select_rlmdl_source(row.get("Year", ""), row.get("Lab", ""))
         rlmdl = fetch_rlmdl(str(row.get("Analyte", "")), source_key)
@@ -314,6 +318,7 @@ def main():
     out_joined = out_joined.drop(columns=["FlowDir"])
 
     # Write
+    dst = (repo / dst) if not dst.is_absolute() else dst
     dst.parent.mkdir(parents=True, exist_ok=True)
     out_joined.to_csv(dst, index=False)
 
@@ -325,7 +330,7 @@ def main():
     if "Inflow_Volume" in out_joined.columns:
         added_cols.insert(2, "Inflow_Volume")
     print(f"[INFO] Added columns: {', '.join(added_cols)}")
-    print(f"[INFO] RL/MDL columns added: MDL_Provided, RL_Provided, RLMDL_Provided_Units, RLMDL_Method, MDL_mg_L, RL_mg_L, RLMDL_Source, RLMDL_Assumed")
+    print("[INFO] RL/MDL columns added: MDL_Provided, RL_Provided, RLMDL_Provided_Units, RLMDL_Method, MDL_mg_L, RL_mg_L, RLMDL_Source, RLMDL_Assumed")
     print(f"[INFO] Output rows (OUT only): {len(out_joined)}")
 
 if __name__ == "__main__":

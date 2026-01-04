@@ -31,7 +31,7 @@ library(ggplot2)
 #' @param path Path to wq_with_stir_by_season.csv relative to project root.
 #' @param year_max Optional upper bound on Year (e.g., 2023). Use Inf to keep all.
 #' @return A tibble with raw merged WQ × STIR data.
-load_wq_stir <- function(path = "out/wq_with_stir_by_season.csv",
+load_wq_stir <- function(path = "out/pipeline_csvs/wq_with_stir_by_season.csv",
                          year_max = Inf) {
   
   # Resolve path robustly relative to current working directory
@@ -195,7 +195,7 @@ if (interactive()) {
   # Only run this section in interactive sessions
   # Step 1: load raw merged data
   wq_stir <- load_wq_stir(
-    path = "out/wq_with_stir_by_season.csv",
+    path = "out/pipeline_csvs/wq_with_stir_by_season.csv",
     year_max = Inf
   )
   
