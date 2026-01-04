@@ -643,6 +643,13 @@ def main() -> None:
     ap.add_argument("--shared_only", action="store_true", help="Only plot analytes present in BOTH Bayes and ML.")
     ap.add_argument("--skip_plots", action="store_true", help="Only compute metrics, do not render plots.")
 
+    ap.add_argument(
+        "--tag",
+        type=str,
+        default=None,
+        help="Optional label to version outputs (e.g., v1p7). Creates separate figs/ and metrics/ folders."
+    )
+
     ap.add_argument("--skip_crps", action="store_true", help="Skip CRPS even if draws exist.")
     ap.add_argument("--bayes_draws", type=str, default=None, help="Bayes draws CSV (default: out/annual_load_draws_bayes_v1p6.csv)")
     ap.add_argument("--ml_draws", type=str, default=None, help="ML draws CSV (default: out/ml_catboost_conformal_loyo/annual_load_draws.csv)")
@@ -660,10 +667,15 @@ def main() -> None:
     if not ml_path.exists():
         raise FileNotFoundError(f"ML file not found: {ml_path}")
 
-    figs_outdir = repo / "figs" / "annual_bayes_vs_ml_faceted_jpg"
+    # Versioned outputs (avoid overwriting prior runs)
+    tag = None if args.tag is None else re.sub(r"[^A-Za-z0-9_.-]+", "_", args.tag.strip())
+    figs_dirname = "annual_bayes_vs_ml_faceted_jpg" + (f"_{tag}" if tag else "")
+    metrics_dirname = "bayes_vs_ml_metrics" + (f"_{tag}" if tag else "")
+
+    figs_outdir = repo / "figs" / figs_dirname
     figs_outdir.mkdir(parents=True, exist_ok=True)
 
-    metrics_outdir = repo / "out" / "bayes_vs_ml_metrics"
+    metrics_outdir = repo / "out" / metrics_dirname
     metrics_outdir.mkdir(parents=True, exist_ok=True)
 
     bayes_raw = pd.read_csv(bayes_path)
