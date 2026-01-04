@@ -15,14 +15,19 @@ knitr::opts_chunk$set(
   warning = FALSE
 )
 
-# Load backend cleaning + functions
-getwd()
-#source("./stir-bayes-backend.R")
+# Core libs
 library(rethinking)
 library(posterior)
 library(cmdstanr)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
+library(readr)
+library(stringr)
+library(purrr)
+
+# If you rely on helper functions (e.g., make_year_dist_mat), source them here:
+# source("./stir-bayes-backend.R")
 ```
 
 # Model 1.6 (Concentration + Volume Joint Model)
@@ -41,7 +46,7 @@ library(ggplot2)
 * v1.5 only has cmdstan model, no rethinking/ulam version
 * v1.6 adds crop type effects and residue cover at planting effects
 
-# 1. Load and clean STIR–WQ dataset
+# 1. Load and lightly type-enforce the Bayes-clean dataset (from Python pipeline)
 
 ```{r load-clean}
 # Prefer the Python-produced Bayes-clean dataset
@@ -52,9 +57,12 @@ if (!file.exists(clean_path)) {
     clean_path <- alt
   } else {
     stop(
-      "Bayes-clean file not found. Expected 'out/wq_cleaned.csv'.\n",
-      "Run the Python pipeline first:\n",
-      "  python code/main.py\n"
+      "Bayes-clean file not found. Expected 'out/wq_cleaned.csv'.
+",
+      "Run the Python pipeline first:
+",
+      "  python code/run_pipeline.py
+"
     )
   }
 }
@@ -65,7 +73,7 @@ abbr_levels <- c("NH4","ICP","NO3","NOx","NO2","NPOC","OP","Se","TDS","TKN","TN"
 
 # Defensive type enforcement (lightweight, no re-cleaning)
 wq_clean <- wq_clean %>%
-  mutate(
+  dplyr::mutate(
     # Dates
     Date        = if ("Date" %in% names(.)) as.Date(Date) else Date,
     PlantDate   = if ("PlantDate" %in% names(.)) as.Date(PlantDate) else PlantDate,
@@ -76,28 +84,33 @@ wq_clean <- wq_clean %>%
     SeasonYear  = if ("SeasonYear" %in% names(.)) as.integer(SeasonYear) else SeasonYear,
 
     # Factors/categoricals often used downstream
-    Treatment   = if ("Treatment" %in% names(.)) factor(Treatment, levels = c("CT","MT","ST")) else Treatment,
-    Rep         = if ("Rep" %in% names(.)) factor(Rep) else Rep,
-    Irrigation  = if ("Irrigation" %in% names(.)) factor(Irrigation) else Irrigation,
-    Analyte     = if ("Analyte" %in% names(.)) factor(Analyte) else Analyte,
-    analyte_abbr= if ("analyte_abbr" %in% names(.)) factor(analyte_abbr, levels = abbr_levels) else analyte_abbr,
-    Crop        = if ("Crop" %in% names(.)) factor(Crop) else Crop,
+    Treatment    = if ("Treatment" %in% names(.)) factor(Treatment, levels = c("CT","MT","ST")) else Treatment,
+    Rep          = if ("Rep" %in% names(.)) factor(Rep) else Rep,
+    Irrigation   = if ("Irrigation" %in% names(.)) factor(Irrigation) else Irrigation,
+    SampleMethod = if ("SampleMethod" %in% names(.)) factor(SampleMethod) else SampleMethod,
+    FlumeMethod  = if ("FlumeMethod" %in% names(.)) factor(FlumeMethod) else FlumeMethod,
+    Duplicate    = if ("Duplicate" %in% names(.)) as.integer(Duplicate) else Duplicate,
+    Analyte      = if ("Analyte" %in% names(.)) factor(Analyte) else Analyte,
+    analyte_abbr = if ("analyte_abbr" %in% names(.)) factor(analyte_abbr, levels = abbr_levels) else analyte_abbr,
+    Crop         = if ("Crop" %in% names(.)) factor(Crop) else Crop,
 
     # Add original row number for tracking
-    orig_row = row_number()
+    orig_row = dplyr::row_number()
   )
 
 # Sanity checks (quick)
-req_cols <- c("cout_z","cin_z","stir_season_z","stir_cumall_z","volume_z","Treatment","Analyte","analyte_abbr","residue_prop")
+req_cols <- c("cout_z","cin_z","stir_season_z","volume_z","Treatment","Rep","SampleMethod","FlumeMethod","Irrigation","Duplicate","Crop","analyte_abbr")
 missing_cols <- setdiff(req_cols, names(wq_clean))
 if (length(missing_cols) > 0) {
   warning("Missing expected columns in wq_cleaned.csv: ", paste(missing_cols, collapse = ", "))
 }
 
-cat("Loaded Bayes-clean dataset:", clean_path, "\n")
-cat("Rows:", nrow(wq_clean), " | Columns:", ncol(wq_clean), "\n")
+cat("Loaded Bayes-clean dataset:", clean_path, "
+")
+cat("Rows:", nrow(wq_clean), " | Columns:", ncol(wq_clean), "
+")
 
-glimpse(wq_clean)
+dplyr::glimpse(wq_clean)
 ```
 
 ---
@@ -146,13 +159,20 @@ d_mod <- d_mod %>%
     B = as.integer(Rep),
 
     # Sampler method index
-    S = as.integer(as.factor(SampleMethod)),
+    S = as.integer(SampleMethod),
 
     # Flume type index
-    Fu = as.integer(as.factor(FlumeMethod)),
+    Fu = as.integer(FlumeMethod),
 
     # Irrigation count as numeric
-    irr_num = as.integer(Irrigation),
+    irr_num = dplyr::case_when(
+      # Explicitly drop storm events
+      as.character(Irrigation) %in% c("S1", "S2") ~ NA_integer_,
+    
+      # Valid numeric irrigation counts
+      TRUE ~ as.integer(readr::parse_number(as.character(Irrigation)))
+    ),
+
 
     # Inflow concentration (standardized), keep NAs for Bayesian imputation
     cin_std = cin_z,
@@ -169,8 +189,23 @@ d_mod <- d_mod %>%
     # Residue cover at planting (placeholder for now, percent ultimately)
     # Padding with zeros means it is centered at 0 on the modeled scale and will not move estimates.
     # NOTE: later this will be filled with actual data and standardized from the stir-bayes-backend.R and python dataflow
-    res_plant_z = 0
+    res_plant_z = {
+      if ("residue_prop" %in% names(.)) {
+        x <- as.numeric(residue_prop)
+        m <- mean(x, na.rm = TRUE)
+        s <- stats::sd(x, na.rm = TRUE)
+        if (!is.finite(s) || s == 0) 0 else (x - m) / s
+      } else if ("residue_z" %in% names(.)) {
+        as.numeric(residue_z)
+      } else {
+        0
+      }
+    }
   )
+
+# Drop storm rows (no ordinal irrigation meaning)
+d_mod <- d_mod %>%
+  dplyr::filter(!is.na(irr_num))
 
 
 # instantiate distance matrix for gaussian process on year
@@ -419,7 +454,10 @@ fit <- mod$sample(
   iter_warmup     = 1000,
   iter_sampling   = 1000
 )
+```
 
+
+```{r cmdstan model fit}
 saveRDS(fit, file = "./out/fit_mogp_v1p7.rds")
 # fit <- readRDS("./out/fit_mogp_v1p7.rds")
 
@@ -507,6 +545,7 @@ summarize_cmdstan <- function(fit, vars = NULL, n_show = 30) {
 s_all <- summarize_cmdstan(fit, n_show = 50)
 
 ```
+
 
 ```{r stan analyte effects}
 ## =====================================================================
@@ -1011,7 +1050,7 @@ plot_stir_effects <- function() {
 }
 
 # Save as JPEG in figs folder (v1p7 filename)
-jpeg("../figs/load1p6_STIReffects.jpeg", width = 2000, height = 1300, res = 200)
+jpeg("../figs/load1p7_STIReffects.jpeg", width = 2000, height = 1300, res = 200)
 plot_stir_effects()
 dev.off()
 
@@ -1074,7 +1113,7 @@ plot_stir_volume_effect(fit, param = "b_V")
 plot_stir_volume_effect(
   fit,
   param = "b_V",
-  file = "../figs/1p6_post_STIR_effect_on_volume.jpeg"
+  file = "../figs/1p7_post_STIR_effect_on_volume.jpeg"
 )
 
 ```
@@ -1842,7 +1881,7 @@ p_load
 ```{r save load fig}
 # Save to figs folder
 ggsave(
-  filename = "../figs/load1p6_STIR_load_curves.jpeg",
+  filename = "../figs/load1p7_STIR_load_curves.jpeg",
   plot = p_load,
   width = 12, height = 10, dpi = 300
 )
@@ -1928,11 +1967,11 @@ for (i in seq_len(n_post)) {
 }
 
 # Posterior mean curve across *all* posterior draws (more stable)
-pm_cov <- sapply(
-  x_seq,
-  function(x) cov_fun(etasq_all, rhosq_all, x)
-)
-lines(x_seq, colMeans(pm_cov, na.rm = TRUE), col = "firebrick", lwd = 4)
+# pm_cov <- sapply(
+#   x_seq,
+#   function(x) cov_fun(etasq_all, rhosq_all, x)
+# )
+# lines(x_seq, colMeans(pm_cov, na.rm = TRUE), col = "firebrick", lwd = 4)
 
 legend(
   "topright",
@@ -1976,7 +2015,7 @@ for (i in seq_len(n_post)) {
   )
 }
 
-lines(x_seq, colMeans(pm_cov, na.rm = TRUE), col = "firebrick", lwd = 4)
+# lines(x_seq, colMeans(pm_cov, na.rm = TRUE), col = "firebrick", lwd = 4)
 
 legend(
   "topright",
@@ -2058,6 +2097,8 @@ ggsave(
 )
 
 ```
+
+
 
 ```{r year effects plot}
 ## ============================================================
@@ -2631,19 +2672,19 @@ make_annual_load_table_all_treatments_pred <- function(
 }
 
 # Example usage:
-annual_tbl_pred <- make_annual_load_table_all_treatments_pred(
-  post = post,
-  d_pred = d_pred,
-  years_used = years_used,
-  analyte_lookup = analyte_lookup,
-  block_lookup = block_lookup,
-  sampler_lookup = sampler_lookup,
-  flume_lookup = flume_lookup,
-  crop_lookup = crop_lookup,
-  c_stats = c_stats,
-  V_mean = V_mean, V_sd = V_sd,
-  stir_mean = stir_mean, stir_sd = stir_sd
-)
+# annual_tbl_pred <- make_annual_load_table_all_treatments_pred(
+#   post = post,
+#   d_pred = d_pred,
+#   years_used = years_used,
+#   analyte_lookup = analyte_lookup,
+#   block_lookup = block_lookup,
+#   sampler_lookup = sampler_lookup,
+#   flume_lookup = flume_lookup,
+#   crop_lookup = crop_lookup,
+#   c_stats = c_stats,
+#   V_mean = V_mean, V_sd = V_sd,
+#   stir_mean = stir_mean, stir_sd = stir_sd
+# )
 
 ```
 
@@ -3101,6 +3142,8 @@ log_load <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "load")
 
 ```
 
+
+
 ```{r export bayes annual predictions}
 # ============================================================
 # v1p7: Export annual posterior predictions (and optional observed)
@@ -3356,30 +3399,32 @@ export_annual_draws <- function(
 }
 
 # Uncomment to write per-draw table (can be big):
-# annual_draws <- export_annual_draws(
-#   post = post,
-#   d_pred = d_pred,
-#   years_used = years_used,
-#   analyte_lookup = analyte_lookup,
-#   block_lookup = block_lookup,
-#   sampler_lookup = sampler_lookup,
-#   flume_lookup = flume_lookup,
-#   crop_lookup = crop_lookup,
-#   c_stats = c_stats,
-#   V_mean = V_mean, V_sd = V_sd,
-#   stir_mean = stir_mean, stir_sd = stir_sd,
-#   n_draws = 400,
-#   seed = 1
-# )
-# export_dir <- file.path(getwd(), "out")
-# dir.create(export_dir, showWarnings = FALSE, recursive = TRUE)
-# 
-# draws_file <- file.path(
-#   export_dir,
-#   paste0("annual_load_draws_bayes_", model_version, ".csv")
-# )
-# 
-# readr::write_csv(annual_draws, draws_file)
+annual_draws <- export_annual_draws(
+  post = post,
+  d_pred = d_pred,
+  years_used = years_used,
+  analyte_lookup = analyte_lookup,
+  block_lookup = block_lookup,
+  sampler_lookup = sampler_lookup,
+  flume_lookup = flume_lookup,
+  crop_lookup = crop_lookup,
+  c_stats = c_stats,
+  V_mean = V_mean, V_sd = V_sd,
+  stir_mean = stir_mean, stir_sd = stir_sd,
+  n_draws = 400,
+  seed = 1
+)
+
+export_dir <- file.path(getwd(), "out")
+dir.create(export_dir, showWarnings = FALSE, recursive = TRUE)
+
+draws_file <- file.path(
+  export_dir,
+  paste0("annual_load_draws_bayes_", model_version, ".csv")
+)
+
+readr::write_csv(annual_draws, draws_file)
 
 ```
+
 
