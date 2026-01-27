@@ -278,7 +278,7 @@ def main() -> None:
     p.add_argument("--crops", default="data/crop records.csv", help="Crop records CSV.")
     p.add_argument("--records", default="data/tillage_records.csv", help="Tillage operations log CSV.")
     p.add_argument("--mapper", default="data/tillage_mapper_input.csv", help="Tillage mapper CSV.")
-    p.add_argument("--residue", default="data/residue_dummy_constant_2011_2025.csv",
+    p.add_argument("--residue", default="data/residue_2011_2025.csv",
                    help="Residue CSV (observed or dummy).")
     p.add_argument("--out", dest="out_dir", default="out", help="Output directory.")
     p.add_argument("--out-csv-subdir", default="pipeline_csvs",

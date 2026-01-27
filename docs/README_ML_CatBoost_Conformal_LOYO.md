@@ -146,7 +146,7 @@ This ML workflow is **not causal** and does not replace Bayesian generative or c
 ## 3. Data inputs
 
 ### Required input file
-- `out/wq_with_stir_by_season.csv`
+- `out/wq_cleaned.csv`
 
 ### Required columns
 - `Year` or `Date`
@@ -164,6 +164,7 @@ Rows with `NoRunoff == TRUE` are excluded by default.
 - Measurement and laboratory metadata
 - QA/QC flags
 - Crop and season context
+- Residue Percent cover and dry mass kg/m^2
 
 ---
 
