@@ -24,7 +24,7 @@ Optional (if imputation was run):
   out/ml_catboost_conformal_loyo/wq_cleaned_ml_imputed.csv
 
 Also requires original data:
-  out/wq_with_stir_by_season.csv
+  out/wq_cleaned.csv  (preferred; falls back to legacy wq_with_stir_by_season.csv if present)
 
 Outputs are written to:
   figs/ml_catboost_conformal_loyo/
@@ -592,6 +592,16 @@ def coverage_plot(preds: pd.DataFrame, figdir: Path) -> None:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", type=str, default=None, help="Repo root. If omitted, auto-detected.")
+
+    ap.add_argument(
+        "--source_data",
+        type=str,
+        default=None,
+        help=(
+            "Path to source (observed) dataset used for bootstrap observed annual loads. "
+            "Default: <repo>/out/wq_cleaned.csv (falls back to <repo>/out/wq_with_stir_by_season.csv if missing)."
+        )
+    )
     ap.add_argument("--units", type=str, default="g", choices=["mg", "g", "kg"], help="Annual load plotting units.")
     ap.add_argument("--analytes", type=str, default=None,
                     help="Optional comma-separated analytes to plot (default: all in ML summary).")
@@ -643,9 +653,15 @@ def main():
     figdir.mkdir(parents=True, exist_ok=True)
 
     imputed_csv = Path(args.imputed_csv).resolve() if args.imputed_csv else (outdir / "wq_cleaned_ml_imputed.csv")
-
-
-    data_csv = repo / "out" / "wq_with_stir_by_season.csv"
+    # Source data for "observed" bootstrap loads
+    if args.source_data:
+        data_csv = Path(args.source_data).resolve()
+    else:
+        # Prefer the same dataset used by the ML/Bayes pipelines
+        data_csv = repo / "out" / "wq_cleaned.csv"
+        # Backward-compatible fallback for older runs/docs
+        if not data_csv.exists():
+            data_csv = repo / "out" / "wq_with_stir_by_season.csv"
     ml_summary_csv = outdir / "annual_load_summary.csv"
     preds_csv = outdir / "cv_predictions_samplelevel.csv"
 

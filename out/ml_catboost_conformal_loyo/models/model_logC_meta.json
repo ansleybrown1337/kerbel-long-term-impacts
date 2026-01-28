@@ -1,7 +1,7 @@
 {
   "target": "logC",
   "alpha": 0.05,
-  "q_conformal": 0.8243347644917349,
+  "q_conformal": 0.8338876931233097,
   "feature_cols": [
     "Year",
     "Irrigation",
@@ -19,6 +19,8 @@
     "Lab",
     "SeasonYear",
     "Crop",
+    "Residue_PercentCover",
+    "Residue_DryMass_kg_m2",
     "CumAll_STIR_toDate",
     "Season_STIR_toDate",
     "DaysSincePlant",
@@ -49,5 +51,5 @@
     "thread_count": -1,
     "verbose": false
   },
-  "saved_utc": "2025-12-30T04:09:45Z"
+  "saved_utc": "2026-01-27T23:02:26Z"
 }
