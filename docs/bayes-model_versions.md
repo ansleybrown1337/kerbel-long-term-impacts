@@ -9,21 +9,40 @@ This file tracks the structure and development stage of all Bayesian model famil
 
 ## Load Models (Vol + Concentration) – ACTIVE DEVELOPMENT
 
-**Primary file:** `code/stir-bayes-load1p6.Rmd`  
-**Stan model (current):** `code/m_stir_mogp_v1p6.stan`  
-**Current version:** **1.6**
+Yes, this is a clean place to formalize v1.7 and to be explicit about what changed and why. Below is a **drop-in replacement** for your README section, keeping your existing structure and adding v1.7 in a way that is defensible and honest given the convergence discussion.
 
-| Version | File    | Description of Model Features | Missing Features / Planned Additions |
-| ------- | ------- | ----------------------------- | ------------------------------------ |
-| 1.0 | load1p0 | Posterior load computation using posterior C and posterior V, z‑score back‑transformation, per‑analyte load distributions, HPDI summaries | Visualization functions, alternative unit scaling, integration of concentration censoring, inclusion of treatment or year pooling in load summaries |
-| 1.1 | load1p1 | Integrates outflow volume model into concentration model for more accurate load estimates. Imputes missing inflow concentrations. | Non‑centered version, consider Gaussian process by incorporating year and/or irrigation number |
-| 1.2 | load1p2 | Adds MVN priors and non‑centered parameterization. | Consider Gaussian process by incorporating year and/or irrigation number, add annual load curve visualization |
-| 1.3 | load1p3 | Adds single Gaussian process over year and associated plots. | Upgrade to multi‑output GP to share information across analytes |
-| 1.4 | load1p4 | Uses multi‑output GP via Stan code. | Clarify/standardize outputs, finalize annual aggregation and plotting conventions |
-| 1.5 | load1p5 | Removes rethinking code, standardizes Stan workflow, adds annual load estimates and missing‑year imputation. | Explicitly track “observed vs modeled” annual summaries and harmonize schema across workflows |
-| 1.6 | load1p6 | Production version. Multi‑output GP across analytes × years, standardized annual load summaries, and an “observed + modeled” annual output aligned to the ML annual-summary schema. | **Planned extension:** explicit measurement-error submodels for inflow concentration and runoff volume (latent true states); consider event-level censoring; consider additional temporal structure beyond year GP (if warranted) |
+I have also added a short **Important clarification (v1.7)** block that mirrors your v1.6 note, so future readers understand exactly what is new and what is still aspirational.
 
-**Important clarification (v1.6):** inflow concentration and runoff volume are treated as observed covariates (no latent “true” C/V measurement-error submodels yet). Posterior uncertainty is propagated from the statistical model and missing-data structure, not from explicit covariate measurement-error likelihoods.
+---
+
+### Version history and model evolution
+
+**Primary file:** `code/stir-bayes-load1p7.Rmd`
+**Stan model (current):** `code/m_stir_mogp_v1p7.stan`
+**Current version:** **1.7**
+
+| Version | File        | Description of Model Features                                                                                                                                                                                                                                                                                                       | Missing Features / Planned Additions                                                                                                                                                                                                       |
+| ------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.0     | load1p0     | Posterior load computation using posterior C and posterior V, z-score back-transformation, per-analyte load distributions, HPDI summaries                                                                                                                                                                                           | Visualization functions, alternative unit scaling, integration of concentration censoring, inclusion of treatment or year pooling in load summaries                                                                                        |
+| 1.1     | load1p1     | Integrates outflow volume model into concentration model for more accurate load estimates. Imputes missing inflow concentrations.                                                                                                                                                                                                   | Non-centered version, consider Gaussian process by incorporating year and/or irrigation number                                                                                                                                             |
+| 1.2     | load1p2     | Adds MVN priors and non-centered parameterization.                                                                                                                                                                                                                                                                                  | Consider Gaussian process by incorporating year and/or irrigation number, add annual load curve visualization                                                                                                                              |
+| 1.3     | load1p3     | Adds single Gaussian process over year and associated plots.                                                                                                                                                                                                                                                                        | Upgrade to multi-output GP to share information across analytes                                                                                                                                                                            |
+| 1.4     | load1p4     | Uses multi-output GP via Stan code.                                                                                                                                                                                                                                                                                                 | Clarify and standardize outputs, finalize annual aggregation and plotting conventions                                                                                                                                                      |
+| 1.5     | load1p5     | Removes rethinking code, standardizes Stan workflow, adds annual load estimates and missing-year imputation.                                                                                                                                                                                                                        | Explicitly track “observed vs modeled” annual summaries and harmonize schema across workflows                                                                                                                                              |
+| 1.6     | load1p6  (stan code)   | Production version. Multi-output GP across analytes × years, standardized annual load summaries, and an “observed + modeled” annual output aligned to the ML annual-summary schema.                                                                                                                                                 | Planned extension: explicit measurement-error submodels for inflow concentration and runoff volume; consider event-level censoring; consider additional temporal structure beyond year GP                                                  |
+| **1.7** | **load1p7 (stan code)** | **Extends v1.6 by introducing latent “true” states for inflow concentration and runoff volume with explicit measurement-error submodels. Adds crop and residue covariates to the process model, enabling causal separation of management effects from measurement noise while propagating uncertainty into annual load estimates.** | Further stabilization of latent-state parameterization; incorporation of observed residue measurements (when available) to improve identifiability; potential simplified variant without latent states if convergence criteria are not met |
+
+---
+
+### Important clarification (v1.6)
+
+In v1.6, inflow concentration and runoff volume are treated as observed covariates. Posterior uncertainty reflects model structure, missing-data imputation, and GP uncertainty, but **does not include explicit likelihood-based measurement-error propagation for C or V**.
+
+### Important clarification (v1.7)
+
+In v1.7, inflow concentration and runoff volume are modeled with **latent “true” states** and explicit measurement-error likelihoods. This enables separation of process variability from observation error and allows direct assessment of how measurement uncertainty propagates into annual load estimates and treatment effects.
+
+If convergence criteria are not satisfied, a reduced variant retaining crop and residue effects but excluding latent true states may be used for inference.
 
 ---
 

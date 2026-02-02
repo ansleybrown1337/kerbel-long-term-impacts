@@ -30,7 +30,7 @@ library(purrr)
 # source("./stir-bayes-backend.R")
 ```
 
-# Model 1.6 (Concentration + Volume Joint Model)
+# Model 1.7 (Concentration + Volume Joint Model with Crop and Residue Effects with latent true processes)
 
 * Joint Bayesian model for **OUT concentration and OUT volume** fit simultaneously
 * Model uses multivariate normal (MVN) hierarchical structure for analyte-specific parameters
@@ -45,6 +45,8 @@ library(purrr)
 * Incorporates multi-output Gaussian Process (GP) on Year to capture temporal correlation in residuals for each analyte
 * v1.5 only has cmdstan model, no rethinking/ulam version
 * v1.6 adds crop type effects and residue cover at planting effects
+* v1.7 promotes residue, volume, and inflow concentration to latent processes with full Bayesian imputation and joint propagation. Also uses new python wq_cleaned.csv, which has been tested to be identical to previous versions.
+
 
 # 1. Load and lightly type-enforce the Bayes-clean dataset (from Python pipeline)
 
@@ -186,20 +188,18 @@ d_mod <- d_mod %>%
     # Crop type index (categorical)
     Cr = as.integer(Crop),
 
-    # Residue cover at planting (placeholder for now, percent ultimately)
-    # Padding with zeros means it is centered at 0 on the modeled scale and will not move estimates.
-    # NOTE: later this will be filled with actual data and standardized from the stir-bayes-backend.R and python dataflow
-    res_plant_z = {
-      if ("residue_prop" %in% names(.)) {
-        x <- as.numeric(residue_prop)
-        m <- mean(x, na.rm = TRUE)
-        s <- stats::sd(x, na.rm = TRUE)
-        if (!is.finite(s) || s == 0) 0 else (x - m) / s
-      } else if ("residue_z" %in% names(.)) {
-        as.numeric(residue_z)
-      } else {
-        0
-      }
+    # Residue cover at planting
+    residue_prop = {
+      x <- as.numeric(.data$residue_prop)
+
+      # Convert 0–100 to 0–1 if needed
+      x <- ifelse(is.na(x), NA_real_,
+                  ifelse(x > 1, x / 100, x))
+
+      # Epsilon adjustment for Stan (strictly inside 0,1)
+      eps <- 1e-4
+      ifelse(is.na(x), NA_real_,
+             pmin(pmax(x, eps), 1 - eps))
     }
   )
 
@@ -253,8 +253,6 @@ stan_dat <- list(
   F_n  = length(unique(d_mod$Fu)),
   D_n  = length(unique(d_mod$dup)),
   Y_n  = length(unique(d_mod$Y)),
-
-  # NEW: crop levels
   Cr_n = length(unique(d_mod$Cr)),
 
   # indices
@@ -263,8 +261,6 @@ stan_dat <- list(
   S    = d_mod$S,
   Fu   = d_mod$Fu,
   Y    = d_mod$Y,
-
-  # NEW: crop index
   Cr   = d_mod$Cr,
 
   # distance matrix for year effects
@@ -281,9 +277,7 @@ stan_dat <- list(
   VOL  = d_mod$volume_z,
   IRR  = d_mod$irr_num,
   DUP  = d_mod$dup,
-
-  # NEW: residue cover at planting (placeholder, z-scale)
-  RES  = d_mod$res_plant_z
+  RES  = d_mod$residue_prop
 )
 
 ```
@@ -319,71 +313,61 @@ for (nm in vec_names) {
 # 3. Hierarchical Bayesian model
 
 ```{r cmdstan model fit}
-# using "m_stir_mogp_v1p7.stan" in ./code folder
+# Fit cmdstan model: m_stir_mogp_v1p7.stan
+# Key requirement: Stan cannot accept NA in data vectors, so we:
+#   (1) record missing row indices (missidx),
+#   (2) fill missing entries with harmless placeholders,
+#   (3) pass missidx + N_miss so the model can exclude those rows from the observation likelihood
+#       (and impute via latent parameters where applicable).
+#
+# For residue specifically, the Stan model expects a PROPORTION strictly inside (0,1),
+# so we clamp observed values with epsilon and fill missing with 0.5.
+
 mod <- cmdstan_model("m_stir_mogp_v1p7.stan")
 
-# starting point: existing stan_dat built above
-# and the d_mod data frame used to build it
-stan_dat_cmd <- stan_dat  # copy so we do not break earlier objects
+# Start from the base stan_dat you built earlier
+stan_dat_cmd <- stan_dat
 
 # -------------------------------------------------------------------
 # 1) Pull row-level vectors (must all be length N)
 # -------------------------------------------------------------------
-C_vec    <- d_mod$cout_z
-CIN_vec  <- d_mod$cin_std
-VOL_vec  <- d_mod$volume_z
+C_vec   <- d_mod$cout_z
+CIN_vec <- d_mod$cin_std
+VOL_vec <- d_mod$volume_z
 
-# NEW (v1p7): crop index + residue placeholder/values
-Cr_vec   <- d_mod$Cr
-# RES (Residue cover at planting)
-# v1p7 expects RES as a proportion in (0, 1) with missingness handled via RES_missidx.
-# If no residue observations are available in the dataset, we pass RES as all-NA and let Stan impute.
-if ("res_plant_prop" %in% names(d_mod)) {
-  RES_vec <- as.numeric(d_mod$res_plant_prop)
-} else if ("RES_prop" %in% names(d_mod)) {
-  RES_vec <- as.numeric(d_mod$RES_prop)
-} else if ("RES" %in% names(d_mod)) {
-  RES_vec <- as.numeric(d_mod$RES)
+# Crop index used by Stan (must be integer-coded 1..Cr_n already)
+Cr_vec  <- d_mod$Cr
+
+# Residue observations:
+# Prefer precomputed 0–1 proportion column if present; otherwise derive from percent cover.
+if ("residue_prop" %in% names(d_mod)) {
+  RES_vec_raw <- as.numeric(d_mod$residue_prop)
+} else if ("Residue_PercentCover" %in% names(d_mod)) {
+  RES_vec_raw <- as.numeric(d_mod$Residue_PercentCover)
+  # Convert 0–100 to 0–1 if needed (if already 0–1, leave as is)
+  RES_vec_raw <- ifelse(is.na(RES_vec_raw), NA_real_,
+                        ifelse(RES_vec_raw > 1, RES_vec_raw / 100, RES_vec_raw))
 } else {
-  RES_vec <- rep(NA_real_, nrow(d_mod))
+  stop("No residue column found. Expected 'residue_prop' or 'Residue_PercentCover'.")
 }
 
-
 stopifnot(
-  length(C_vec)   == stan_dat_cmd$N,
-  length(CIN_vec) == stan_dat_cmd$N,
-  length(VOL_vec) == stan_dat_cmd$N,
-  length(Cr_vec)  == stan_dat_cmd$N,
-  length(RES_vec) == stan_dat_cmd$N
+  length(C_vec)       == stan_dat_cmd$N,
+  length(CIN_vec)     == stan_dat_cmd$N,
+  length(VOL_vec)     == stan_dat_cmd$N,
+  length(Cr_vec)      == stan_dat_cmd$N,
+  length(RES_vec_raw) == stan_dat_cmd$N
 )
 
 # -------------------------------------------------------------------
-# 2) Helper: create missidx + cleaned vectors for Stan
-#    (Stan needs missidx as an integer array; and vectors with no NA)
+# 2) Helpers: build missidx + NA-free vectors for Stan
 # -------------------------------------------------------------------
-impute_var <- function(x) {
-  missidx <- which(is.na(x))          # 1-based indices for Stan
-  x_clean <- x
-  x_clean[missidx] <- 0               # placeholder; overwritten by Stan parameters
-  list(
-    missidx = missidx,
-    N_miss  = length(missidx),
-    clean   = as.numeric(x_clean)
-  )
-}
-
-# Residue helper: expects proportion in (0,1) for observed rows.
-# Missing rows are imputed in Stan using RES_missidx and N_RES_miss.
-impute_var_res <- function(x, eps = 1e-6) {
-  missidx <- which(is.na(x))
+# Generic helper for Gaussian-like observed vectors (C, CIN, VOL):
+# Fill missing with 0. These values are ignored in the likelihood when missidx flags missing rows.
+prep_miss_gaussian <- function(x, fill = 0) {
+  missidx <- which(is.na(x))   # 1-based indices (Stan convention)
   x_clean <- as.numeric(x)
-  # Clamp observed values to (eps, 1-eps) to avoid boundary issues
-  if (length(missidx) < length(x_clean)) {
-    obs_idx <- setdiff(seq_along(x_clean), missidx)
-    x_clean[obs_idx] <- pmin(pmax(x_clean[obs_idx], eps), 1 - eps)
-  }
-  # Placeholder for missing rows: 0.5 (valid interior value)
-  if (length(missidx) > 0) x_clean[missidx] <- 0.5
+  if (length(missidx) > 0) x_clean[missidx] <- fill
   list(
     missidx = missidx,
     N_miss  = length(missidx),
@@ -391,57 +375,114 @@ impute_var_res <- function(x, eps = 1e-6) {
   )
 }
 
+# Residue helper (proportion):
+# (a) Validate numeric values,
+# (b) clamp observed entries into (eps, 1-eps),
+# (c) fill missing with 0.5 (valid interior value).
+prep_miss_residue <- function(x, eps = 1e-6, fill = 0.5) {
+  x_num <- as.numeric(x)
+
+  # Identify missing
+  missidx <- which(is.na(x_num))
+  obs_idx <- setdiff(seq_along(x_num), missidx)
+
+  # Validate observed values (do not silently allow nonsense)
+  if (length(obs_idx) > 0) {
+    bad_nonfinite <- obs_idx[!is.finite(x_num[obs_idx])]
+    if (length(bad_nonfinite) > 0) {
+      stop("RES contains non-finite values at rows: ",
+           paste(head(bad_nonfinite, 20), collapse = ", "),
+           if (length(bad_nonfinite) > 20) " ..." else "")
+    }
+  }
+
+  # Convert any observed values that are still in 0–100 to 0–1 (safety net)
+  # This should be redundant if upstream is correct, but avoids catastrophic mis-scaling.
+  if (length(obs_idx) > 0 && any(x_num[obs_idx] > 1, na.rm = TRUE)) {
+    x_num[obs_idx] <- x_num[obs_idx] / 100
+  }
+
+  # If observed values are outside [0,1] even after conversion, fail fast
+  if (length(obs_idx) > 0) {
+    bad_range <- obs_idx[x_num[obs_idx] < 0 | x_num[obs_idx] > 1]
+    if (length(bad_range) > 0) {
+      stop("RES has values outside [0,1] at rows: ",
+           paste(head(bad_range, 20), collapse = ", "),
+           if (length(bad_range) > 20) " ..." else "",
+           "\nCheck residue scaling upstream (should be a 0–1 proportion).")
+    }
+  }
+
+  # Clamp observed values into (eps, 1-eps) for Beta likelihood validity
+  if (length(obs_idx) > 0) {
+    x_num[obs_idx] <- pmin(pmax(x_num[obs_idx], eps), 1 - eps)
+  }
+
+  # Fill missing with an interior placeholder; likelihood excludes missing rows via missidx
+  if (length(missidx) > 0) x_num[missidx] <- fill
+
+  list(
+    missidx = missidx,
+    N_miss  = length(missidx),
+    clean   = x_num
+  )
+}
 
 # -------------------------------------------------------------------
-# 3) Apply helper to C, CIN, VOL
+# 3) Apply helpers
 # -------------------------------------------------------------------
-imp_C   <- impute_var(C_vec)
-imp_CIN <- impute_var(CIN_vec)
-imp_VOL <- impute_var(VOL_vec)
-imp_RES <- impute_var_res(RES_vec)
+imp_C    <- prep_miss_gaussian(C_vec,   fill = 0)
+imp_CIN  <- prep_miss_gaussian(CIN_vec, fill = 0)
+imp_VOL  <- prep_miss_gaussian(VOL_vec, fill = 0)
+imp_RES  <- prep_miss_residue(RES_vec_raw, eps = 1e-4, fill = 0.5)
 
-# Outcome C
-stan_dat_cmd$C_missidx <- if (imp_C$N_miss == 0) integer(0) else as.array(as.integer(imp_C$missidx))
-stan_dat_cmd$N_C_miss  <- imp_C$N_miss
+# -------------------------------------------------------------------
+# 4) Populate cmdstan data list (no NA allowed in vectors)
+# -------------------------------------------------------------------
 stan_dat_cmd$C         <- imp_C$clean
+stan_dat_cmd$N_C_miss  <- imp_C$N_miss
+stan_dat_cmd$C_missidx <- if (imp_C$N_miss == 0) integer(0) else as.array(as.integer(imp_C$missidx))
 
-# Inflow concentration CIN
-stan_dat_cmd$CIN_missidx <- if (imp_CIN$N_miss == 0) integer(0) else as.array(as.integer(imp_CIN$missidx))
-stan_dat_cmd$N_CIN_miss  <- imp_CIN$N_miss
 stan_dat_cmd$CIN         <- imp_CIN$clean
+stan_dat_cmd$N_CIN_miss  <- imp_CIN$N_miss
+stan_dat_cmd$CIN_missidx <- if (imp_CIN$N_miss == 0) integer(0) else as.array(as.integer(imp_CIN$missidx))
 
-# Volume VOL
-stan_dat_cmd$VOL_missidx <- if (imp_VOL$N_miss == 0) integer(0) else as.array(as.integer(imp_VOL$missidx))
-stan_dat_cmd$N_VOL_miss  <- imp_VOL$N_miss
 stan_dat_cmd$VOL         <- imp_VOL$clean
+stan_dat_cmd$N_VOL_miss  <- imp_VOL$N_miss
+stan_dat_cmd$VOL_missidx <- if (imp_VOL$N_miss == 0) integer(0) else as.array(as.integer(imp_VOL$missidx))
 
-# Residue RES (proportion in (0,1))
-stan_dat_cmd$RES_missidx <- if (imp_RES$N_miss == 0) integer(0) else as.array(as.integer(imp_RES$missidx))
-stan_dat_cmd$N_RES_miss  <- imp_RES$N_miss
 stan_dat_cmd$RES         <- imp_RES$clean
+stan_dat_cmd$N_RES_miss  <- imp_RES$N_miss
+stan_dat_cmd$RES_missidx <- if (imp_RES$N_miss == 0) integer(0) else as.array(as.integer(imp_RES$missidx))
 
-# -------------------------------------------------------------------
-# 4) NEW (v1p7): pass crop + residue into cmdstan data
-# -------------------------------------------------------------------
+# Crop index (already integer-coded in d_mod)
 stan_dat_cmd$Cr_n <- length(unique(Cr_vec))
 stan_dat_cmd$Cr   <- as.array(as.integer(Cr_vec))
 
-# RES is handled above with missingness (N_RES_miss, RES_missidx)
-
 # -------------------------------------------------------------------
-# 5) Quick consistency checks
+# 5) Consistency checks + diagnostics
 # -------------------------------------------------------------------
 stopifnot(
+  all(is.finite(stan_dat_cmd$C)),
+  all(is.finite(stan_dat_cmd$CIN)),
+  all(is.finite(stan_dat_cmd$VOL)),
+  all(is.finite(stan_dat_cmd$RES)),
+  all(stan_dat_cmd$RES > 0),
+  all(stan_dat_cmd$RES < 1),
   isTRUE(all(stan_dat_cmd$Cr >= 1L)),
   isTRUE(all(stan_dat_cmd$Cr <= stan_dat_cmd$Cr_n))
 )
 
 cat("\n[INFO] Missing counts:\n")
-cat("  N_C_miss   =", stan_dat_cmd$N_C_miss, "\n")
-cat("  N_CIN_miss =", stan_dat_cmd$N_CIN_miss, "\n")
-cat("  N_VOL_miss =", stan_dat_cmd$N_VOL_miss, "\n")
+cat("  N_C_miss    =", stan_dat_cmd$N_C_miss, "\n")
+cat("  N_CIN_miss  =", stan_dat_cmd$N_CIN_miss, "\n")
+cat("  N_VOL_miss  =", stan_dat_cmd$N_VOL_miss, "\n")
+cat("  N_RES_miss  =", stan_dat_cmd$N_RES_miss, "\n")
 cat("[INFO] Crop levels (Cr_n) =", stan_dat_cmd$Cr_n, "\n")
-cat("[INFO] Residue summary:\n")
+
+cat("[INFO] Residue summary (raw, before clamp/fill):\n")
+print(summary(RES_vec_raw))
+cat("[INFO] Residue summary (Stan-ready, after clamp/fill):\n")
 print(summary(stan_dat_cmd$RES))
 
 # -------------------------------------------------------------------
@@ -458,7 +499,7 @@ fit <- mod$sample(
 
 
 ```{r cmdstan model fit}
-saveRDS(fit, file = "./out/fit_mogp_v1p7.rds")
+saveRDS(fit, file = "../out/fit_mogp_v1p7.rds")
 # fit <- readRDS("./out/fit_mogp_v1p7.rds")
 
 ```
@@ -2396,7 +2437,7 @@ make_annual_observed_table_all_treatments <- function(
       load_g = (.data$Result_mg_L * .data$Volume) / 1000,  # mg -> g
       vol_L  = .data$Volume
     ) %>%
-    dplyr::select(.data$Year, .data$analyte, .data$treatment, .data$event_id, .data$load_g, .data$vol_L)
+    dplyr::select(Year, analyte, treatment, event_id, load_g, vol_L)
 
   q_lo <- (1 - prob_ci) / 2
   q_hi <- 1 - q_lo
@@ -2672,19 +2713,19 @@ make_annual_load_table_all_treatments_pred <- function(
 }
 
 # Example usage:
-# annual_tbl_pred <- make_annual_load_table_all_treatments_pred(
-#   post = post,
-#   d_pred = d_pred,
-#   years_used = years_used,
-#   analyte_lookup = analyte_lookup,
-#   block_lookup = block_lookup,
-#   sampler_lookup = sampler_lookup,
-#   flume_lookup = flume_lookup,
-#   crop_lookup = crop_lookup,
-#   c_stats = c_stats,
-#   V_mean = V_mean, V_sd = V_sd,
-#   stir_mean = stir_mean, stir_sd = stir_sd
-# )
+annual_tbl_pred <- make_annual_load_table_all_treatments_pred(
+  post = post,
+  d_pred = d_pred,
+  years_used = years_used,
+  analyte_lookup = analyte_lookup,
+  block_lookup = block_lookup,
+  sampler_lookup = sampler_lookup,
+  flume_lookup = flume_lookup,
+  crop_lookup = crop_lookup,
+  c_stats = c_stats,
+  V_mean = V_mean, V_sd = V_sd,
+  stir_mean = stir_mean, stir_sd = stir_sd
+)
 
 ```
 
@@ -3056,7 +3097,7 @@ plot_annual_by_treatment_obs_vs_mod <- function(
 
 ```{r execute plot both}
 # Example usage:
-plot_annual_by_treatment_obs_vs_mod(annual_both, analyte_pick = "TP", metric = "load")
+plot_annual_by_treatment_obs_vs_mod(annual_both, analyte_pick = "TSS", metric = "load")
 
 ```
 
