@@ -27,7 +27,7 @@ library(stringr)
 library(purrr)
 
 # If you rely on helper functions (e.g., make_year_dist_mat), source them here:
-# source("./stir-bayes-backend.R")
+source("./stir-bayes-backend.R")
 ```
 
 # Model 1.7 (Concentration + Volume Joint Model with Crop and Residue Effects with latent true processes)
