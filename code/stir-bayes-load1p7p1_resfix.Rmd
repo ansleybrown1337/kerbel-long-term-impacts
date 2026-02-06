@@ -152,6 +152,11 @@ Create analyte index and build data list for ulam:
 ```{r make-stan-dat}
 # 2. Build indices and standardized predictors -----------------------------
 
+# Choose residue metric here:
+# - "cover": uses residue proportion in (0,1) (compatible with current Stan logit-residue model)
+# - "drymass": uses z-scored log(drymass_kg_m2) (requires Stan residue model update)
+residue_metric <- "cover"  # "cover" or "drymass"
+
 d_mod <- d_mod %>%
   mutate(
     # analyte index
@@ -170,11 +175,10 @@ d_mod <- d_mod %>%
     irr_num = dplyr::case_when(
       # Explicitly drop storm events
       as.character(Irrigation) %in% c("S1", "S2") ~ NA_integer_,
-    
+
       # Valid numeric irrigation counts
       TRUE ~ as.integer(readr::parse_number(as.character(Irrigation)))
     ),
-
 
     # Inflow concentration (standardized), keep NAs for Bayesian imputation
     cin_std = cin_z,
@@ -188,9 +192,11 @@ d_mod <- d_mod %>%
     # Crop type index (categorical)
     Cr = as.integer(Crop),
 
-    # Residue cover at planting
+    # -----------------------------------------------------------------------
+    # Residue percent cover -> proportion in (0,1) with epsilon adjustment
+    # -----------------------------------------------------------------------
     residue_prop = {
-      x <- as.numeric(.data$residue_prop)
+      x <- as.numeric(.data$Residue_PercentCover)
 
       # Convert 0–100 to 0–1 if needed
       x <- ifelse(is.na(x), NA_real_,
@@ -200,13 +206,38 @@ d_mod <- d_mod %>%
       eps <- 1e-4
       ifelse(is.na(x), NA_real_,
              pmin(pmax(x, eps), 1 - eps))
-    }
+    },
+
+    # -----------------------------------------------------------------------
+    # Residue dry mass (kg/m^2) -> log transform (<=0 becomes NA)
+    # -----------------------------------------------------------------------
+    drymass_kg_m2 = as.numeric(.data$Residue_DryMass_kg_m2),
+    drymass_log = dplyr::if_else(
+      is.na(drymass_kg_m2) | drymass_kg_m2 <= 0,
+      NA_real_,
+      log(drymass_kg_m2)
+    )
   )
 
 # Drop storm rows (no ordinal irrigation meaning)
 d_mod <- d_mod %>%
   dplyr::filter(!is.na(irr_num))
 
+# Z-score drymass_log using observed values only (keeps NA as NA)
+drymass_mu <- mean(d_mod$drymass_log, na.rm = TRUE)
+drymass_sd <- sd(d_mod$drymass_log, na.rm = TRUE)
+
+d_mod <- d_mod %>%
+  mutate(
+    drymass_log_z = (drymass_log - drymass_mu) / drymass_sd,
+
+    # Single residue input used by Stan
+    RES_input = dplyr::case_when(
+      residue_metric == "cover"   ~ residue_prop,
+      residue_metric == "drymass" ~ drymass_log_z,
+      TRUE ~ residue_prop
+    )
+  )
 
 # instantiate distance matrix for gaussian process on year
 years_used <- sort(unique(d_mod$Year))
@@ -240,7 +271,6 @@ duplicate_lookup <- d_mod %>%
 crop_lookup <- d_mod %>%
   distinct(Cr, Crop) %>%
   arrange(Cr)
-
 
 # prepare data list for stan
 stan_dat <- list(
@@ -277,8 +307,16 @@ stan_dat <- list(
   VOL  = d_mod$volume_z,
   IRR  = d_mod$irr_num,
   DUP  = d_mod$dup,
-  RES  = d_mod$residue_prop
+
+  # residue covariate (cover or drymass, depending on residue_metric)
+  RES  = d_mod$RES_input
 )
+
+# Optional: quick guardrails
+if (identical(residue_metric, "cover")) {
+  stopifnot(all(is.na(stan_dat$RES) | (stan_dat$RES > 0 & stan_dat$RES < 1)))
+}
+
 
 ```
 
@@ -313,7 +351,7 @@ for (nm in vec_names) {
 # 3. Hierarchical Bayesian model
 
 ```{r cmdstan model fit}
-# Fit cmdstan model: m_stir_mogp_v1p7.stan
+# Fit cmdstan model: m_stir_mogp_v1p7p1.stan
 # Key requirement: Stan cannot accept NA in data vectors, so we:
 #   (1) record missing row indices (missidx),
 #   (2) fill missing entries with harmless placeholders,
@@ -323,7 +361,9 @@ for (nm in vec_names) {
 # For residue specifically, the Stan model expects a PROPORTION strictly inside (0,1),
 # so we clamp observed values with epsilon and fill missing with 0.5.
 
-mod <- cmdstan_model("m_stir_mogp_v1p7.stan")
+#mod <- cmdstan_model("m_stir_mogp_v1p7p1.stan")
+mod <- cmdstan_model("m_stir_mogp_v1p7p1.stan")
+#mod <- cmdstan_model("m_stir_mogp_v1p7p1.stan") # for residue as kg/m2
 
 # Start from the base stan_dat you built earlier
 stan_dat_cmd <- stan_dat
@@ -488,19 +528,25 @@ print(summary(stan_dat_cmd$RES))
 # -------------------------------------------------------------------
 # 6) Sample with cmdstanr
 # -------------------------------------------------------------------
+dir.create("out_cmdstanr", showWarnings = FALSE)
+
 fit <- mod$sample(
   data            = stan_dat_cmd,
   chains          = 4,
   parallel_chains = 4,
   iter_warmup     = 1000,
-  iter_sampling   = 1000
+  iter_sampling   = 1000,
+  #refresh         = 10,          # print progress every 10 iters
+  show_messages   = TRUE,        # surface cmdstan messages
+  output_dir      = "out_cmdstanr",
+  save_warmup     = TRUE
 )
 ```
 
 
 ```{r cmdstan model fit}
-saveRDS(fit, file = "../out/fit_mogp_v1p7.rds")
-# fit <- readRDS("./out/fit_mogp_v1p7.rds")
+saveRDS(fit, file = "../out/fit_mogp_v1p7p1.rds")
+# fit <- readRDS("./out/fit_mogp_v1p7p1.rds")
 
 ```
 
@@ -549,7 +595,7 @@ summarize_cmdstan <- function(fit, vars = NULL, n_show = 30) {
   cat("Max ESS:    ", suppressWarnings(max(ess_vals, na.rm = TRUE)),
       if (!is.na(i_max_ess)) paste0(" (", s$variable[i_max_ess], ")") else "", "\n")
 
-  # v1p7 convenience: highlight crop/residue blocks if present
+  # v1p7p1 convenience: highlight crop/residue blocks if present
   # Names must match the Stan parameter names exactly
   new_blocks <- c("beta_res_V", "beta_res_C", "gamma_Cr_V", "gamma_Cr")
   
@@ -566,17 +612,17 @@ summarize_cmdstan <- function(fit, vars = NULL, n_show = 30) {
   )
   
   if (any(sel)) {
-    cat("\n=== v1p7: Crop/Residue terms present in fit (first 50 rows) ===\n")
+    cat("\n=== v1p7p1: Crop/Residue terms present in fit (first 50 rows) ===\n")
     print(utils::head(s[sel, ], 50), row.names = FALSE)
   
     # quick counts by block (helps confirm dimensions at a glance)
-    cat("\n=== v1p7: Term counts by parameter block ===\n")
+    cat("\n=== v1p7p1: Term counts by parameter block ===\n")
     for (b in new_blocks) {
       n_b <- sum(is_in_block(s$variable, b))
       if (n_b > 0) cat(sprintf("%-12s : %d\n", b, n_b))
     }
   } else {
-    cat("\n[WARN] v1p7: No crop/residue parameters detected in fit summary.\n")
+    cat("\n[WARN] v1p7p1: No crop/residue parameters detected in fit summary.\n")
     cat("[WARN] Expected blocks: beta_res_V, beta_res_C[...], gamma_Cr_V[...], gamma_Cr[...,...]\n")
   }
 
@@ -591,7 +637,7 @@ s_all <- summarize_cmdstan(fit, n_show = 50)
 ```{r stan analyte effects}
 ## =====================================================================
 ## Extract posterior samples from cmdstanr into a "rethinking-style" list
-## v1p7: correct analyte × crop effects for concentration + residue-safe outputs
+## v1p7p1: correct analyte × crop effects for concentration + residue-safe outputs
 ## =====================================================================
 
 dat_used <- if (exists("stan_dat_cmd")) stan_dat_cmd else stan_dat
@@ -626,10 +672,10 @@ draws_mat <- fit$draws(
     # GP on year
     "F_year", "etasq_year", "rhosq_year",
 
-    # v1p7 residue terms
+    # v1p7p1 residue terms
     "beta_res_V", "beta_res_C",
 
-    # v1p7 crop terms
+    # v1p7p1 crop terms
     "gamma_Cr", "gamma_Cr_V",
     "sigma_Cr", "sigma_Cr_V"
   ),
@@ -696,7 +742,7 @@ for (a in seq_len(A_n)) {
   }
 }
 
-# ---- v1p7 crop effects
+# ---- v1p7p1 crop effects
 # Concentration crop effect is analyte-specific: gamma_Cr[A, Cr]
 gamma_Cr_mat <- get_param_mat(draws_mat, "gamma_Cr")
 if (ncol(gamma_Cr_mat) != A_n * Cr_n) {
@@ -872,7 +918,7 @@ residue_volume_effect
 
 ## 5a. Posterior effects of residue and crop
 
-The v1p7 model includes (i) an analyte-specific residue slope on concentration (`beta_res_C[A]`), (ii) a scalar residue slope on volume (`beta_res_V`), (iii) analyte-specific crop intercepts on concentration (`gamma_Cr[A,Cr]`), and (iv) crop intercepts on volume (`gamma_Cr_V[Cr]`). The plots below provide quick, publication-ready summaries of these terms.
+The v1p7p1 model includes (i) an analyte-specific residue slope on concentration (`beta_res_C[A]`), (ii) a scalar residue slope on volume (`beta_res_V`), (iii) analyte-specific crop intercepts on concentration (`gamma_Cr[A,Cr]`), and (iv) crop intercepts on volume (`gamma_Cr_V[Cr]`). The plots below provide quick, publication-ready summaries of these terms.
 
 ```{r residue effects on concentration}
 # Residue effect on concentration by analyte (89% HPDI)
@@ -903,7 +949,7 @@ p_resC <- ggplot2::ggplot(
   ggplot2::labs(
     x = "Analyte",
     y = "Residue slope on concentration (z-scale)",
-    title = "Posterior residue effects on concentration (v1p7)",
+    title = "Posterior residue effects on concentration (v1p7p1)",
     subtitle = if (any(res_df$residue_placeholder)) "Residue is currently a placeholder (all zeros), effects are not identifiable" else NULL
   ) +
   ggplot2::theme_classic(base_size = 14)
@@ -911,7 +957,7 @@ p_resC <- ggplot2::ggplot(
 p_resC
 
 ggplot2::ggsave(
-  filename = "../figs/residue_effect_on_concentration_by_analyte_v1p7.png",
+  filename = "../figs/residue_effect_on_concentration_by_analyte_v1p7p1.png",
   plot = p_resC,
   width = 10,
   height = 7,
@@ -934,12 +980,12 @@ plot(
   col  = "darkred",
   xlab = "Residue slope on volume (z-scale)",
   ylab = "Density",
-  main = "Posterior residue effect on volume (v1p7)",
+  main = "Posterior residue effect on volume (v1p7p1)",
   bty  = "l"
 )
 abline(v = 0, lty = 2)
 
-jpeg("../figs/residue_effect_on_volume_density_v1p7.jpeg", width = 2000, height = 1300, res = 200)
+jpeg("../figs/residue_effect_on_volume_density_v1p7p1.jpeg", width = 2000, height = 1300, res = 200)
 plot(
   dens,
   type = "l",
@@ -947,7 +993,7 @@ plot(
   col  = "darkred",
   xlab = "Residue slope on volume (z-scale)",
   ylab = "Density",
-  main = "Posterior residue effect on volume (v1p7)",
+  main = "Posterior residue effect on volume (v1p7p1)",
   bty  = "l"
 )
 abline(v = 0, lty = 2)
@@ -972,7 +1018,7 @@ p_cropC <- ggplot2::ggplot(
     x = "Crop",
     y = "Analyte",
     fill = "Effect (z)",
-    title = "Posterior crop effects on concentration (v1p7)"
+    title = "Posterior crop effects on concentration (v1p7p1)"
   ) +
   ggplot2::theme_classic(base_size = 12) +
   ggplot2::theme(
@@ -983,7 +1029,7 @@ p_cropC <- ggplot2::ggplot(
 p_cropC
 
 ggplot2::ggsave(
-  filename = "../figs/crop_effects_on_concentration_heatmap_v1p7.png",
+  filename = "../figs/crop_effects_on_concentration_heatmap_v1p7p1.png",
   plot = p_cropC,
   width = 10.5,
   height = 6.5,
@@ -1009,14 +1055,14 @@ p_cropV <- ggplot2::ggplot(
   ggplot2::labs(
     x = "Crop",
     y = "Effect on volume (z-scale)",
-    title = "Posterior crop effects on volume (v1p7)"
+    title = "Posterior crop effects on volume (v1p7p1)"
   ) +
   ggplot2::theme_classic(base_size = 14)
 
 p_cropV
 
 ggplot2::ggsave(
-  filename = "../figs/crop_effects_on_volume_v1p7.png",
+  filename = "../figs/crop_effects_on_volume_v1p7p1.png",
   plot = p_cropV,
   width = 10,
   height = 6,
@@ -1090,8 +1136,8 @@ plot_stir_effects <- function() {
   abline(h = 0, lty = 2)
 }
 
-# Save as JPEG in figs folder (v1p7 filename)
-jpeg("../figs/load1p7_STIReffects.jpeg", width = 2000, height = 1300, res = 200)
+# Save as JPEG in figs folder (v1p7p1 filename)
+jpeg("../figs/load1p7p1_STIReffects.jpeg", width = 2000, height = 1300, res = 200)
 plot_stir_effects()
 dev.off()
 
@@ -1150,7 +1196,7 @@ plot_stir_volume_effect <- function(fit, param = "b_V",
 # Plot to device
 plot_stir_volume_effect(fit, param = "b_V")
 
-# Save to file (v1p7 filename)
+# Save to file (v1p7p1 filename)
 plot_stir_volume_effect(
   fit,
   param = "b_V",
@@ -1164,7 +1210,7 @@ plot_stir_volume_effect(
 
 ```{r load-generative-curves}
 ## Scenario-based STIR -> Load link functions -----------------------------
-## v1p7: includes crop (Cr) and residue (RES) in both volume + concentration
+## v1p7p1: includes crop (Cr) and residue (RES) in both volume + concentration
 
 # 1. Back-transform stats (only computed once)
 c_stats <- d_mod %>%
@@ -1202,8 +1248,8 @@ simulate_load_curve_single <- function(
   flume      = NULL,
   irrigation = NULL,
   duplicate  = NULL,
-  crop       = NULL,     # NEW v1p7: crop label (must match crop_lookup$Crop); NULL averages over crops
-  res_z      = 0,        # NEW v1p7: residue (z-scale). Placeholder runs use 0.
+  crop       = NULL,     # NEW v1p7p1: crop label (must match crop_lookup$Crop); NULL averages over crops
+  res_z      = 0,        # NEW v1p7p1: residue (z-scale). Placeholder runs use 0.
   cin_z      = 0,
   year       = NULL,
   n_draws    = 2000,
@@ -1288,7 +1334,7 @@ simulate_load_curve_single <- function(
     duplicate_label <- ifelse(as.logical(duplicate), "TRUE", "FALSE")
   }
 
-  # Crop (NEW v1p7): affects BOTH volume and concentration
+  # Crop (NEW v1p7p1): affects BOTH volume and concentration
   if (is.null(crop)) {
     # weighted average over observed crop frequencies
     w <- crop_wts$w
@@ -1313,10 +1359,56 @@ simulate_load_curve_single <- function(
     crop_label <- as.character(crop)
   }
 
-  # Residue (NEW v1p7): affects BOTH volume and concentration
-  RES_star <- as.numeric(res_z)
-  if (!is.finite(RES_star) || length(RES_star) != 1L) stop("res_z must be a single finite numeric value")
+  # Residue (v1p7p1): affects BOTH volume and concentration
+  # In the Stan model, residue enters on the **proportion scale** (0, 1) as:
+  #   RES_star = inv_logit(mu_res)
+  # and is used directly in the VOL and C linear predictors.
+  #
+  # Historically, this Rmd treated `res_z` as a z-scale placeholder and defaulted to 0.
+  # With the v1p7p1 logit-normal residue submodel, interpreting 0 as a *proportion* would
+  # imply ~0% residue cover, which is usually NOT the intent and can distort predictions.
+  #
+  # Drop-in behavior implemented here:
+  #   - If res_z is exactly 0 (the historical default) OR is NA, we use the *residue submodel*
+  #     to generate an expected residue proportion as a function of STIR (and optionally crop).
+  #   - If res_z is a fixed proportion in (0,1), we use that constant proportion for all STIR.
+  #     (If you truly want 0 residue, pass a tiny value like 1e-6.)
+  #
+  # This keeps old calls working while aligning predictions with the Stan generative structure.
+  if (length(res_z) != 1L || (!is.numeric(res_z) && !is.na(res_z))) {
+    stop("res_z must be a single numeric value (use 0 or NA to use the residue submodel).")
+  }
 
+  # Build a draws × STIR grid of residue proportions
+  use_residue_submodel <- is.na(res_z) || identical(as.numeric(res_z), 0)
+
+  if (use_residue_submodel) {
+    # Crop term in residue model: either selected crop, or average across crops
+    if (is.null(crop)) {
+      gamma_Cr_res_draws <- post$gamma_Cr_res[draw_idx, , drop = FALSE]  # draws × Cr_n
+      gamma_Cr_res_star  <- apply(gamma_Cr_res_draws, 1, mean)           # draws
+    } else {
+      Cr_idx_res <- crop_lookup$Cr[crop_lookup$Crop == crop]
+      if (length(Cr_idx_res) != 1L) stop("crop not found in crop_lookup")
+      gamma_Cr_res_star <- post$gamma_Cr_res[draw_idx, Cr_idx_res]
+    }
+
+    # Expected residue proportion E[RES | STIR, crop] for each draw and STIR point
+    res_int <- qlogis(post$res_base[draw_idx]) + gamma_Cr_res_star              # draws
+    res_slope <- post$b_res_stir[draw_idx]                                      # draws
+    mu_res_mat <- matrix(res_int, nrow = length(draw_idx), ncol = length(STIR_z_seq)) +
+      (res_slope %o% STIR_z_seq)
+    RES_mat <- plogis(mu_res_mat)
+    res_label <- "model_based"
+  } else {
+    # Fixed proportion supplied by the user
+    res_prop <- as.numeric(res_z)
+    if (!is.finite(res_prop) || res_prop <= 0 || res_prop >= 1) {
+      stop("If providing a fixed residue value, res_z must be a finite proportion strictly between 0 and 1.")
+    }
+    RES_mat <- matrix(res_prop, nrow = length(draw_idx), ncol = length(STIR_z_seq))
+    res_label <- sprintf("fixed_%.3f", res_prop)
+  }
   # ---------------- Posterior pieces for this analyte ----------------
 
   alpha_j      <- post$alpha[draw_idx, j_idx]
@@ -1328,7 +1420,7 @@ simulate_load_curve_single <- function(
   beta_vol <- post$beta_vol[draw_idx]
   beta_irr <- post$beta_irr[draw_idx]
 
-  # v1p7 volume STIR params (b_V is the STIR slope; a_V is intercept)
+  # v1p7p1 volume STIR params (b_V is the STIR slope; a_V is intercept)
   a_V <- if (!is.null(post$a_V)) post$a_V[draw_idx] else {
     as.numeric(fit$draws(variables = "a_V", format = "matrix")[draw_idx, "a_V"])
   }
@@ -1360,6 +1452,9 @@ simulate_load_curve_single <- function(
 
   for (k in seq_len(n_x)) {
     stz <- STIR_z_seq[k]
+
+    # Residue proportion for this STIR point (vector of length = n_draws)
+    RES_star <- RES_mat[, k]
 
     # Volume model (z scale): includes STIR, residue, crop
     muV_z <- a_V +
@@ -1405,8 +1500,9 @@ simulate_load_curve_single <- function(
     flume_level      = flume_label,
     irrigation_level = irrigation_label,
     duplicate_level  = duplicate_label,
-    crop_level       = crop_label,
-    res_z            = RES_star,
+    crop_level       = crop_label,    residue_mode    = res_label,
+    res_z            = if (use_residue_submodel) NA_real_ else as.numeric(res_z),
+    res_fixed_prop  = if (use_residue_submodel) NA_real_ else as.numeric(res_z),
     cin_z            = cin_z,
     year_level       = year_label,
     ci_prob          = ci_prob
@@ -1423,8 +1519,8 @@ simulate_load_curves <- function(
   flume        = NULL,
   irrigation   = NULL,
   duplicate    = NULL,
-  crop         = NULL,   # NEW v1p7
-  res_z        = 0,      # NEW v1p7
+  crop         = NULL,   # NEW v1p7p1
+  res_z        = 0,      # NEW v1p7p1
   cin_z        = 0,
   year         = NULL,
   n_draws      = 2000,
@@ -1466,7 +1562,7 @@ compute_observed_load_points_single <- function(
   flume      = NULL,
   irrigation = NULL,
   duplicate  = NULL,
-  crop       = NULL,   # NEW v1p7
+  crop       = NULL,   # NEW v1p7p1
   year       = NULL,
   stir_var   = "Season_STIR_toDate",
   conc_var   = "Result_mg_L",
@@ -1550,7 +1646,7 @@ compute_observed_load_points <- function(
   flume        = NULL,
   irrigation   = NULL,
   duplicate    = NULL,
-  crop         = NULL,   # NEW v1p7
+  crop         = NULL,   # NEW v1p7p1
   year         = NULL,
   stir_var     = "Season_STIR_toDate",
   conc_var     = "Result_mg_L",
@@ -1589,8 +1685,8 @@ simulate_load_curves_with_obs <- function(
   flume        = NULL,
   irrigation   = NULL,
   duplicate    = NULL,
-  crop         = NULL,   # NEW v1p7
-  res_z        = 0,      # NEW v1p7
+  crop         = NULL,   # NEW v1p7p1
+  res_z        = 0,      # NEW v1p7p1
   cin_z        = 0,
   year         = NULL,
   n_draws      = 2000,
@@ -1705,12 +1801,12 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 
 ```{r load-generative-curves-user-guide}
 ###############################################################
-## USER INPUT GUIDE FOR `simulate_load_curves_with_obs()` (v1p7)
+## USER INPUT GUIDE FOR `simulate_load_curves_with_obs()` (v1p7p1)
 ## -----------------------------------------------------------
 ## This block summarizes all allowable inputs and their valid
 ## levels for running scenario-based STIR → Load simulations.
 ##
-## NEW in v1p7:
+## NEW in v1p7p1:
 ##   - crop  : crop type affects BOTH concentration and volume
 ##   - res_z : residue cover (z-scale) affects BOTH concentration and volume
 ###############################################################
@@ -1774,7 +1870,7 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 ##   duplicate = NULL → empirical mean duplicate rate (DUP_bar)
 
 ## -----------------------------------------------------------
-## crop (NEW v1p7: crop type)
+## crop (NEW v1p7p1: crop type)
 ## -----------------------------------------------------------
 ## Must match crop_lookup$Crop (e.g., "grain corn", ...)
 ##
@@ -1785,7 +1881,7 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 ##   crop = "grain corn"
 
 ## -----------------------------------------------------------
-## res_z (NEW v1p7: residue cover at planting, z-scale)
+## res_z (NEW v1p7p1: residue cover at planting, z-scale)
 ## -----------------------------------------------------------
 ## Numeric z-score. Use:
 ##   res_z = 0 → average residue cover (placeholder runs: keep 0)
@@ -1822,7 +1918,7 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 ##   seq(0, 300, length.out = 60)
 
 ## ======================================================================
-## Example scenario run (v1p7 defaults, averages over most factors)
+## Example scenario run (v1p7p1 defaults, averages over most factors)
 ## ======================================================================
 
 res_scenario <- simulate_load_curves_with_obs(
@@ -1922,7 +2018,7 @@ p_load
 ```{r save load fig}
 # Save to figs folder
 ggsave(
-  filename = "../figs/load1p7_STIR_load_curves.jpeg",
+  filename = "../figs/load1p7p1_STIR_load_curves.jpeg",
   plot = p_load,
   width = 12, height = 10, dpi = 300
 )
@@ -1931,7 +2027,7 @@ ggsave(
 Plot effects of time (i.e., Year)
 ```{r year covar plot}
 ## ============================================================
-## Year-distance covariance functions (prior vs posterior) v1p7
+## Year-distance covariance functions (prior vs posterior) v1p7p1
 ## ============================================================
 
 # sequence of distances in years
@@ -1974,7 +2070,7 @@ cov_fun <- function(etasq, rhosq, x) etasq * exp(-rhosq * x^2)
 # ---------------------------------
 # Save figure
 # ---------------------------------
-jpeg("../figs/year_covariance_gp_v1p7.jpeg", width = 2000, height = 1500, res = 220)
+jpeg("../figs/year_covariance_gp_v1p7p1.jpeg", width = 2000, height = 1500, res = 220)
 
 plot(
   NULL,
@@ -2071,7 +2167,7 @@ legend(
 ```{r analyte persistence plot}
 ## ============================================================
 ## Analyte persistence: lag-1 correlation of latent year effect
-## v1p7 (uses post$F_year: draws × Y × A)
+## v1p7p1 (uses post$F_year: draws × Y × A)
 ## ============================================================
 
 F_arr <- post$F_year
@@ -2130,9 +2226,9 @@ gg_persist <- ggplot(
 
 gg_persist
 
-# Save to figs folder (v1p7 filename)
+# Save to figs folder (v1p7p1 filename)
 ggsave(
-  filename = "../figs/analyte_persistence_precis_v1p7.jpeg",
+  filename = "../figs/analyte_persistence_precis_v1p7p1.jpeg",
   plot = gg_persist,
   width = 12, height = 10, dpi = 300
 )
@@ -2143,7 +2239,7 @@ ggsave(
 
 ```{r year effects plot}
 ## ============================================================
-## Year effects plot: F_year by analyte (v1p7)
+## Year effects plot: F_year by analyte (v1p7p1)
 ## post$F_year is draws × Y × A
 ## ============================================================
 
@@ -2187,9 +2283,9 @@ gg_F <- ggplot(
 
 gg_F
 
-# Save to figs folder (v1p7 filename)
+# Save to figs folder (v1p7p1 filename)
 ggsave(
-  filename = "../figs/yearly_latent_deviations_v1p7.jpeg",
+  filename = "../figs/yearly_latent_deviations_v1p7p1.jpeg",
   plot = gg_F,
   width = 12, height = 10, dpi = 300
 )
@@ -2201,14 +2297,14 @@ ggsave(
 
 ```{r pred data generation}
 # ============================================================
-# v1p7: Build a prediction frame that includes "missing chemistry years"
+# v1p7p1: Build a prediction frame that includes "missing chemistry years"
 # Drop-in replacement with:
 #   1) robust irrigation mapping (keeps S1/S2, avoids coercion warnings)
 #   2) diagnostics explaining why years/rows get dropped
 #   3) optional cin_z fill (default: NA cin_z -> 0)
-#   4) NEW v1p7 fields: Crop + residue placeholder (RES_z)
-#      - Crop is required for v1p7 Stan (Cr index)
-#      - Residue is required for v1p7 Stan (RES predictor)
+#   4) NEW v1p7p1 fields: Crop + residue placeholder (RES_z)
+#      - Crop is required for v1p7p1 Stan (Cr index)
+#      - Residue is required for v1p7p1 Stan (RES predictor)
 #        For now we set RES_z = 0 (placeholder; no impact)
 # ============================================================
 build_d_pred <- function(
@@ -2221,11 +2317,11 @@ build_d_pred <- function(
   res_na_to_zero = TRUE  # NEW: if RES_z ever exists, fill NA -> 0
 ) {
 
-  # v1p7 required columns (some may be added later, e.g., residue)
+  # v1p7p1 required columns (some may be added later, e.g., residue)
   needed <- c(
     "Year","Treatment","analyte_abbr","Season_STIR_toDate",
     "Rep","SampleMethod","FlumeMethod","Irrigation","Duplicate","cin_z",
-    "Crop",  # NEW v1p7 (for Cr)
+    "Crop",  # NEW v1p7p1 (for Cr)
     event_id_col
   )
   miss <- setdiff(needed, names(wq_clean))
@@ -2289,7 +2385,7 @@ build_d_pred <- function(
     dplyr::left_join(irr_map, by = "Irrigation_chr")
 
   # ------------------------------------------------------------
-  # Residue placeholder (v1p7 requires RES predictor)
+  # Residue placeholder (v1p7p1 requires RES predictor)
   # If a residue z-score column exists, use it; otherwise create 0.
   # You can later replace "RES_z" here with your real residue column.
   # ------------------------------------------------------------
@@ -2360,7 +2456,7 @@ build_d_pred <- function(
       Year,
       Treatment,
       analyte_abbr,
-      Crop,                          # NEW v1p7
+      Crop,                          # NEW v1p7p1
       STIR_raw = Season_STIR_toDate,
       Rep,
       SampleMethod,
@@ -2523,10 +2619,10 @@ annual_tbl_obs <- make_annual_observed_table_all_treatments(
 
 ```{r pred data table}
 # ============================================================
-# v1p7: Annual table from posterior predictions summed over d_pred
+# v1p7p1: Annual table from posterior predictions summed over d_pred
 # Adds Crop + Residue (RES_z) effects in BOTH volume and concentration.
 #
-# Assumes d_pred created by build_d_pred() (v1p7) includes:
+# Assumes d_pred created by build_d_pred() (v1p7p1) includes:
 #   Crop, RES_z
 # ============================================================
 make_annual_load_table_all_treatments_pred <- function(
@@ -2739,13 +2835,13 @@ plot_annual_by_treatment_pretty <- function(
   draw_line = TRUE,           # TRUE for modeled trajectories, often FALSE for observed-only
   show_points = TRUE,
   dodge = 0.20,
-  prob_ci = NULL              # NEW v1p7: if annual_tbl has prob_ci column, auto-use it in ylab
+  prob_ci = NULL              # NEW v1p7p1: if annual_tbl has prob_ci column, auto-use it in ylab
 ) {
   metric <- match.arg(metric)
 
   stopifnot(all(c("Year","analyte","treatment") %in% names(annual_tbl)))
 
-  # v1p7 tables use *_low/*_high (no fixed "95" in the name)
+  # v1p7p1 tables use *_low/*_high (no fixed "95" in the name)
   y_mean <- paste0(metric, "_mean")
   y_low  <- paste0(metric, "_low")
   y_high <- paste0(metric, "_high")
@@ -2856,7 +2952,7 @@ plot_annual_by_treatment_pretty <- function(
 ```
 
 ```{r plot annual loads execution}
-# Modeled-only (v1p7 annual_tbl_pred)
+# Modeled-only (v1p7p1 annual_tbl_pred)
 p_mod <- plot_annual_by_treatment_pretty(
   annual_tbl = annual_tbl_pred,
   analyte_pick = "TSS",
@@ -2866,14 +2962,14 @@ p_mod <- plot_annual_by_treatment_pretty(
 )
 
 ggplot2::ggsave(
-  filename = "../figs/TSS_annual_load_modeled_only_v1p7.png",
+  filename = "../figs/TSS_annual_load_modeled_only_v1p7p1.png",
   plot = p_mod,
   width = 8,
   height = 5,
   dpi = 300
 )
 
-# Observed-only (v1p7 annual_tbl_obs)
+# Observed-only (v1p7p1 annual_tbl_obs)
 p_obs <- plot_annual_by_treatment_pretty(
   annual_tbl = annual_tbl_obs,
   analyte_pick = "TSS",
@@ -2883,7 +2979,7 @@ p_obs <- plot_annual_by_treatment_pretty(
 )
 
 ggplot2::ggsave(
-  filename = "../figs/TSS_annual_load_observed_only_v1p7.png",
+  filename = "../figs/TSS_annual_load_observed_only_v1p7p1.png",
   plot = p_obs,
   width = 8,
   height = 5,
@@ -3103,7 +3199,7 @@ plot_annual_by_treatment_obs_vs_mod(annual_both, analyte_pick = "TSS", metric = 
 
 ```{r save all plots}
 # ------------------------------------------------------------
-# Save images (v1p7 compatible)
+# Save images (v1p7p1 compatible)
 # ------------------------------------------------------------
 sanitize_slug <- function(x) {
   x <- as.character(x)
@@ -3118,7 +3214,7 @@ sanitize_slug <- function(x) {
 save_all_analyte_obs_vs_mod_plots <- function(
   annual_both,
   metric = c("load","conc","volume"),
-  out_dir = file.path("../figs", "annual_obs_vs_modeled_v1p7"),
+  out_dir = file.path("../figs", "annual_obs_vs_modeled_v1p7p1"),
   width = 9,
   height = 5.5,
   dpi = 300,
@@ -3154,7 +3250,7 @@ save_all_analyte_obs_vs_mod_plots <- function(
       next
     }
 
-    fname <- file.path(out_dir, paste0("annual_", metric, "_", slug, "_obs_vs_modeled_v1p7.", device))
+    fname <- file.path(out_dir, paste0("annual_", metric, "_", slug, "_obs_vs_modeled_v1p7p1.", device))
 
     ggplot2::ggsave(
       filename = fname,
@@ -3187,7 +3283,7 @@ log_load <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "load")
 
 ```{r export bayes annual predictions}
 # ============================================================
-# v1p7: Export annual posterior predictions (and optional observed)
+# v1p7p1: Export annual posterior predictions (and optional observed)
 # Designed to mirror an ML-style annual summary table with:
 #   - mean + interval bounds
 #   - n_events / n_rows
@@ -3203,7 +3299,7 @@ log_load <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "load")
 export_dir <- "../out"
 dir.create(export_dir, recursive = TRUE, showWarnings = FALSE)
 
-model_version <- "v1p7"
+model_version <- "v1p7p1"
 
 # ---- 1) Annual posterior summary (Modeled) ----
 # annual_tbl_pred uses: *_mean, *_low, *_high, plus prob_ci

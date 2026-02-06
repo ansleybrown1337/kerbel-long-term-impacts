@@ -1,6 +1,13 @@
 // m_stir_mogp_v1p7.stan
-// Model 1p7: adds explicit measurement error via latent "true" V and C,
-// and adds a logit-normal latent "true" residue cover model (with STIR + Crop Type parents).
+// v1p7 (logit-normal residue):
+// - Residue handled with a logit-normal latent process + observation model.
+// - Keeps same DATA interface: RES in (0,1), N_RES_miss, RES_missidx.
+// - Uses RES_true (proportion scale) as predictor in volume + concentration to
+//   remain consistent with existing R-side expectations.
+//
+// Notes:
+// - VOL and C are assumed z-scored upstream (as in your pipeline).
+// - RES is passed as a proportion (0,1); your R code already epsilon-adjusts.
 
 functions {
 
@@ -32,7 +39,7 @@ functions {
 
 data {
   int Y_n;
-  int D_n;  // retained for compatibility, not used directly
+  int D_n;  // retained for compatibility; not used directly
   int F_n;
   int S_n;
   int B_n;
@@ -40,7 +47,7 @@ data {
   int Cr_n;
   int N;
 
-  // Observed outcomes (can contain arbitrary values at missing rows; those rows are excluded from obs likelihood)
+  // Observed outcomes (rows listed in *_missidx are excluded from obs likelihood)
   vector[N] C;
   int<lower=0> N_C_miss;
   array[N_C_miss] int<lower=1, upper=N> C_missidx;
@@ -49,11 +56,7 @@ data {
   int<lower=0> N_VOL_miss;
   array[N_VOL_miss] int<lower=1, upper=N> VOL_missidx;
 
-  // Per-row observation SDs for measurement error (same scale as C and VOL)
-  // For missing rows, values can be anything (they are ignored).
-
-  // Residue cover observed as proportion in (0,1). Use NA in R for missing and pass missidx.
-  // For observed rows, RES must be strictly between 0 and 1 (apply an epsilon adjustment in R).
+  // Residue observation on proportion scale in (0,1); missing rows given by RES_missidx
   vector[N] RES;
   int<lower=0> N_RES_miss;
   array[N_RES_miss] int<lower=1, upper=N> RES_missidx;
@@ -66,7 +69,7 @@ data {
   array[N] int<lower=1, upper=A_n>  A;
   array[N] int<lower=1, upper=Cr_n> Cr;
   array[N] int DUP;  // 0/1
-  array[N] int IRR;  // count, treated as numeric
+  array[N] int IRR;  // treated as numeric
 
   // predictors
   vector[N] STIR;
@@ -79,7 +82,7 @@ data {
 }
 
 parameters {
-  // analyte level MVN (non centered)
+  // analyte-level MVN (non-centered)
   matrix[4, A_n] Z_A;
   vector[4] mu_A;
   cholesky_factor_corr[4] L_A;
@@ -104,7 +107,7 @@ parameters {
   real beta_vol;
   real beta_irr;
 
-  // Residue effects in outcome models (now applied on logit scale of residue)
+  // Residue effects in outcome models (use RES_true on proportion scale)
   real beta_res_V;
   vector[A_n] beta_res_C;
 
@@ -122,15 +125,15 @@ parameters {
   vector<lower=0>[A_n] sigma_analyte;  // process SD for C_true around mu_C
   real<lower=0> sigma_V;               // process SD for V_true around mu_V
 
-  // multi output GP hyperparameters (analyte covariance)
+  // multi-output GP hyperparameters (analyte covariance)
   cholesky_factor_corr[A_n] L_corr_Agp;
   vector<lower=0>[A_n] sigma_Agp;
 
-  // GP kernel hyperparameters (time / year)
+  // GP kernel hyperparameters (year)
   real<lower=0> etasq_year;
   real<lower=0> rhosq_year;
 
-  // non centered latent GP
+  // non-centered latent GP
   matrix[Y_n, A_n] Z_gp;
 
   // missing CIN imputation
@@ -140,28 +143,34 @@ parameters {
   vector[N] V_true;
   vector[N] C_true;
 
-  // Residue: latent true residue proportion in (0,1)
-  vector<lower=0, upper=1>[N] RES_true;
-
-  // Residue submodel (mean on logit scale via STIR + Crop)
-  real<lower=0, upper=1> res_base; // baseline residue proportion
-  real b_res_stir;            // effect of STIR on residue
-  vector[Cr_n] gamma_Cr_res;  // crop partial pooling
+  // ---------------------------------------------------------------------------
+  // Residue submodel: logit-normal latent process + observation
+  //
+  // Latent state:
+  //   res_logit_true[i] ~ Normal(mu_res[i], sigma_res_proc)
+  // where:
+  //   mu_res[i] = logit(res_base) + b_res_stir * STIR[i] + gamma_Cr_res[Cr[i]]
+  //
+  // Observation (if RES observed):
+  //   logit(RES[i]) ~ Normal(res_logit_true[i], sigma_res_obs)
+  //
+  // Imputation: for missing RES rows, res_logit_true is still learned from parents.
+  // ---------------------------------------------------------------------------
+  vector[N] res_logit_true;     // unconstrained latent residue on logit scale
+  real<lower=0, upper=1> res_base;
+  real b_res_stir;
+  vector[Cr_n] gamma_Cr_res;
   real<lower=0> sigma_Cr_res;
-
-  // Process concentration: how tightly RES_true concentrates around mean
-  real<lower=0> phi_res_proc;
-
-  // Observation concentration: how tightly RES observations concentrate around RES_true
-  real<lower=0> phi_res_obs;
+  real<lower=0> sigma_res_proc;
+  real<lower=0> sigma_res_obs;
 
   // Observation error (estimated, not supplied as data)
-  vector<lower=0>[A_n] sigma_C_obs;   // analyte-specific concentration measurement SD (on cout_z scale)
-  real<lower=0> sigma_VOL_obs;       // volume measurement SD (on volume_z scale)
+  vector<lower=0>[A_n] sigma_C_obs;  // analyte-specific conc measurement SD (z scale)
+  real<lower=0> sigma_VOL_obs;       // volume measurement SD (z scale)
 }
 
 transformed parameters {
-  // analyte level effects
+  // analyte-level effects
   vector[A_n] alpha;
   vector[A_n] beta_stir;
   vector[A_n] beta_cin;
@@ -173,13 +182,16 @@ transformed parameters {
   matrix[A_n, S_n] gamma_S;
   matrix[A_n, F_n] gamma_F;
 
-  // multi output GP structures
+  // multi-output GP structures
   matrix[Y_n, Y_n] K_year;
   matrix[Y_n, Y_n] L_t;
   matrix[A_n, A_n] L_Agp;
   matrix[Y_n, A_n] F_year;
 
-  // non centered MVNs for random effects
+  // residue on proportion scale (used in outcome models)
+  vector[N] RES_true;
+
+  // non-centered MVNs for random effects
   gamma_F = (diag_pre_multiply(sigma_F, L_F) * Z_F)';
   gamma_S = (diag_pre_multiply(sigma_S, L_S) * Z_S)';
   gamma_B = (diag_pre_multiply(sigma_B, L_B) * Z_B)';
@@ -190,13 +202,18 @@ transformed parameters {
   beta_stir = mu_A[2] + v_A[, 2];
   alpha     = mu_A[1] + v_A[, 1];
 
-  // multi output GP: separable covariance Σ_A ⊗ K_year
+  // multi-output GP: separable covariance Σ_A ⊗ K_year
   K_year = cov_GPL2(D, etasq_year, rhosq_year, 0.01);
   L_t    = cholesky_decompose(K_year);
   L_Agp  = diag_pre_multiply(sigma_Agp, L_corr_Agp);
 
-  // non centered: F_year = L_t * Z_gp * L_Agp'
+  // non-centered: F_year = L_t * Z_gp * L_Agp'
   F_year = L_t * Z_gp * L_Agp';
+
+  // residue on proportion scale
+  for (i in 1:N) {
+    RES_true[i] = inv_logit(res_logit_true[i]);
+  }
 }
 
 model {
@@ -204,9 +221,8 @@ model {
   vector[N] mu_V;
   vector[N] CIN_merge;
 
-  // residue helper quantities
+  // residue model mean on logit scale
   vector[N] mu_res;
-  vector[N] RES_used_logit;
 
   // missingness masks
   array[N] int is_C_miss;
@@ -223,112 +239,111 @@ model {
   for (k in 1:N_VOL_miss) is_VOL_miss[VOL_missidx[k]] = 1;
   for (k in 1:N_RES_miss) is_RES_miss[RES_missidx[k]] = 1;
 
+  // ---------------------------------------------------------------------------
+  // Priors (gently tightened; consistent with z-scored outcomes)
+  // ---------------------------------------------------------------------------
+
   // GP priors
   etasq_year ~ exponential(2);
-  rhosq_year ~ exponential(0.5);
-  sigma_Agp  ~ exponential(1);
-  L_corr_Agp ~ lkj_corr_cholesky(2);
+  rhosq_year ~ exponential(1);
+  sigma_Agp  ~ exponential(2);
+  L_corr_Agp ~ lkj_corr_cholesky(3);
   to_vector(Z_gp) ~ normal(0, 1);
 
-  // priors (existing)
-  sigma_V       ~ exponential(1);
-  sigma_analyte ~ exponential(1);
+  // process residual scales
+  sigma_V       ~ exponential(2);
+  sigma_analyte ~ exponential(2);
 
-  b_V      ~ normal(0, 1);
-  a_V      ~ normal(0, 1);
-  beta_irr ~ normal(0, 1);
-  beta_vol ~ normal(0, 1);
+  // observation (measurement) error priors (z scale)
+  sigma_VOL_obs ~ exponential(5);   // mean 0.2
+  sigma_C_obs   ~ exponential(5);   // mean 0.2
 
-  beta_res_V ~ normal(0, 1);
-  beta_res_C ~ normal(0, 1);
+  // fixed effects (regularized slopes on standardized predictors)
+  b_V      ~ normal(0, 0.7);
+  a_V      ~ normal(0, 0.7);
+  beta_irr ~ normal(0, 0.7);
+  beta_vol ~ normal(0, 0.7);
 
-  sigma_Cr_V ~ exponential(1);
+  beta_res_V ~ normal(0, 0.7);
+  beta_res_C ~ normal(0, 0.7);
+
+  // crop effects
+  sigma_Cr_V ~ exponential(2);
   gamma_Cr_V ~ normal(0, sigma_Cr_V);
 
-  sigma_Cr ~ exponential(1);
+  sigma_Cr ~ exponential(2);
   for (a in 1:A_n) {
     gamma_Cr[a] ~ normal(0, sigma_Cr[a]);
   }
 
-  sigma_F ~ exponential(1);
-  L_F     ~ lkj_corr_cholesky(2);
+  // random effects
+  sigma_F ~ exponential(2);
+  L_F     ~ lkj_corr_cholesky(3);
   to_vector(Z_F) ~ normal(0, 1);
 
-  sigma_S ~ exponential(1);
-  L_S     ~ lkj_corr_cholesky(2);
+  sigma_S ~ exponential(2);
+  L_S     ~ lkj_corr_cholesky(3);
   to_vector(Z_S) ~ normal(0, 1);
 
-  sigma_B ~ exponential(1);
-  L_B     ~ lkj_corr_cholesky(2);
+  sigma_B ~ exponential(2);
+  L_B     ~ lkj_corr_cholesky(3);
   to_vector(Z_B) ~ normal(0, 1);
 
-  sigma_A ~ exponential(1);
-  L_A     ~ lkj_corr_cholesky(2);
-  mu_A    ~ normal(0, 1);
+  // analyte-level MVN
+  sigma_A ~ exponential(2);
+  L_A     ~ lkj_corr_cholesky(3);
+  mu_A    ~ normal(0, 0.7);
   to_vector(Z_A) ~ normal(0, 1);
 
-  // CIN missing data model
+  // CIN missing data model (as before)
   CIN_merge = merge_missing(CIN_missidx, CIN, CIN_impute);
   CIN_merge ~ normal(0, 1);
 
-  // -------------------------
-  // Residue submodel (latent truth + observation model)
-  // Parents in DAG: STIR and Crop Type
-  //
-  // Data: RES is observed residue proportion in (0,1). Missing rows are indexed by RES_missidx.
-  // Latent: RES_true is a per-row latent "true" residue proportion.
-  //
-  // Process model:
-  //   logit(mean_res) = logit(res_base) + b_res_stir * STIR + gamma_Cr_res[Crop]
-  //   RES_true ~ Beta(mean_res * phi_res_proc, (1-mean_res) * phi_res_proc)
-  //
-  // Observation model (when RES observed):
-  //   RES ~ Beta(RES_true * phi_res_obs, (1-RES_true) * phi_res_obs)
-  //
-  // Baseline prior: res_base ~ Beta(2,10). If you want mean ~10%, consider Beta(2,18).
-  // -------------------------
-  sigma_Cr_res  ~ exponential(1);
-  gamma_Cr_res  ~ normal(0, sigma_Cr_res);
+  // ---------------------------------------------------------------------------
+  // Residue submodel: logit-normal latent process + observation
+  // Parents: STIR, Crop Type
+  // ---------------------------------------------------------------------------
+  sigma_Cr_res   ~ exponential(2);
+  gamma_Cr_res   ~ normal(0, sigma_Cr_res);
 
-  res_base    ~ beta(2, 10);
-  b_res_stir  ~ normal(0, 1);
+  // Baseline residue proportion; informative but mild
+  res_base     ~ beta(2, 10);
+  b_res_stir   ~ normal(0, 0.7);
 
-  phi_res_proc ~ exponential(1);
-  phi_res_obs  ~ exponential(1);
+  // Residue process and observation scales (logit scale)
+  // These priors discourage extreme curvature while allowing meaningful variation.
+  sigma_res_proc ~ exponential(2);   // mean 0.5 on logit scale
+  sigma_res_obs  ~ exponential(2);   // mean 0.5 on logit scale
 
   for (i in 1:N) {
     mu_res[i] = logit(res_base) + b_res_stir * STIR[i] + gamma_Cr_res[Cr[i]];
-    {
-      real mean_res = inv_logit(mu_res[i]);
-      // Latent "true" residue
-      RES_true[i] ~ beta(mean_res * phi_res_proc, (1 - mean_res) * phi_res_proc);
-    }
   }
+  // latent residue state for all rows
+  res_logit_true ~ normal(mu_res, sigma_res_proc);
 
-  // Observation model for residue (skip missing)
+  // residue observation model only for observed rows
   for (i in 1:N) {
     if (is_RES_miss[i] == 0) {
-      // RES is already in (0,1); ensure upstream epsilon adjustment so Beta is valid.
-      RES[i] ~ beta(RES_true[i] * phi_res_obs, (1 - RES_true[i]) * phi_res_obs);
+      target += normal_lpdf(logit(RES[i]) | res_logit_true[i], sigma_res_obs);
     }
   }
 
-  // Use residue on logit scale in outcome models
+  // ---------------------------------------------------------------------------
+  // Latent PROCESS model for volume truth (z scale)
+  // Direct effects: STIR, residue (proportion), crop
+  // ---------------------------------------------------------------------------
   for (i in 1:N) {
-    RES_used_logit[i] = logit(RES_true[i]);
-  }
-
-  // -------------------------
-  // Latent PROCESS model for volume truth
-  // -------------------------
-  for (i in 1:N) {
-    mu_V[i] = a_V + b_V * STIR[i] + beta_res_V * RES_used_logit[i] + gamma_Cr_V[Cr[i]];
+    mu_V[i] = a_V +
+      b_V * STIR[i] +
+      beta_res_V * RES_true[i] +
+      gamma_Cr_V[Cr[i]];
   }
   V_true ~ normal(mu_V, sigma_V);
 
-  // -------------------------
-  // Latent PROCESS model for concentration truth (uses latent V_true)
-  // -------------------------
+  // ---------------------------------------------------------------------------
+  // Latent PROCESS model for concentration truth (z scale)
+  // Direct effects: STIR, CIN, latent VOL, IRR, DUP, residue (proportion), crop, REs, GP
+  // ---------------------------------------------------------------------------
   for (i in 1:N) {
     mu_C[i] =
       alpha[A[i]] +
@@ -337,7 +352,7 @@ model {
       beta_vol        * V_true[i] +
       beta_irr        * IRR[i] +
       beta_dup[A[i]]  * DUP[i] +
-      beta_res_C[A[i]] * RES_used_logit[i] +
+      beta_res_C[A[i]] * RES_true[i] +
       gamma_Cr[A[i], Cr[i]] +
       gamma_B[A[i], B[i]] +
       gamma_S[A[i], S[i]] +
@@ -348,10 +363,10 @@ model {
     C_true[i] ~ normal(mu_C[i], sigma_analyte[A[i]]);
   }
 
-  // -------------------------
-  // OBSERVATION models (measurement error) for VOL and C
+  // ---------------------------------------------------------------------------
+  // OBSERVATION models (measurement error) for VOL and C (z scale)
   // Only apply likelihood to observed rows.
-  // -------------------------
+  // ---------------------------------------------------------------------------
   for (i in 1:N) {
     if (is_VOL_miss[i] == 0) {
       target += normal_lpdf(VOL[i] | V_true[i], sigma_VOL_obs);
@@ -368,11 +383,11 @@ generated quantities {
   vector[N] RES_rep01;
 
   for (i in 1:N) {
+    // replicate observed outcomes
     VOL_rep[i] = normal_rng(V_true[i], sigma_VOL_obs);
     C_rep[i]   = normal_rng(C_true[i], sigma_C_obs[A[i]]);
 
-    // Replicated residue observation (on proportion scale)
-    // For missing rows, this is a prior predictive replicate.
-    RES_rep01[i] = beta_rng(RES_true[i] * phi_res_obs, (1 - RES_true[i]) * phi_res_obs);
+    // replicate observed residue proportion
+    RES_rep01[i] = inv_logit(normal_rng(res_logit_true[i], sigma_res_obs));
   }
 }
