@@ -11,8 +11,8 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   echo = TRUE,
-  message = FALSE,
-  warning = FALSE
+  message = TRUE,
+  warning = TRUE
 )
 
 # Core libs
@@ -530,31 +530,34 @@ print(summary(stan_dat_cmd$RES))
 # -------------------------------------------------------------------
 dir.create("out_cmdstanr", showWarnings = FALSE)
 
-fit_smoke <- mod$sample(
-  data = stan_dat_cmd,
-  chains = 1,
-  parallel_chains = 1,
-  iter_warmup = 50,
-  iter_sampling = 50,
-  adapt_delta = 0.99,
-  max_treedepth = 15,
-  refresh = 1,
-  show_messages = TRUE
-)
-
-# fit <- mod$sample(
-#   data            = stan_dat_cmd,
-#   chains          = 4,
-#   parallel_chains = 4,
-#   iter_warmup     = 1000,
-#   iter_sampling   = 1000,
-#   adapt_delta     = 0.99,         # higher adapt_delta for better convergence at the cost of longer sampling time
-#   max_treedepth   = 15,           # increase max_treedepth for complex models to avoid hitting the depth limit
-#   #refresh         = 10,          # print progress every 10 iters
-#   show_messages   = TRUE,         # surface cmdstan messages
-#   output_dir      = "out_cmdstanr",
-#   save_warmup     = TRUE
+# fit_smoke <- mod$sample(
+#   data = stan_dat_cmd,
+#   chains = 1,
+#   parallel_chains = 1,
+#   iter_warmup = 50,
+#   iter_sampling = 50,
+#   adapt_delta = 0.99,
+#   max_treedepth = 15,
+#   refresh = 1,
+#   show_messages = TRUE
 # )
+
+fit <- mod$sample(
+  data            = stan_dat_cmd,
+  chains          = 4,
+  parallel_chains = 4,
+  iter_warmup     = 1000,
+  iter_sampling   = 1000,
+  adapt_delta     = 0.99,         # higher adapt_delta for better convergence at the cost of longer sampling time
+  max_treedepth   = 15,           # increase max_treedepth for complex models to avoid hitting the depth limit
+  refresh         = 10,          # print progress every 10 iters
+  show_messages   = TRUE,         # surface cmdstan messages
+  #output_dir      = "out_cmdstanr",
+  save_warmup     = TRUE
+)
+```
+```{r}
+print(fit$diagnostic_summary())
 ```
 
 
