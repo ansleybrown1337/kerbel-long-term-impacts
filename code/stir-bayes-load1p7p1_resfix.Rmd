@@ -3495,8 +3495,12 @@ export_annual_draws <- function(
   c_stats,
   V_mean, V_sd,
   stir_mean, stir_sd,
-  n_draws = 400,         # keep modest, adjust as needed
-  seed = 1
+  n_draws = 400,
+  seed = 1,
+  drop_unmapped_analytes = TRUE,
+  drop_missing_c_stats = TRUE,
+  drop_unmapped_years = FALSE,
+  drop_unmapped_other = FALSE   # Rep/SampleMethod/Flume/Crop
 ) {
   needed_cols <- c(
     "event_id","Year","Treatment","analyte_abbr","STIR_raw",
@@ -3513,6 +3517,7 @@ export_annual_draws <- function(
   draw_idx <- if (n_total > n_draws) sample.int(n_total, n_draws) else seq_len(n_total)
   D <- length(draw_idx)
 
+  # map indices + stats
   dat <- d_pred %>%
     dplyr::left_join(analyte_lookup %>% dplyr::select(A, analyte_abbr), by = "analyte_abbr") %>%
     dplyr::left_join(block_lookup   %>% dplyr::select(B, Rep),          by = "Rep") %>%
@@ -3523,7 +3528,58 @@ export_annual_draws <- function(
     dplyr::mutate(
       Y      = match(Year, years_used),
       STIR_z = (STIR_raw - stir_mean) / stir_sd
-    ) %>%
+    )
+
+  # ---- Diagnose + optionally drop unmapped analytes ----
+  if (anyNA(dat$A)) {
+    bad_an <- sort(unique(dat$analyte_abbr[is.na(dat$A)]))
+    msg <- paste0(
+      "Unmapped analyte_abbr (not in analyte_lookup): ",
+      paste(bad_an, collapse = ", "), "."
+    )
+    if (!isTRUE(drop_unmapped_analytes)) stop(msg)
+    warning(msg, " Dropping these rows from d_pred for per-draw export.")
+    dat <- dat %>% dplyr::filter(!is.na(A))
+  }
+
+  # ---- Diagnose + optionally drop missing c_stats ----
+  if (anyNA(dat$c_mean) || anyNA(dat$c_sd)) {
+    bad_an2 <- sort(unique(dat$analyte_abbr[is.na(dat$c_mean) | is.na(dat$c_sd)]))
+    msg2 <- paste0(
+      "Missing c_stats (c_mean/c_sd) for analytes: ",
+      paste(bad_an2, collapse = ", "), "."
+    )
+    if (!isTRUE(drop_missing_c_stats)) stop(msg2)
+    warning(msg2, " Dropping these rows from d_pred for per-draw export.")
+    dat <- dat %>% dplyr::filter(!is.na(c_mean), !is.na(c_sd))
+  }
+
+  # ---- Years_used mismatch (optional drop) ----
+  if (anyNA(dat$Y)) {
+    bad_y <- sort(unique(dat$Year[is.na(dat$Y)]))
+    msgy <- paste0("Some Year not found in years_used: ", paste(bad_y, collapse = ", "), ".")
+    if (!isTRUE(drop_unmapped_years)) stop(msgy)
+    warning(msgy, " Dropping these rows from d_pred for per-draw export.")
+    dat <- dat %>% dplyr::filter(!is.na(Y))
+  }
+
+  # ---- Other lookups (optional drop; default: strict) ----
+  if (anyNA(dat$B) || anyNA(dat$S) || anyNA(dat$Fu) || anyNA(dat$Cr)) {
+    # build a readable message
+    parts <- c()
+    if (anyNA(dat$B))  parts <- c(parts, paste0("Rep: ", paste(sort(unique(dat$Rep[is.na(dat$B)])), collapse = ", ")))
+    if (anyNA(dat$S))  parts <- c(parts, paste0("SampleMethod: ", paste(sort(unique(dat$SampleMethod[is.na(dat$S)])), collapse = ", ")))
+    if (anyNA(dat$Fu)) parts <- c(parts, paste0("FlumeMethod: ", paste(sort(unique(dat$FlumeMethod[is.na(dat$Fu)])), collapse = ", ")))
+    if (anyNA(dat$Cr)) parts <- c(parts, paste0("Crop: ", paste(sort(unique(dat$Crop[is.na(dat$Cr)])), collapse = ", ")))
+    msgo <- paste0("Index mapping produced NAs for: ", paste(parts, collapse = " | "), ".")
+
+    if (!isTRUE(drop_unmapped_other)) stop(msgo)
+    warning(msgo, " Dropping these rows from d_pred for per-draw export.")
+    dat <- dat %>% dplyr::filter(!is.na(B), !is.na(S), !is.na(Fu), !is.na(Cr))
+  }
+
+  # Integer indices
+  dat <- dat %>%
     dplyr::mutate(
       A  = as.integer(A),
       B  = as.integer(B),
@@ -3532,10 +3588,6 @@ export_annual_draws <- function(
       Y  = as.integer(Y),
       Cr = as.integer(Cr)
     )
-
-  if (anyNA(dat$A) || anyNA(dat$B) || anyNA(dat$S) || anyNA(dat$Fu) || anyNA(dat$Cr) || anyNA(dat$Y)) {
-    stop("Index mapping produced NAs; check lookup tables and years_used alignment.")
-  }
 
   groups <- dat %>%
     dplyr::distinct(Year, analyte_abbr, Treatment) %>%
@@ -3556,8 +3608,7 @@ export_annual_draws <- function(
       dsub <- dat %>% dplyr::filter(Year == yr, analyte_abbr == an, Treatment == tr)
       if (nrow(dsub) == 0) next
 
-      # Row-level predictors
-      A  <- dsub$A;  B <- dsub$B;  S <- dsub$S;  Fu <- dsub$Fu;  Y <- dsub$Y;  Cr <- dsub$Cr
+      A  <- dsub$A;  B <- dsub$B;  Sidx <- dsub$S;  Fu <- dsub$Fu;  Y <- dsub$Y;  Cr <- dsub$Cr
       stz <- dsub$STIR_z
       cin <- dsub$cin_z
       irr <- dsub$irr_num
@@ -3566,36 +3617,36 @@ export_annual_draws <- function(
       c_mean <- dsub$c_mean
       c_sd   <- dsub$c_sd
 
-      # Event-level ledger for volumes
       ev <- dsub %>%
         dplyr::distinct(event_id, STIR_z, RES_z, Crop) %>%
         dplyr::left_join(crop_lookup %>% dplyr::select(Cr, Crop), by = "Crop") %>%
-        dplyr::mutate(Cr = as.integer(Cr))
+        dplyr::mutate(Cr = as.integer(Cr)) %>%
+        dplyr::filter(!is.na(Cr))
 
       muV_z_ev <- post$a_V[s] +
-        post$b_V[s]        * ev$STIR_z +
-        post$beta_res_V[s] * ev$RES_z +
+        post$b_V[s]         * ev$STIR_z +
+        post$beta_res_V[s]  * ev$RES_z +
         post$gamma_Cr_V[s, ev$Cr]
 
       Vsum <- sum(V_mean + V_sd * muV_z_ev, na.rm = TRUE)
 
       muV_z_row <- post$a_V[s] +
-        post$b_V[s]        * stz +
-        post$beta_res_V[s] * res +
+        post$b_V[s]         * stz +
+        post$beta_res_V[s]  * res +
         post$gamma_Cr_V[s, Cr]
 
       gB <- post$gamma_B[s, , , drop = TRUE][cbind(A, B)]
-      gS <- post$gamma_S[s, , , drop = TRUE][cbind(A, S)]
+      gS <- post$gamma_S[s, , , drop = TRUE][cbind(A, Sidx)]
       gF <- post$gamma_F[s, , , drop = TRUE][cbind(A, Fu)]
       kY <- post$F_year[s, , , drop = TRUE][cbind(Y, A)]
       gCrC <- post$gamma_Cr[s, , , drop = TRUE][cbind(A, Cr)]
 
       muC_z <- post$alpha[s, A] +
-        post$beta_stir[s, A] * stz +
-        post$beta_cin[s, A]  * cin +
-        post$beta_vol[s]     * muV_z_row +
-        post$beta_irr[s]     * irr +
-        post$beta_dup[s, A]  * dup +
+        post$beta_stir[s, A]  * stz +
+        post$beta_cin[s, A]   * cin +
+        post$beta_vol[s]      * muV_z_row +
+        post$beta_irr[s]      * irr +
+        post$beta_dup[s, A]   * dup +
         post$beta_res_C[s, A] * res +
         gCrC + gB + gS + gF + kY
 
@@ -3623,6 +3674,7 @@ export_annual_draws <- function(
   dplyr::bind_rows(out[seq_len(kk - 1L)]) %>%
     dplyr::arrange(analyte, Year, treatment, draw)
 }
+
 
 # Uncomment to write per-draw table (can be big):
 annual_draws <- export_annual_draws(
