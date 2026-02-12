@@ -234,3 +234,193 @@ make_year_dist_mat <- function(start_or_years, end_year = NULL) {
   dist_matrix
 }
 
+
+# cmdstan dashboard for convergence
+cmdstan_dashboard <- function(
+    fit,
+    warmup = FALSE,
+    plot = TRUE,
+    trank = TRUE,
+    vars = NULL,
+    ess_col = c("ess_bulk","ess_tail")
+) {
+  
+  if (!inherits(fit, "CmdStanMCMC")) {
+    stop("cmdstan_dashboard(): 'fit' must be a CmdStanMCMC object from cmdstanr.")
+  }
+  ess_col <- match.arg(ess_col)
+  
+  # ---- sampler diagnostics (fast) ----
+  x_raw <- fit$sampler_diagnostics(inc_warmup = warmup)
+  
+  # Force to plain base array (prevents S3 '[' dropping dims unexpectedly)
+  x <- if (is.array(x_raw)) x_raw else tryCatch(unclass(x_raw), error = function(e) x_raw)
+  if (!is.array(x) || length(dim(x)) < 2) {
+    stop("cmdstan_dashboard(): sampler_diagnostics did not return an array-like object.")
+  }
+  
+  # Expect dims: iter x chain x diag (but we guard)
+  d <- dim(x)
+  n_iter  <- d[1]
+  n_chain <- d[2]
+  n_samps <- n_iter * n_chain
+  
+  diag_names <- dimnames(x)[[3]]
+  
+  # Extract diag by name and force to n_iter x n_chain matrix
+  diag_matrix <- function(name) {
+    if (is.null(diag_names) || !(name %in% diag_names) || length(d) < 3) return(NULL)
+    
+    k <- match(name, diag_names)
+    a <- x[, , k, drop = FALSE]   # iter x chain x 1 (ideally)
+    a <- a[, , 1, drop = TRUE]    # should be iter x chain OR vector
+    
+    if (is.matrix(a) && all(dim(a) == c(n_iter, n_chain))) return(a)
+    
+    # If it collapsed to a vector, try to reshape if lengths match
+    if (is.atomic(a) && length(a) == n_samps) {
+      return(matrix(a, nrow = n_iter, ncol = n_chain))
+    }
+    
+    # Otherwise, give up gracefully
+    NULL
+  }
+  
+  div_mat   <- diag_matrix("divergent__")
+  energy    <- diag_matrix("energy__")
+  treedepth <- diag_matrix("treedepth__")
+  n_leap    <- diag_matrix("n_leapfrog__")
+  stepsize  <- diag_matrix("stepsize__")
+  
+  n_div <- if (!is.null(div_mat)) sum(div_mat) else NA_integer_
+  
+  # E-BFMI per chain (only if energy is truly matrix)
+  ebfmi <- NULL
+  if (is.matrix(energy)) {
+    ebfmi <- sapply(seq_len(n_chain), function(ch) {
+      e <- as.numeric(energy[, ch])
+      num <- mean(diff(e)^2)
+      den <- stats::var(e)
+      if (is.finite(num) && is.finite(den) && den > 0) num / den else NA_real_
+    })
+    names(ebfmi) <- paste0("chain", seq_len(n_chain))
+  }
+  
+  # ---- summary (can be slow if vars is NULL) ----
+  s <- if (is.null(vars)) fit$summary() else fit$summary(variables = vars)
+  
+  rhat_vals <- if ("rhat" %in% names(s)) s$rhat else rep(NA_real_, nrow(s))
+  ess_vals  <- if (ess_col %in% names(s)) s[[ess_col]] else rep(NA_real_, nrow(s))
+  
+  # ---- plotting (same as before, but energy panel now guarded) ----
+  if (plot) {
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar), add = TRUE)
+    par(mfrow = c(2,2), cex.axis = 0.9, cex.lab = 1)
+    
+    # Panel 1: ESS vs Rhat
+    ok <- is.finite(rhat_vals) & is.finite(ess_vals) & ess_vals > 0
+    y_rhat <- rhat_vals[ok]
+    x_ess  <- ess_vals[ok]
+    plot(x_ess, y_rhat,
+         xlab = sprintf("%s effective sample size", ess_col),
+         ylab = "Rhat",
+         ylim = c(1, max(1.1, y_rhat, na.rm = TRUE)),
+         log = "y", pch = 16, cex = 0.6)
+    abline(v = 0.1 * n_samps, col = "red")
+    abline(v = n_samps, col = "gray60")
+    abline(h = 1, lty = 2, col = "gray40")
+    
+    # Panel 2: energy density (only if matrix)
+    if (is.matrix(energy)) {
+      e_all <- as.numeric(energy)
+      d2 <- stats::density(e_all, adjust = 0.8, na.rm = TRUE)
+      plot(d2, main = "HMC energy", xlab = "energy__", ylab = "density")
+      mu <- mean(e_all, na.rm = TRUE)
+      sig <- stats::sd(e_all, na.rm = TRUE)
+      if (is.finite(mu) && is.finite(sig) && sig > 0) {
+        curve(stats::dnorm(x, mu, sig), add = TRUE, lwd = 2)
+      }
+      if (!is.null(ebfmi)) {
+        mtext(sprintf("E-BFMI: %s", paste(sprintf("%.2f", ebfmi), collapse = ", ")),
+              side = 3, line = 0.2, cex = 0.8)
+      }
+    } else {
+      plot.new(); title("HMC energy")
+      text(0.5, 0.5, "energy__ not available as iter×chain matrix", cex = 1.0)
+    }
+    
+    # Panel 3: divergences
+    plot.new(); title("Sampler issues")
+    if (is.na(n_div)) {
+      text(0.5, 0.75, "divergent__ not available", cex = 1.1)
+    } else {
+      text(0.5, 0.78, n_div, cex = 4)
+      text(0.5, 0.58, "Divergent transitions", cex = 1.1)
+    }
+    
+    # ---- Panel 4: lp__ trace plot (CmdStanR-safe, base R) ----
+    trace_pars <- "lp__"
+    
+    if (!requireNamespace("posterior", quietly = TRUE)) {
+      plot.new()
+      title("Trace plot")
+      text(0.5, 0.5, "Install the 'posterior' package to enable trace plots.", cex = 0.9)
+    } else {
+      
+      dr <- fit$draws(
+        variables = trace_pars,
+        inc_warmup = warmup,
+        format = "draws_array"
+      )
+      
+      d_draws <- dim(dr)
+      n_iter_draws  <- d_draws[1]
+      n_chain_draws <- d_draws[2]
+      var_names <- dimnames(dr)$variable
+      
+      # lp__ should be scalar, but guard anyway
+      v <- var_names[1]
+      mat <- dr[, , v, drop = TRUE]
+      if (!is.matrix(mat)) {
+        mat <- matrix(mat, nrow = n_iter_draws, ncol = n_chain_draws)
+      }
+      
+      chain_cols <- grDevices::hcl.colors(n_chain_draws, "Dark 3")
+      ylim <- range(mat, finite = TRUE)
+      
+      plot(
+        NA, xlim = c(1, n_iter_draws), ylim = ylim,
+        xlab = "Iteration", ylab = v,
+        main = paste0("Trace: ", v),
+        bty = "l"
+      )
+      
+      for (ch in seq_len(n_chain_draws)) {
+        lines(seq_len(n_iter_draws), mat[, ch], col = chain_cols[ch], lwd = 0.8)
+      }
+      
+      legend(
+        "topright",
+        legend = paste0("chain ", seq_len(n_chain_draws)),
+        col = chain_cols,
+        lty = 1,
+        cex = 0.7,
+        bty = "n"
+      )
+    }
+  }
+  
+  invisible(list(
+    sampler_diagnostics = x_raw,
+    summary = s,
+    n_samples = n_samps,
+    n_divergent = n_div,
+    ebfmi = ebfmi,
+    stepsize = stepsize,
+    n_leapfrog = n_leap
+  ))
+}
+
+
+

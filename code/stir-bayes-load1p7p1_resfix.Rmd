@@ -11,8 +11,8 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
   echo = TRUE,
-  message = FALSE,
-  warning = FALSE
+  message = TRUE,
+  warning = TRUE
 )
 
 # Core libs
@@ -25,9 +25,12 @@ library(ggplot2)
 library(readr)
 library(stringr)
 library(purrr)
+```
 
+
+```{r setup, include=FALSE}
 # If you rely on helper functions (e.g., make_year_dist_mat), source them here:
-# source("./stir-bayes-backend.R")
+source("./stir-bayes-backend.R")
 ```
 
 # Model 1.7 (Concentration + Volume Joint Model with Crop and Residue Effects with latent true processes)
@@ -122,10 +125,15 @@ dplyr::glimpse(wq_clean)
 Select analytes for modeling:
 
 ```{r subset-analytes}
+# analytes_keep <- c(
+#   "OP", "TP", "ICP", "NO3", "TN", "TSS",
+#   "TKN", "TSP", "NH4", "NPOC", "Se", "NO2",
+#   "NOx", "TDS"
+# )
+
 analytes_keep <- c(
-  "OP", "TP", "ICP", "NO3", "TN", "TSS",
-  "TKN", "TSP", "NH4", "NPOC", "Se", "NO2",
-  "NOx", "TDS"
+  "OP", "TP", "NO3", "TN", "TSS",
+  "TKN", "NH4", "Se", "NO2", "TDS"
 )
 
 d_mod <- wq_clean %>%
@@ -361,9 +369,7 @@ for (nm in vec_names) {
 # For residue specifically, the Stan model expects a PROPORTION strictly inside (0,1),
 # so we clamp observed values with epsilon and fill missing with 0.5.
 
-#mod <- cmdstan_model("m_stir_mogp_v1p7p1.stan")
 mod <- cmdstan_model("m_stir_mogp_v1p7p1.stan")
-#mod <- cmdstan_model("m_stir_mogp_v1p7p1.stan") # for residue as kg/m2
 
 # Start from the base stan_dat you built earlier
 stan_dat_cmd <- stan_dat
@@ -536,17 +542,19 @@ fit <- mod$sample(
   parallel_chains = 4,
   iter_warmup     = 1000,
   iter_sampling   = 1000,
-  #refresh         = 10,          # print progress every 10 iters
+  refresh         = 100,        # print progress every 100 iters
   show_messages   = TRUE,        # surface cmdstan messages
   output_dir      = "out_cmdstanr",
-  save_warmup     = TRUE
+  save_warmup     = TRUE,
+  adapt_delta     = 0.9,        # increase adapt_delta for better convergence (fewer divergences)
+  max_treedepth   = 15         # increase max_treedepth for complex models (may increase runtime, monitor for hitting max)
 )
 ```
 
 
 ```{r cmdstan model fit}
-saveRDS(fit, file = "../out/fit_mogp_v1p7p1.rds")
-# fit <- readRDS("./out/fit_mogp_v1p7p1.rds")
+saveRDS(fit, file = "./out_cmdstanr/fit_mogp_v1p7p1.rds")
+# fit <- readRDS("./out_cmdstanr/fit_mogp_v1p7p1.rds")
 
 ```
 
@@ -630,6 +638,22 @@ summarize_cmdstan <- function(fit, vars = NULL, n_show = 30) {
 }
 
 s_all <- summarize_cmdstan(fit, n_show = 50)
+
+```
+```{r}
+vars_important <- c(
+  "a_V","b_V","beta_res_V",
+  "beta_vol","beta_irr","beta_res_C",
+  "alpha","beta_stir","beta_cin","beta_dup",
+  "sigma_V","sigma_VOL_obs","sigma_analyte","sigma_C_obs",
+  "res_base","b_res_stir","gamma_Cr_res","sigma_Cr_res","sigma_res_obs",
+  "etasq_year","rhosq_year"
+)
+
+fit$summary(variables = vars_important)
+
+
+cmdstan_dashboard(fit, vars = vars_important, trank = TRUE)
 
 ```
 
@@ -806,7 +830,7 @@ post <- list(
   sigma_V      = sigma_V_vec,
   beta_res_V   = beta_res_V_vec,
 
-  sigma_Cr     = sigma_Cr_vec,
+  #sigma_Cr     = sigma_Cr_vec,
   sigma_Cr_V   = sigma_Cr_V_vec,
   sigma_analyte = sigma_analyte_mat,
 
@@ -981,7 +1005,9 @@ plot(
   xlab = "Residue slope on volume (z-scale)",
   ylab = "Density",
   main = "Posterior residue effect on volume (v1p7p1)",
-  bty  = "l"
+  bty  = "l",
+  # ensure xlim always shows zero
+  xlim = range(c(dens$x, 0))
 )
 abline(v = 0, lty = 2)
 
@@ -994,7 +1020,9 @@ plot(
   xlab = "Residue slope on volume (z-scale)",
   ylab = "Density",
   main = "Posterior residue effect on volume (v1p7p1)",
-  bty  = "l"
+  bty  = "l",
+  # ensure xlim always shows zero
+  xlim = range(c(dens$x, 0))
 )
 abline(v = 0, lty = 2)
 dev.off()
@@ -1185,7 +1213,9 @@ plot_stir_volume_effect <- function(fit, param = "b_V",
     xlab = xlab,
     ylab = ylab,
     main = main,
-    bty  = "l"
+    bty  = "l",
+    # ensure xlim always shows zero
+    xlim = range(c(dens$x, 0))
   )
 
   abline(v = 0, lty = 2)

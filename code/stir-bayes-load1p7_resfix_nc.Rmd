@@ -363,6 +363,7 @@ for (nm in vec_names) {
 
 #mod <- cmdstan_model("m_stir_mogp_v1p7.stan")
 mod <- cmdstan_model("m_stir_mogp_v1p7_nc_latents.stan")
+#mod <- cmdstan_model("m_stir_mogp_v1p7p1.stan")
 #mod <- cmdstan_model("m_stir_mogp_v1p7_residue.stan") # for residue as kg/m2
 
 # Start from the base stan_dat you built earlier
