@@ -121,6 +121,7 @@ def standardize_summary(
     center_candidates: List[str],
     low_candidates: List[str],
     high_candidates: List[str],
+    input_units: str = "mg",
 ) -> pd.DataFrame:
     df = normalize_cols(df)
     need = {"Year", "Treatment", "Analyte"}
@@ -142,9 +143,9 @@ def standardize_summary(
     out["source"] = source_name
     out["series"] = series_label
 
-    out["center_mg"] = safe_numeric(df[c_center])
-    out["low_mg"] = safe_numeric(df[c_low]) if c_low is not None else np.nan
-    out["high_mg"] = safe_numeric(df[c_high]) if c_high is not None else np.nan
+    out["center_mg"] = units_to_mg(safe_numeric(df[c_center]), input_units)
+    out["low_mg"] = units_to_mg(safe_numeric(df[c_low]), input_units) if c_low is not None else np.nan
+    out["high_mg"] = units_to_mg(safe_numeric(df[c_high]), input_units) if c_high is not None else np.nan
 
     out = out.dropna(subset=["Year", "Treatment", "Analyte", "center_mg"]).copy()
     out["Year"] = out["Year"].astype(int)
@@ -161,6 +162,21 @@ def mg_to_units(x: pd.Series, units: str) -> pd.Series:
     if u == "kg":
         return x / 1e6
     raise ValueError("units must be one of: mg, g, kg")
+
+
+def units_to_mg(x: pd.Series, units: str) -> pd.Series:
+    """Convert values in the given units to mg (internal standard)."""
+    u = str(units).lower().strip()
+    if u == "mg":
+        return x
+    if u == "g":
+        return x * 1e3
+    if u == "kg":
+        return x * 1e6
+    if u == "auto":
+        # Caller should handle 'auto' by inspecting column names.
+        return x
+    raise ValueError("input units must be one of: mg, g, kg, auto")
 
 
 def _analyte_key(x: str) -> str:
@@ -226,7 +242,7 @@ def detect_series_column(df: pd.DataFrame) -> str:
     return c
 
 
-def split_bayes_observed_modeled(bayes_raw: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def split_bayes_observed_modeled(bayes_raw: pd.DataFrame, input_units: str = "mg") -> Tuple[pd.DataFrame, pd.DataFrame]:
     df = normalize_cols(bayes_raw)
     series_col = detect_series_column(df)
 
@@ -264,6 +280,7 @@ def split_bayes_observed_modeled(bayes_raw: pd.DataFrame) -> Tuple[pd.DataFrame,
         center_candidates=["load_mean", "median", "mean", "center", "estimate", "mu", "annual_load_mg"],
         low_candidates=["load_low", "low", "lo", "lower", "lwr", "p2_5", "q0.025", "hdi_low", "ci_low"],
         high_candidates=["load_high", "high", "hi", "upper", "upr", "p97_5", "q0.975", "hdi_high", "ci_high"],
+        input_units=input_units,
     )
 
     observed = standardize_summary(
@@ -273,6 +290,7 @@ def split_bayes_observed_modeled(bayes_raw: pd.DataFrame) -> Tuple[pd.DataFrame,
         center_candidates=["load_mean", "mean", "median", "center"],
         low_candidates=["load_low", "low", "lo", "lower", "lwr"],
         high_candidates=["load_high", "high", "hi", "upper", "upr"],
+        input_units=input_units,
     )
 
     return bayes_modeled, observed
@@ -478,7 +496,7 @@ def crps_from_draws(draws: np.ndarray, y_obs: float) -> float:
     return term1 - term2
 
 
-def standardize_draws(df: pd.DataFrame, label: str) -> Tuple[pd.DataFrame, str]:
+def standardize_draws(df: pd.DataFrame, label: str, input_units: str = "auto") -> Tuple[pd.DataFrame, str]:
     df = normalize_cols(df)
 
     draw_id_col = pick_first_existing(df, ["draw", "Draw", "draw_id", "iter", "iteration", "sample", "s", "mcmc_draw"])
@@ -508,13 +526,21 @@ def standardize_draws(df: pd.DataFrame, label: str) -> Tuple[pd.DataFrame, str]:
     out = out.rename(columns={draw_id_col: "draw_id", value_col: "draw_value_mg"})
     out["draw_value_mg"] = safe_numeric(out["draw_value_mg"])
 
-    # Unit normalization: allow draw files that store load in g or kg.
-    # We convert everything to mg internally for consistency with summaries.
+    # Unit normalization: convert everything to mg internally.
+    # 1) If the column name encodes units, honor that.
+    # 2) Otherwise, use the caller-provided input_units (default: 'auto' = no additional scaling).
     vcol_lower = str(value_col).lower()
-    if vcol_lower.endswith("_g") or vcol_lower == "load_g" or vcol_lower == "annual_load_g":
+    if vcol_lower.endswith("_g") or vcol_lower in {"load_g", "annual_load_g"}:
         out["draw_value_mg"] = out["draw_value_mg"] * 1e3
-    elif vcol_lower.endswith("_kg") or vcol_lower == "load_kg" or vcol_lower == "annual_load_kg":
+    elif vcol_lower.endswith("_kg") or vcol_lower in {"load_kg", "annual_load_kg"}:
         out["draw_value_mg"] = out["draw_value_mg"] * 1e6
+    elif vcol_lower.endswith("_mg") or vcol_lower in {"load_mg", "annual_load_mg"}:
+        pass
+    else:
+        # Generic column, units are ambiguous. Use input_units if supplied.
+        if input_units is not None and str(input_units).lower().strip() in {"mg", "g", "kg"}:
+            out["draw_value_mg"] = units_to_mg(out["draw_value_mg"], str(input_units))
+
     out = out.dropna(subset=["Year", "Treatment", "Analyte", "draw_value_mg"]).copy()
     out["Year"] = out["Year"].astype(int)
     out["Treatment"] = out["Treatment"].astype(str).str.upper().str.strip()
@@ -639,6 +665,34 @@ def main() -> None:
     ap.add_argument("--bayes", type=str, default=None, help="Bayes annual load summary CSV (contains observed+modeled).")
     ap.add_argument("--ml", type=str, default=None, help="ML annual load summary CSV (imputed-inclusive).")
     ap.add_argument("--units", type=str, default="g", choices=["mg", "g", "kg"], help="Units for plotting.")
+    ap.add_argument(
+        "--bayes_input_units",
+        type=str,
+        default="g",
+        choices=["mg", "g", "kg"],
+        help="Units stored in the Bayes summary CSV. Internally converted to mg for scoring/plotting."
+    )
+    ap.add_argument(
+        "--ml_input_units",
+        type=str,
+        default="mg",
+        choices=["mg", "g", "kg"],
+        help="Units stored in the ML summary CSV. Internally converted to mg for scoring/plotting."
+    )
+    ap.add_argument(
+        "--bayes_draws_units",
+        type=str,
+        default="auto",
+        choices=["auto", "mg", "g", "kg"],
+        help="Units stored in Bayes draws CSV for CRPS. Use 'auto' to infer from column names."
+    )
+    ap.add_argument(
+        "--ml_draws_units",
+        type=str,
+        default="auto",
+        choices=["auto", "mg", "g", "kg"],
+        help="Units stored in ML draws CSV for CRPS. Use 'auto' to infer from column names."
+    )
     ap.add_argument("--analytes", type=str, default=None, help="Comma-separated analytes to plot (default: all).")
     ap.add_argument("--shared_only", action="store_true", help="Only plot analytes present in BOTH Bayes and ML.")
     ap.add_argument("--skip_plots", action="store_true", help="Only compute metrics, do not render plots.")
@@ -659,7 +713,19 @@ def main() -> None:
     args = ap.parse_args()
 
     repo = Path(args.repo).resolve() if args.repo else find_repo_root(Path.cwd())
-    bayes_path = Path(args.bayes).resolve() if args.bayes else (repo / "out" / "annual_load_summary_bayes_plus_observed_v1p6.csv")
+
+    # Clean tag (used for default inputs + versioned outputs)
+    tag = None if args.tag is None else re.sub(r"[^A-Za-z0-9_.-]+", "_", args.tag.strip())
+
+    # --- Default input paths ---
+    # Bayes defaults now respect --tag, but fall back to v1p6 if a tag-specific file is missing.
+    if args.bayes:
+        bayes_path = Path(args.bayes).resolve()
+    else:
+        cand = repo / "out" / f"annual_load_summary_bayes_plus_observed_{tag}.csv" if tag else None
+        bayes_path = cand if (cand is not None and cand.exists()) else (repo / "out" / "annual_load_summary_bayes_plus_observed_v1p6.csv")
+
+    # ML is not versioned by tag (unless you explicitly pass --ml)
     ml_path = Path(args.ml).resolve() if args.ml else (repo / "out" / "ml_catboost_conformal_loyo" / "annual_load_summary_imputed.csv")
 
     if not bayes_path.exists():
@@ -668,7 +734,6 @@ def main() -> None:
         raise FileNotFoundError(f"ML file not found: {ml_path}")
 
     # Versioned outputs (avoid overwriting prior runs)
-    tag = None if args.tag is None else re.sub(r"[^A-Za-z0-9_.-]+", "_", args.tag.strip())
     figs_dirname = "annual_bayes_vs_ml_faceted_jpg" + (f"_{tag}" if tag else "")
     metrics_dirname = "bayes_vs_ml_metrics" + (f"_{tag}" if tag else "")
 
@@ -681,7 +746,7 @@ def main() -> None:
     bayes_raw = pd.read_csv(bayes_path)
     ml_raw = pd.read_csv(ml_path)
 
-    bayes_modeled, observed = split_bayes_observed_modeled(bayes_raw)
+    bayes_modeled, observed = split_bayes_observed_modeled(bayes_raw, input_units=args.bayes_input_units)
 
     ml_std = standardize_summary(
         ml_raw,
@@ -690,6 +755,7 @@ def main() -> None:
         center_candidates=["load_mean", "mean", "median", "center"],
         low_candidates=["load_low", "low", "pi_low", "lower", "q_low", "p2_5", "lo"],
         high_candidates=["load_high", "high", "pi_high", "upper", "q_high", "p97_5", "hi"],
+        input_units=args.ml_input_units,
     )
 
     bayes_modeled = canonicalize_analytes(bayes_modeled)
@@ -716,7 +782,7 @@ def main() -> None:
     print(f"[INFO] ML          : {ml_path}")
     print(f"[INFO] Figs outdir  : {figs_outdir}")
     print(f"[INFO] Metrics dir  : {metrics_outdir}")
-    print(f"[INFO] Units       : {args.units}")
+    print(f"[INFO] Units       : {args.units}\n[INFO] Bayes input : {args.bayes_input_units} (summary), {args.bayes_draws_units} (draws)\n[INFO] ML input    : {args.ml_input_units} (summary), {args.ml_draws_units} (draws)")
     print(f"[INFO] Facets      : {use_trts}")
     print(f"[INFO] Bayes analytes: {len(bayes_an)} | ML analytes: {len(ml_an)} | Shared: {len(shared)}")
     print(f"[INFO] Analytes to plot: {len(analytes)} {'(shared_only)' if args.shared_only else '(union/default)'}")
@@ -739,7 +805,12 @@ def main() -> None:
     metrics_by_group = pd.concat([metrics_bayes, metrics_ml], ignore_index=True)
 
     if not args.skip_crps:
-        bayes_draws_path = Path(args.bayes_draws).resolve() if args.bayes_draws else (repo / "out" / "annual_load_draws_bayes_v1p6.csv")
+        if args.bayes_draws:
+            bayes_draws_path = Path(args.bayes_draws).resolve()
+        else:
+            cand = repo / "out" / f"annual_load_draws_bayes_{tag}.csv" if tag else None
+            bayes_draws_path = cand if (cand is not None and cand.exists()) else (repo / "out" / "annual_load_draws_bayes_v1p6.csv")
+
         ml_draws_path = Path(args.ml_draws).resolve() if args.ml_draws else (repo / "out" / "ml_catboost_conformal_loyo" / "annual_load_draws.csv")
 
         if bayes_draws_path.exists() and ml_draws_path.exists():
@@ -748,11 +819,11 @@ def main() -> None:
 
             print("[INFO] Reading Bayes draws...")
             bayes_draws_raw = pd.read_csv(bayes_draws_path)
-            bayes_draws, _ = standardize_draws(bayes_draws_raw, label="Bayes")
+            bayes_draws, _ = standardize_draws(bayes_draws_raw, label="Bayes", input_units=args.bayes_draws_units)
 
             print("[INFO] Reading ML draws...")
             ml_draws_raw = pd.read_csv(ml_draws_path)
-            ml_draws, _ = standardize_draws(ml_draws_raw, label="ML")
+            ml_draws, _ = standardize_draws(ml_draws_raw, label="ML", input_units=args.ml_draws_units)
 
             crps_bayes = compute_crps_table(observed, bayes_draws, "Bayes", args.crps_max_draws, args.crps_seed, "[INFO]")
             crps_ml = compute_crps_table(observed, ml_draws, "ML", args.crps_max_draws, args.crps_seed, "[INFO]")
