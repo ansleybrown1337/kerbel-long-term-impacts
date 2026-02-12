@@ -945,48 +945,69 @@ residue_volume_effect
 The v1p7p1 model includes (i) an analyte-specific residue slope on concentration (`beta_res_C[A]`), (ii) a scalar residue slope on volume (`beta_res_V`), (iii) analyte-specific crop intercepts on concentration (`gamma_Cr[A,Cr]`), and (iv) crop intercepts on volume (`gamma_Cr_V[Cr]`). The plots below provide quick, publication-ready summaries of these terms.
 
 ```{r residue effects on concentration}
-# Residue effect on concentration by analyte (89% HPDI)
-# If residue is still a placeholder (all zeros), the effect is not identifiable; we display zeros.
+# Residue effect on concentration by analyte
+# ---- Prepare posterior draws ----
+post_resC_df <- as.data.frame(post$beta_res_C)
+colnames(post_resC_df) <- as.character(analyte_effects$analyte_abbr)
 
-res_df <- analyte_effects %>%
-  dplyr::transmute(
-    analyte_abbr,
-    beta_resC_mean = beta_resC_eff_mean,
-    beta_resC_low  = beta_resC_eff_hpdi[1, ],
-    beta_resC_high = beta_resC_eff_hpdi[2, ],
-    residue_placeholder
-  ) %>%
-  dplyr::arrange(beta_resC_mean)
+post_resC_long <- post_resC_df %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "analyte_abbr",
+    values_to = "beta_resC"
+  )
 
-p_resC <- ggplot2::ggplot(
-  res_df,
-  ggplot2::aes(x = reorder(analyte_abbr, beta_resC_mean), y = beta_resC_mean)
-) +
-  ggplot2::geom_hline(yintercept = 0, lty = 2) +
-  ggplot2::geom_errorbar(
-    ggplot2::aes(ymin = beta_resC_low, ymax = beta_resC_high),
-    width = 0,
-    linewidth = 1.0
+# ---- Reorder analytes by posterior median (base R, no forcats) ----
+analyte_order <- post_resC_long %>%
+  group_by(analyte_abbr) %>%
+  summarise(med = median(beta_resC)) %>%
+  arrange(med) %>%
+  pull(analyte_abbr)
+
+post_resC_long$analyte_abbr <- factor(
+  post_resC_long$analyte_abbr,
+  levels = analyte_order
+)
+
+# ---- Ridgeline plot ----
+p_resC_ridge <- ggplot(post_resC_long, aes(x = beta_resC, y = analyte_abbr)) +
+  geom_vline(xintercept = 0, linetype = 2, linewidth=1) +
+  stat_density_ridges(
+    fill = "darkred",
+    alpha = 0.55,
+    scale = 1.1,
+    rel_min_height = 0.01,
+    quantile_lines = TRUE,
+    quantiles = 2,
+    quantile_color = "black",
+    quantile_linetype = 2,
+    quantile_linewidth = 1,
+    bandwidth = 0.02
   ) +
-  ggplot2::geom_point(size = 2.3) +
-  ggplot2::coord_flip() +
-  ggplot2::labs(
-    x = "Analyte",
-    y = "Residue slope on concentration (z-scale)",
-    title = "Posterior residue effects on concentration (v1p7p1)",
-    subtitle = if (any(res_df$residue_placeholder)) "Residue is currently a placeholder (all zeros), effects are not identifiable" else NULL
+  labs(
+    x = "Residue effect on concentration",
+    y = "Analyte",
+    #title = "Posterior residue effects on concentration (v1p7p1)",
+    subtitle = if (res_is_placeholder)
+      "Residue is currently a placeholder (all zeros), effects are not identifiable"
+      else NULL
   ) +
-  ggplot2::theme_classic(base_size = 14)
+  theme_ridges(grid = TRUE, center_axis_labels = TRUE) +
+  theme(
+    legend.position = "none",
+    text = element_text(size = 14)
+  )
 
-p_resC
+p_resC_ridge
 
-ggplot2::ggsave(
-  filename = "../figs/residue_effect_on_concentration_by_analyte_v1p7p1.png",
-  plot = p_resC,
+ggsave(
+  filename = "../figs/residue_effect_on_concentration_by_analyte_v1p7p1.jpg",
+  plot = p_resC_ridge,
   width = 10,
   height = 7,
   dpi = 300
 )
+
 ```
 
 ```{r residue effect on volume}
@@ -1002,9 +1023,9 @@ plot(
   type = "l",
   lwd  = 3,
   col  = "darkred",
-  xlab = "Residue slope on volume (z-scale)",
+  xlab = "Residue effect on Volume",
   ylab = "Density",
-  main = "Posterior residue effect on volume (v1p7p1)",
+  main = "Posterior residue effect on volume",
   bty  = "l",
   # ensure xlim always shows zero
   xlim = range(c(dens$x, 0))
@@ -1017,9 +1038,9 @@ plot(
   type = "l",
   lwd  = 3,
   col  = "darkred",
-  xlab = "Residue slope on volume (z-scale)",
+  xlab = "Residue effect on Volume",
   ylab = "Density",
-  main = "Posterior residue effect on volume (v1p7p1)",
+  main = "Posterior residue effect on volume",
   bty  = "l",
   # ensure xlim always shows zero
   xlim = range(c(dens$x, 0))
@@ -1029,73 +1050,143 @@ dev.off()
 ```
 
 ```{r crop effects on concentration}
-# Crop effects on concentration by analyte (89% HPDI), displayed as a heatmap
+# ------------------------------------------------------------
+# Crop effects on concentration: posterior ridgelines by crop
+# post$gamma_Cr is draws × A_n × Cr_n
+# ------------------------------------------------------------
 
-crop_conc_plot_df <- crop_effects_conc %>%
-  dplyr::mutate(
-    analyte_abbr = factor(analyte_abbr, levels = unique(analyte_lookup$analyte_abbr)),
-    Crop = factor(Crop, levels = unique(crop_lookup$Crop))
-  )
+# Build a long draw table: one row per (draw, analyte, crop)
+crop_levels <- as.character(crop_lookup$Crop)
+analyte_levels <- as.character(analyte_lookup$analyte_abbr)
 
-p_cropC <- ggplot2::ggplot(
-  crop_conc_plot_df,
-  ggplot2::aes(x = Crop, y = analyte_abbr, fill = crop_eff_mean)
-) +
-  ggplot2::geom_tile() +
-  ggplot2::labs(
-    x = "Crop",
-    y = "Analyte",
-    fill = "Effect (z)",
-    title = "Posterior crop effects on concentration (v1p7p1)"
+cropC_long <- bind_rows(lapply(seq_len(Cr_n), function(cr) {
+  m <- post$gamma_Cr[, , cr, drop = FALSE]      # draws × A × 1
+  m2 <- m[, , 1]                               # draws × A
+  df <- as.data.frame(m2)
+  colnames(df) <- analyte_levels
+  df %>%
+    pivot_longer(
+      cols = everything(),
+      names_to = "analyte_abbr",
+      values_to = "crop_eff"
+    ) %>%
+    mutate(Crop = crop_levels[cr])
+}))
+
+# Make Crop a factor with your desired ordering
+cropC_long$Crop <- factor(cropC_long$Crop, levels = crop_levels)
+
+# Choose ONE analyte order used in every facet (recommended for cross-panel comparison):
+analyte_order_global <- cropC_long %>%
+  group_by(analyte_abbr) %>%
+  summarise(med = median(crop_eff), .groups = "drop") %>%
+  arrange(med) %>%
+  pull(analyte_abbr)
+
+cropC_long$analyte_abbr <- factor(cropC_long$analyte_abbr, levels = analyte_order_global)
+
+# ---- Faceted ridgeline plot ----
+p_cropC_ridge <- ggplot(cropC_long, aes(x = crop_eff, y = analyte_abbr)) +
+  geom_vline(xintercept = 0, linetype = 2, linewidth = 0.8) +
+  stat_density_ridges(
+    fill = "darkred",
+    alpha = 0.55,
+    scale = 1.05,
+    rel_min_height = 0.01,
+    quantile_lines = TRUE,
+    quantiles = 2,
+    quantile_color = "black",
+    quantile_linetype = 2,
+    quantile_linewidth = 0.9,
+    bandwidth = 0.02
   ) +
-  ggplot2::theme_classic(base_size = 12) +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-    legend.position = "right"
+  facet_wrap(~ Crop, ncol = 3, scales = "fixed") +
+  labs(
+    x = "Crop effect on concentration",
+    y = "Analyte",
+    subtitle = "Posterior distributions of analyte-specific crop intercepts"
+  ) +
+  theme_ridges(grid = TRUE, center_axis_labels = TRUE) +
+  theme(
+    legend.position = "none",
+    text = element_text(size = 12),
+    strip.text = element_text(size = 12),
+    axis.text.y = element_text(size = 9)
   )
 
-p_cropC
+p_cropC_ridge
 
-ggplot2::ggsave(
-  filename = "../figs/crop_effects_on_concentration_heatmap_v1p7p1.png",
-  plot = p_cropC,
-  width = 10.5,
-  height = 6.5,
+ggsave(
+  filename = "../figs/crop_effects_on_concentration_by_analyte_v1p7p1.jpg",
+  plot = p_cropC_ridge,
+  width = 9,
+  height = 12,
   dpi = 300
 )
 ```
 
 ```{r crop effects on volume}
-# Crop effects on volume (89% HPDI) as error bars
+# ------------------------------------------------------------
+# Crop effects on volume: ridgeline posterior by crop
+# post$gamma_Cr_V is draws × Cr_n
+# ------------------------------------------------------------
 
-p_cropV <- ggplot2::ggplot(
-  crop_effects_vol,
-  ggplot2::aes(x = reorder(Crop, crop_eff_mean), y = crop_eff_mean)
-) +
-  ggplot2::geom_hline(yintercept = 0, lty = 2) +
-  ggplot2::geom_errorbar(
-    ggplot2::aes(ymin = crop_low89, ymax = crop_high89),
-    width = 0,
-    linewidth = 1.0
+# Long posterior draw table
+post_cropV_df <- as.data.frame(post$gamma_Cr_V)
+colnames(post_cropV_df) <- as.character(crop_lookup$Crop)
+
+post_cropV_long <- post_cropV_df %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "Crop",
+    values_to = "crop_eff_V"
+  )
+
+# Reorder crops by posterior median (base R, no forcats)
+crop_order <- post_cropV_long %>%
+  group_by(Crop) %>%
+  summarise(med = median(crop_eff_V), .groups = "drop") %>%
+  arrange(med) %>%
+  pull(Crop)
+
+post_cropV_long$Crop <- factor(post_cropV_long$Crop, levels = crop_order)
+
+# Ridgeline plot
+p_cropV_ridge <- ggplot(post_cropV_long, aes(x = crop_eff_V, y = Crop)) +
+  geom_vline(xintercept = 0, linetype = 2, linewidth = 1) +
+  stat_density_ridges(
+    fill = "darkred",
+    alpha = 0.55,
+    scale = 1.1,
+    rel_min_height = 0.01,
+    quantile_lines = TRUE,
+    quantiles = 2,
+    quantile_color = "black",
+    quantile_linetype = 2,
+    quantile_linewidth = 1,
+    bandwidth = 0.02
   ) +
-  ggplot2::geom_point(size = 2.3) +
-  ggplot2::coord_flip() +
-  ggplot2::labs(
-    x = "Crop",
-    y = "Effect on volume (z-scale)",
-    title = "Posterior crop effects on volume (v1p7p1)"
+  labs(
+    x = "Crop effect on volume",
+    y = "Crop",
+    #title = "Posterior crop effects on volume"
   ) +
-  ggplot2::theme_classic(base_size = 14)
+  theme_ridges(grid = TRUE, center_axis_labels = TRUE) +
+  theme(
+    legend.position = "none",
+    text = element_text(size = 14)
+  )
 
-p_cropV
+p_cropV_ridge
 
-ggplot2::ggsave(
-  filename = "../figs/crop_effects_on_volume_v1p7p1.png",
-  plot = p_cropV,
+ggsave(
+  filename = "../figs/crop_effects_on_volume_v1p7p1.jpg",
+  plot = p_cropV_ridge,
   width = 10,
   height = 6,
   dpi = 300
 )
+
 ```
 
 
@@ -1105,79 +1196,80 @@ ggplot2::ggsave(
 # 5. Plot posterior slopes for STIR effects on concentration
 
 ```{r stir effects on conc}
-# Order analytes by estimated mean STIR effect
-analyte_effects_ord <- analyte_effects %>%
-  arrange(beta_stir_mean) %>%
-  mutate(A_plot = seq_len(n()))  # plotting index 1...A_n
+# ------------------------------------------------------------
+# STIR effects on concentration by analyte: posterior ridgelines
+# Uses post$beta_stir (draws × A_n)
+# Overwrites: ../figs/load1p7p1_STIReffects.jpeg
+# ------------------------------------------------------------
 
-A_seq <- analyte_effects_ord$A_plot
+# ---- Prepare posterior draws ----
+post_stir_df <- as.data.frame(post$beta_stir)
+colnames(post_stir_df) <- as.character(analyte_effects$analyte_abbr)
 
-beta_mean <- analyte_effects_ord$beta_stir_mean
-beta_hpdi_low  <- analyte_effects_ord$beta_hpdi_low
-beta_hpdi_high <- analyte_effects_ord$beta_hpdi_high
-beta_pi_low    <- analyte_effects_ord$beta_pi_low
-beta_pi_high   <- analyte_effects_ord$beta_pi_high
-
-labels <- analyte_effects_ord$analyte_abbr
-
-# Color helper (robust: does not require rethinking::col.alpha)
-col_alpha <- function(col, alpha = 1) {
-  grDevices::adjustcolor(col, alpha.f = alpha)
-}
-
-# Plot function used for both file + inline display
-plot_stir_effects <- function() {
-  plot(
-    A_seq, beta_mean,
-    xaxt = "n",
-    pch  = 16,
-    col  = "darkred",
-    ylim = range(c(beta_pi_low, beta_pi_high), finite = TRUE),
-    ylab = "Effect of STIR on Concentration (z-scale)",
-    xlab = "Analyte (ordered by mean effect)",
-    main = "Analyte-specific STIR effects with 89% HPDI and 95% PI"
+post_stir_long <- post_stir_df %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "analyte_abbr",
+    values_to = "beta_stir"
   )
 
-  axis(1, at = A_seq, labels = labels, las = 2)
+# ---- Order analytes by posterior mean (base R, no forcats) ----
+analyte_order <- post_stir_long %>%
+  group_by(analyte_abbr) %>%
+  summarise(mu = mean(beta_stir), .groups = "drop") %>%
+  arrange(mu) %>%
+  pull(analyte_abbr)
 
-  # 95% PI bands (lighter)
-  for (i in seq_along(A_seq)) {
-    lines(
-      x = c(A_seq[i], A_seq[i]),
-      y = c(beta_pi_low[i], beta_pi_high[i]),
-      col = col_alpha("darkred", 0.20),
-      lwd = 5
-    )
-  }
+post_stir_long$analyte_abbr <- factor(
+  post_stir_long$analyte_abbr,
+  levels = analyte_order
+)
 
-  # 89% HPDI bands (darker)
-  for (i in seq_along(A_seq)) {
-    lines(
-      x = c(A_seq[i], A_seq[i]),
-      y = c(beta_hpdi_low[i], beta_hpdi_high[i]),
-      col = col_alpha("darkred", 0.40),
-      lwd = 5
-    )
-  }
+# ---- Ridgeline plot ----
+p_stir_ridge <- ggplot(post_stir_long, aes(x = beta_stir, y = analyte_abbr)) +
+  geom_vline(xintercept = 0, linetype = 2, linewidth = 1) +
+  stat_density_ridges(
+    fill = "darkred",
+    alpha = 0.55,
+    scale = 1.1,
+    rel_min_height = 0.01,
+    quantile_lines = TRUE,
+    quantiles = 2,
+    quantile_color = "black",
+    quantile_linetype = 2,
+    quantile_linewidth = 1,
+    bandwidth = 0.01
+  ) +
+  labs(
+    x = "Effect of STIR on Concentration",
+    y = "Analyte (ordered by mean effect)",
+    title = "Analyte-specific STIR effects with posterior medians"
+  ) +
+  theme_ridges(grid = TRUE, center_axis_labels = TRUE) +
+  theme(
+    legend.position = "none",
+    text = element_text(size = 14),
+    axis.text.y = element_text(size = 10)
+  )
 
-  points(A_seq, beta_mean, pch = 16, col = "darkred")
-  abline(h = 0, lty = 2)
-}
+p_stir_ridge
 
-# Save as JPEG in figs folder (v1p7p1 filename)
-jpeg("../figs/load1p7p1_STIReffects.jpeg", width = 2000, height = 1300, res = 200)
-plot_stir_effects()
-dev.off()
+# ---- Save (overwrite existing) ----
+ggsave(
+  filename = "../figs/load1p7p1_STIReffects.jpeg",
+  plot = p_stir_ridge,
+  width = 9,
+  height = 9,
+  dpi = 300
+)
 
-# Also show inline in the knitted report
-plot_stir_effects()
 ```
 
 ```{r stir effects on volume}
 plot_stir_volume_effect <- function(fit, param = "b_V",
                                     file = NULL,
                                     main = "Posterior effect of STIR on runoff volume",
-                                    xlab = "Effect of STIR on runoff volume (z-scale)",
+                                    xlab = "Effect of STIR on runoff volume",
                                     ylab = "Density") {
 
   if (inherits(fit, "CmdStanMCMC")) {
@@ -1230,7 +1322,7 @@ plot_stir_volume_effect(fit, param = "b_V")
 plot_stir_volume_effect(
   fit,
   param = "b_V",
-  file = "../figs/1p7_post_STIR_effect_on_volume.jpeg"
+  file = "../figs/1p7p1_post_STIR_effect_on_volume.jpg"
 )
 
 ```
