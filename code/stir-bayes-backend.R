@@ -282,7 +282,6 @@ cmdstan_dashboard <- function(
       return(matrix(a, nrow = n_iter, ncol = n_chain))
     }
     
-    # Otherwise, give up gracefully
     NULL
   }
   
@@ -312,7 +311,7 @@ cmdstan_dashboard <- function(
   rhat_vals <- if ("rhat" %in% names(s)) s$rhat else rep(NA_real_, nrow(s))
   ess_vals  <- if (ess_col %in% names(s)) s[[ess_col]] else rep(NA_real_, nrow(s))
   
-  # ---- plotting (same as before, but energy panel now guarded) ----
+  # ---- plotting ----
   if (plot) {
     oldpar <- par(no.readonly = TRUE)
     on.exit(par(oldpar), add = TRUE)
@@ -322,19 +321,28 @@ cmdstan_dashboard <- function(
     ok <- is.finite(rhat_vals) & is.finite(ess_vals) & ess_vals > 0
     y_rhat <- rhat_vals[ok]
     x_ess  <- ess_vals[ok]
-    plot(x_ess, y_rhat,
-         xlab = sprintf("%s effective sample size", ess_col),
-         ylab = "Rhat",
-         ylim = c(1, max(1.1, y_rhat, na.rm = TRUE)),
-         log = "y", pch = 16, cex = 0.6)
+    plot(
+      x_ess, y_rhat,
+      xlab = sprintf("%s effective sample size", ess_col),
+      ylab = "Rhat",
+      ylim = c(1, max(1.1, y_rhat, na.rm = TRUE)),
+      log = "y",
+      pch = 1,        # (1) hollow points
+      cex = 0.6
+    )
     abline(v = 0.1 * n_samps, col = "red")
     abline(v = n_samps, col = "gray60")
     abline(h = 1, lty = 2, col = "gray40")
+    abline(h = 1.04, lty = 2, col = "gray40")  # (2) guide at 1.04
     
     # Panel 2: energy density (only if matrix)
     if (is.matrix(energy)) {
       e_all <- as.numeric(energy)
-      d2 <- stats::density(e_all, adjust = 0.8, na.rm = TRUE)
+      d2 <- stats::density(
+        e_all,
+        adjust = 0.2,  # (3) less smoothing (was 0.8)
+        na.rm = TRUE
+      )
       plot(d2, main = "HMC energy", xlab = "energy__", ylab = "density")
       mu <- mean(e_all, na.rm = TRUE)
       sig <- stats::sd(e_all, na.rm = TRUE)
@@ -342,8 +350,10 @@ cmdstan_dashboard <- function(
         curve(stats::dnorm(x, mu, sig), add = TRUE, lwd = 2)
       }
       if (!is.null(ebfmi)) {
-        mtext(sprintf("E-BFMI: %s", paste(sprintf("%.2f", ebfmi), collapse = ", ")),
-              side = 3, line = 0.2, cex = 0.8)
+        mtext(
+          sprintf("E-BFMI: %s", paste(sprintf("%.2f", ebfmi), collapse = ", ")),
+          side = 3, line = 0.2, cex = 0.8
+        )
       }
     } else {
       plot.new(); title("HMC energy")
@@ -379,7 +389,6 @@ cmdstan_dashboard <- function(
       n_chain_draws <- d_draws[2]
       var_names <- dimnames(dr)$variable
       
-      # lp__ should be scalar, but guard anyway
       v <- var_names[1]
       mat <- dr[, , v, drop = TRUE]
       if (!is.matrix(mat)) {
@@ -421,6 +430,7 @@ cmdstan_dashboard <- function(
     n_leapfrog = n_leap
   ))
 }
+
 
 
 
