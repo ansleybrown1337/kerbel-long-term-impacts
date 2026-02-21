@@ -6,19 +6,15 @@
 AJ Brown, Agricultural Data Scientist  
 Colorado State University – Agricultural Water Quality Program (AWQP)
 
----
-
 ## Table of Contents
+
 1. [Project Overview](#1-project-overview)
 2. [Repository Organization](#2-repository-organization)
-3. [End-to-End Data Pipeline](#3-end-to-end-data-pipeline)
+3. [How to Reproduce Results for Each Analysis Component](#3-how-to-reproduce-results-for-each-analysis-component)
 4. [Bayesian Modeling Framework (Overview)](#4-bayesian-modeling-framework-overview)
-5. [Machine Learning Modeling Framework (CatBoost + Conformal)](#5-machine-learning-modeling-framework-catboost--conformal)
+5. [Machine Learning Framework (CatBoost + Conformal)](#5-machine-learning-framework-catboost--conformal)
 6. [Key Results at a Glance](#6-key-results-at-a-glance)
-7. [How to Reproduce Results](#7-how-to-reproduce-results)
-8. [Output Data Products](#8-output-data-products)
-9. [Related Documentation](#9-related-documentation)
-10. [License and Citation](#10-license-and-citation)
+7. [License and Citation](#7-license-and-citation)
 
 
 ---
@@ -59,24 +55,23 @@ Key subdirectories:
 
 ---
 
-## 3. End‑to‑End Data Pipeline
+## 3. How to Reproduce Results for Each Analysis Component
 
-The preprocessing pipeline is shared by both modeling approaches.
+### Run data pipeline
+See the dedicated pipeline README:
+➡️ [`docs/README_data_pipeline.md`](./docs/README_data_pipeline.md)
 
-1. **Water‑quality longification**  
-   `code/wq_longify.py`
+### Bayesian modeling
+See the dedicated methods README:
+➡️ [`docs/README_bayes_Methods.md`](./docs/README_bayes_Methods.md)
 
-2. **STIR calculation**  
-   `code/stir_pipeline.py`  
-   Details: [`docs/STIR calculations.md`](./docs/STIR%20calculations.md)
+### Machine‑learning modeling
+See the dedicated methods README:
+➡️ [`docs/README_ML_CatBoost_Conformal_LOYO.md`](./docs/README_ML_CatBoost_Conformal_LOYO.md)
 
-3. **Seasonal merge**  
-   `code/merge_wq_stir_by_season.py`
-
-4. **Pipeline runner**  
-   ```bash
-   python code/main.py --debug
-   ```
+### Bayesian vs. machine-learning comparison
+See the dedicated methods README:
+➡️ [`docs/README_Bayes_vs_ML_WQ.md`](./docs/README_Bayes_vs_ML_WQ.md)
 
 Outputs are written to `out/` and serve as direct inputs to both Bayes and ML models.
 
@@ -148,11 +143,11 @@ This study evaluates Bayesian and machine-learning approaches for estimating lon
 
 *Figure 1. Faceted annual load estimates comparing Bayesian and machine-learning approaches for total phosphorus (TP) under no-till management. Shaded intervals represent 95% credible/prediction intervals.*
 
-![Figure 1](./figs/annual_bayes_vs_ml_faceted_jpg/annual_load_tp_bayes_vs_ml_faceted.jpg)
+![Figure 1](./figs/annual_bayes_vs_ml_faceted_jpg_v1p7p5/annual_load_tp_bayes_vs_ml_faceted.jpg)
 
 *Figure 2. Faceted annual load estimates comparing Bayesian and machine-learning approaches for nitrate (NO₃⁻) under conventional tillage management. Shaded intervals represent 95% credible/prediction intervals.*
 
-![Figure 2](./figs/annual_bayes_vs_ml_faceted_jpg/annual_load_no3_bayes_vs_ml_faceted.jpg)
+![Figure 2](./figs/annual_bayes_vs_ml_faceted_jpg_v1p7p5/annual_load_no3_bayes_vs_ml_faceted.jpg)
 
 ### Summary of Key Differences Between Bayesian and Machine-Learning Approaches
 
@@ -193,79 +188,11 @@ This study evaluates Bayesian and machine-learning approaches for estimating lon
 | Suitability for benchmarking or screening | Moderate | Good |
 | Suitability for decision support under uncertainty | Good | Moderate |
 
----
-## 7. How to Reproduce Results
-
-### Bayesian modeling
-See the dedicated methods README:
-➡️ [`docs/README_bayes_Methods.md`](./docs/README_bayes_Methods.md)
-
-### Machine‑learning modeling
-Train and calibrate (rare):
-```bash
-python code/ml_catboost_conformal_loyo.py --repo . --seed 123
-```
-
-Regenerate predictions and summaries (no recalibration):
-```bash
-python code/ml_regenerate_from_saved_models.py --repo . --overwrite --alpha 0.05 --draws 2000
-```
-
-### Bayesian vs. machine-learning comparison
-
-Generate faceted annual load comparison figures, point-based metrics (RMSE, NRMSE), and distribution-aware metrics (coverage, CRPS, mean-normalized CRPS):
-
-```bash
-python code/annual_load_bayes_vs_ml.py
-```
-
-To reproduce only the quantitative performance tables without regenerating figures:
-
-```bash 
-python code/annual_load_bayes_vs_ml.py --skip_plots
-```
-
-This comparison step produces:
-
-Faceted annual load figures saved to `figs/annual_bayes_vs_ml_faceted_jpg/`
-
-Summary performance tables saved to `out/bayes_vs_ml_metrics/`, including metrics aggregated by analyte, treatment, and overall
 
 ---
 
-## 8. Output Data Products
+## 7. License and Citation
 
-Key outputs include:
+Licensed under **GNU GPL2**.
 
-- `out/annual_load_summary_bayes_plus_observed_v1p6.csv`
-- `out/ml_catboost_conformal_loyo/annual_load_summary.csv`
-- `out/ml_catboost_conformal_loyo/annual_load_summary_imputed.csv`
-
-All annual summaries share the same schema:
-
-- volume (L)
-- concentration (mg/L)
-- load (g)
-
-📘 **Output field definitions:**  
-➡️ [`docs/README_pipeline_final_outputs.md`](./docs/README_pipeline_final_outputs.md)
-
----
-
-## 9. Related Documentation
-
-- Bayes vs ML comparison notes:  
-  [`docs/README_Bayes_vs_ML_WQ.md`](./docs/README_Bayes_vs_ML_WQ.md)
-- Pipeline execution notes:  
-  [`docs/run data pipeline.md`](./docs/run%20data%20pipeline.md)
-- STIR methodology:  
-  [`docs/STIR calculations.md`](./docs/STIR%20calculations.md)
-
----
-
-## 10. License and Citation
-
-Licensed under **GPL‑2**.
-
-Please cite the **Colorado State University Agricultural Water Quality Program (AWQP)** when using this repository.
 

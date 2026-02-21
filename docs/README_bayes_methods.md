@@ -1,216 +1,251 @@
-# Bayesian Modeling Framework for Kerbel Long-Term Impacts on Edge-of-Field Water Quality
-
-This document provides full technical documentation for the **hierarchical Bayesian modeling framework** used to analyze long-term (2011–2025) edge-of-field (EoF) water-quality responses to tillage disturbance (STIR) at the Kerbel agricultural research site. It is intended to serve as a methods appendix–level reference for manuscripts and dissertation chapters.
-
-The Bayesian framework is the primary inferential approach in this project and is explicitly designed for causal interpretation, uncertainty propagation, and temporal inference.
-
----
-
-## 1. Modeling objectives
-
-The Bayesian models are constructed to:
-
-1. Quantify analyte-specific causal effects of tillage intensity (STIR) on runoff concentration, volume, and load  
-2. Propagate uncertainty from the statistical model through to annual loads  
-3. Separate management signals from sampler, laboratory, and infrastructure artifacts  
-4. Share information across analytes using hierarchical partial pooling  
-5. Capture multi-year temporal persistence and correlation across analytes  
-6. Enable principled imputation of missing years with uncertainty that grows appropriately  
+# Bayesian STIR–Water Quality Model  
+**Version 1p7p5 (Final Analysis Model)**  
+Kerbel Long-Term Tillage Impacts Study, CSU ARDEC (Fort Collins, Colorado)  
+A.J. Brown  
 
 ---
 
-## 2. Causal structure and DAG
+## Overview
 
-The modeling framework is grounded in an explicit causal directed acyclic graph (DAG), developed using agronomic knowledge and monitoring design constraints.
+This document provides full technical documentation for the **hierarchical Bayesian modeling framework** used to analyze long-term (2011–2025) edge-of-field (EoF) water-quality responses to tillage disturbance (STIR) at the Kerbel agricultural research site, a long-term tillage systems experiment located at Colorado State University’s Agricultural Research, Development, and Education Center (ARDEC) in Fort Collins, Colorado.
 
-### Key causal assumptions
+The model supports research objectives focused on quantifying the effect of tillage intensity on runoff concentration, runoff volume, and annual nutrient and sediment loads, while explicitly accounting for temporal persistence, cross-analyte dependence, structural field design variables, and missing-data mechanisms.
 
-- Tillage intensity (STIR) influences soil disturbance and surface condition, which affects runoff generation and particulate transport.  
-- Runoff volume mediates a substantial portion of load variability.  
-- Inflow concentration affects outflow concentration but is not affected by STIR at the field edge (conditional on design and timing).  
-- Measurement method, sampler, flume, and laboratory introduce systematic but non-causal variation.  
-
-### Conceptual DAG
-
-![Causal DAG](../figs/dagitty-model.jpeg)
+**Stan model:** `code/m_stir_mogp_v1p7p5.stan`  
+**Driver analysis:** `code/stir-bayes-load1p7p5.Rmd`  
+**Primary dataset:** `out/wq_with_stir_by_season.csv`  
 
 ---
 
-## 3. Observation model (outflow concentration)
+# Data and scaling (as implemented in Stan)
 
-For analyte $a$ and event $i$, the observed outflow concentration is modeled as:
+Both primary outcomes are modeled on the **z-standardized scale** (mean 0, SD 1) as supplied to Stan:
 
-$$
-C_{i,a} \sim \mathrm{Normal}(\mu_{i,a},\, \sigma_a)
-$$
+- `C[i]`: outflow concentration (z scale)  
+- `VOL[i]`: outflow volume (z scale)  
 
-where $\sigma_a$ is an analyte-specific residual standard deviation.
+The model introduces row-level latent “true” values (`C_true`, `V_true`) and applies measurement-error likelihoods only to observed rows (missing rows are inferred through the latent process).
 
-### Linear predictor
+---
 
-The linear predictor is specified as:
+# Model specification (matches `m_stir_mogp_v1p7p5.stan`)
+
+## 1) Concentration model (multi-analyte, latent true concentration)
+
+### Latent process
+
+For row $i$ with analyte $a=A[i]$ and year index $y=Y[i]$:
 
 ```math
-\mu_{i,a}
-=
-\alpha_a
-+ \beta_{\mathrm{STIR},a} \, \mathrm{STIR}_i
-+ \beta_{\mathrm{inflow},a} \, \log\left(C^{\mathrm{in}}_{i}\right)
-+ \beta_{\mathrm{vol},a} \, \log\left(V_{i}\right)
-+ \mathbf{Z}_{i} \, \boldsymbol{\gamma}_a
-+ f_a\left(\mathrm{Year}_i\right)
+\mu_{C,i} =
+\alpha_{a}
++ \beta_{\mathrm{stir},a}\,\mathrm{STIR}_i
++ \beta_{\mathrm{cin},a}\,\mathrm{CIN}^{\ast}_i
++ \beta_{\mathrm{vol}}\,V_{\mathrm{true},i}
++ \beta_{\mathrm{irr},a}\,\mathrm{IRR}_z[i]
++ \beta_{\mathrm{dup},a}\,\mathrm{DUP}_i
++ \beta_{\mathrm{res},a}\,\mathrm{RES}^{\ast}_i
++ \gamma_{a,\mathrm{Cr}[i]}
++ \gamma_{a,\mathrm{B}[i]}
++ \gamma_{a,\mathrm{S}[i]}
++ \gamma_{a,\mathrm{Fu}[i]}
++ f_{y,a}
 ```
 
-where:
+Non-centered row-level latent truth:
 
-- $C^{\mathrm{in}}_{i}$ is the observed inflow concentration for event $i$  
-- $V_{i}$ is the observed runoff volume for event $i$  
-- $\mathbf{Z}_{i}$ is a design matrix for categorical factors (sampler, flume, lab, replication)  
-- $\boldsymbol{\gamma}_a$ are analyte-specific coefficients for those factors  
-- $f_a(\cdot)$ is a year-specific latent deviation for analyte $a$  
+```math
+C_{\mathrm{true},i} = \mu_{C,i} + \sigma_{\mathrm{analyte}}\,z_{C,i},
+\qquad z_{C,i}\sim\mathrm{Normal}(0,1)
+```
 
----
+### Observation (measurement) model
 
-## 4. Treatment of runoff volume and inflow concentration
+For observed concentration rows:
 
-Runoff volume and inflow concentration are treated as **observed covariates** in the current model implementation (v1p6). Measured values of runoff volume and inflow concentration enter the linear predictors directly after transformation (log or log1p, as appropriate).
+```math
+C_i \sim \mathrm{Normal}\!\left(C_{\mathrm{true},i},\ \sigma_{\mathrm{C,obs},a}\right)
+```
 
-No explicit measurement-error submodels are specified for these covariates in v1p6. Consequently, uncertainty in volume and inflow concentration measurements is not propagated forward into concentration or load uncertainty. This design choice reflects data availability and a desire to maintain comparability with the machine-learning models evaluated in Chapter 3.
+### Where (parameter meanings)
 
-The inclusion of latent “true” runoff volume and inflow concentration states, along with corresponding measurement-error models, is a planned extension of this framework but is not implemented in the current version.
+- $\alpha_a$: analyte-specific intercept (hierarchical MVN)  
+- $\beta_{\mathrm{stir},a}$: analyte-specific slope on $\mathrm{STIR}_i$  
+- $\beta_{\mathrm{cin},a}$: analyte-specific slope on inflow concentration $\mathrm{CIN}^{\ast}_i$ (z scale)  
+- $\beta_{\mathrm{vol}}$: global coupling from latent true volume $V_{\mathrm{true}}$ to concentration  
+- $\beta_{\mathrm{irr},a}$: analyte-specific slope on standardized irrigation covariate $\mathrm{IRR}_z$  
+- $\beta_{\mathrm{dup},a}$: analyte-specific duplicate indicator effect  
+- $\beta_{\mathrm{res},a}$: analyte-specific slope on residue proportion $\mathrm{RES}^{\ast}$  
+- $\gamma_{a,\mathrm{Cr}}$: analyte-specific crop-type random effects  
+- $\gamma_{a,\mathrm{B}}$: analyte-specific block random effects  
+- $\gamma_{a,\mathrm{S}}$: analyte-specific sampler random effects  
+- $\gamma_{a,\mathrm{Fu}}$: analyte-specific flume random effects  
+- $f_{y,a}$: year-by-analyte Gaussian-process effect (multi-output GP)
 
----
-
-## 5. Hierarchical analyte structure (partial pooling)
-
-Regression coefficients are modeled hierarchically across analytes:
-
-$$
-\boldsymbol{\beta}_a \sim \mathrm{MVN}\left(\boldsymbol{\mu}_{\beta},\, \sigma_{\beta}\right)
-$$
-
-where:
-
-- **$\beta_a$** includes the STIR, inflow, and volume effects for analyte *a*
-- **$\sigma_{\beta}$** captures cross-analyte covariance across analytes
-
-
+**Design note:** Treatment is not included as a separate covariate in 1p7p5 by design. Tillage disturbance enters through $\mathrm{STIR}_i$.
 
 ---
 
-## 6. Random effects for monitoring artifacts
+## 2) Volume model (latent true volume)
 
-Random intercepts are included for multiple non-causal sources of variation. For a factor level $j$ (for example laboratory, sampler, flume, or replication), we write:
+### Latent process
 
-$$
-\alpha_{a,j} = \alpha_a + u_{a,j}
-$$
+```math
+\mu_{V,i} =
+a_V
++ b_V\,\mathrm{STIR}_i
++ \beta_{\mathrm{res},V}\,\mathrm{RES}^{\ast}_i
++ \gamma^{(V)}_{\mathrm{Cr}[i]}
+```
 
-with:
+Non-centered row-level latent truth:
 
-$$
-\mathbf{u}_a \sim \mathrm{MVN}\left(\mathbf{0},\, \sigma_u\right)
-$$
+```math
+V_{\mathrm{true},i} = \mu_{V,i} + \sigma_V\,z_{V,i},
+\qquad z_{V,i}\sim\mathrm{Normal}(0,1)
+```
 
-This formulation supports analyte-specific sensitivity to sampling and infrastructure differences and allows correlated deviations across analytes.
+### Observation (measurement) model
 
----
+For observed volume rows:
 
-## 7. Temporal structure: multi-output Gaussian process
+```math
+\mathrm{VOL}_i \sim \mathrm{Normal}\!\left(V_{\mathrm{true},i},\ \sigma_{\mathrm{VOL,obs}}\right)
+```
 
-Year-to-year latent deviations are modeled using a separable multi-output Gaussian process:
+### Where (parameter meanings)
 
-$$
-\mathbf{f}(y) \sim \mathrm{GP}\left(\mathbf{0},\, \Sigma_A \otimes K_{\mathrm{year}}\right)
-$$
+- $a_V$: volume intercept (z scale)  
+- $b_V$: slope on $\mathrm{STIR}_i$ for volume (z scale)  
+- $\beta_{\mathrm{res},V}$: slope of residue proportion on volume  
+- $\gamma^{(V)}_{\mathrm{Cr}}$: crop-type effect on volume  
+- $\sigma_V$: latent process SD for volume  
+- $\sigma_{\mathrm{VOL,obs}}$: volume measurement SD (estimated)
 
-A common kernel choice is the squared-exponential:
-
-$$
-K_{\mathrm{year}}(y, y') = \eta^2 \, \exp\left(-\frac{(y-y')^2}{2\ell^2}\right)
-$$
-
-This structure allows analytes to share temporal information and enables principled interpolation across missing years.
-
----
-
-## 8. Prior distributions
-
-Priors are weakly informative and scaled to the log-transformed data.
-
-### Regression coefficients
-
-$$
-\boldsymbol{\mu}_{\beta} \sim \mathrm{Normal}(0,\, 1)
-$$
-
-### Standard deviations
-
-$$
-\sigma \sim \mathrm{Half\text{-}Normal}(0,\, 1)
-$$
-
-### Correlation and covariance structure
-
-$$
-\Sigma = \mathrm{diag}(\boldsymbol{\sigma}) \, \Omega \, \mathrm{diag}(\boldsymbol{\sigma}),
-\qquad
-\Omega \sim \mathrm{LKJcorr}(2)
-$$
+**Scaling note:** Volume is modeled on the **z scale** in Stan (not log-scale) per `VOL` and `V_true` implementation.
 
 ---
 
-## 9. Posterior load generation
+## 3) Residue model (logit-normal regression with missing-data imputation)
 
-Event-scale loads are computed as:
+Residue is treated as a proportion in $(0,1)$ and modeled on the logit scale.
 
-$$
-L_{i,a} = C_{i,a} \, V_i
-$$
+### Linear predictor (logit scale)
 
-Annual loads are obtained by summing posterior predictive draws within year × treatment × analyte groups:
+```math
+\mu_{\mathrm{res},i} =
+\mathrm{logit}(\mathrm{res\_base})
++ b_{\mathrm{res,stir}}\,\mathrm{STIR}_i
++ \gamma^{(\mathrm{res})}_{\mathrm{Cr}[i]}
+```
 
-$$
-L_{y,t,a} = \sum_{i \in (y,t,a)} L_{i,a}
-$$
+### Observation and imputation
 
----
+Observed residue rows:
 
-## 10. Computation and inference
+```math
+\mathrm{logit}(\mathrm{RES}_i)\sim \mathrm{Normal}\!\left(\mu_{\mathrm{res},i},\ \sigma_{\mathrm{res,obs}}\right)
+```
 
-- Models are implemented in **Stan** and compiled via `cmdstanr`.  
-- Posterior sampling is performed using **Hamiltonian Monte Carlo (HMC)** with the **No-U-Turn Sampler (NUTS)**.  
-- Typical fits involve tens of thousands of parameters and thousands to tens of thousands of observations.  
-- Convergence is assessed using $\hat{R}$, effective sample size, trace diagnostics, and posterior predictive checks.  
+Missing residue rows are imputed as parameters $\mathrm{RES}_{\mathrm{miss},j}\in(10^{-4}, 1-10^{-4})$:
 
-Model versions are tracked in `docs/bayes-model_versions.md`.
+```math
+\mathrm{logit}(\mathrm{RES}_{\mathrm{miss},j})\sim \mathrm{Normal}\!\left(\mu_{\mathrm{res},\,\mathrm{idx}(j)},\ \sigma_{\mathrm{res,obs}}\right)
+```
 
----
+A merged residue vector is then used as a predictor in the volume and concentration models:
 
-## 11. Relationship to the machine-learning analysis
-
-Bayesian models provide explicit causal interpretability, time-evolving uncertainty, and principled handling of missing data. Machine-learning models are used strictly as a benchmark for pattern learning rather than causal inference.
-
----
-
-## 12. Graphical results (representative)
-
-### STIR effects on runoff volume
-![STIR volume effects](../figs/1p6_post_STIR_effect_on_volume.jpeg)
-
-### Annual load curves conditioned on STIR
-![STIR load curves](../figs/load1p6_STIR_load_curves.jpeg)
-
-### Year-to-year latent deviations
-![Latent deviations](../figs/yearly_latent_deviations_v1p6.jpeg)
-
-### Year covariance structure
-![Year covariance](../figs/year_covariance_gp_v1p6.jpeg)
+```math
+\mathrm{RES}^{\ast}_i =
+\begin{cases}
+\mathrm{RES}_i, & \text{if observed}\\
+\mathrm{RES}_{\mathrm{miss},j}, & \text{if missing (mapped by index)}
+\end{cases}
+```
 
 ---
 
-## 13. References
+## 4) Inflow concentration model for missing data (CIN imputation)
 
-Harmel, R.D., Cooper, R.J., Slade, R.M., Haney, R.L., & Arnold, J.G. (2006). Cumulative uncertainty in measured streamflow and water-quality data for small watersheds. *Transactions of the ASABE*, 49(3), 689–701.
+Inflow concentration covariate values (z scale) are imputed in-model for rows where CIN is missing.
 
-USDA-NRCS. (2023). Revised Universal Soil Loss Equation (RUSLE2) documentation and methodology.
+Missing CIN values are parameterized as `CIN_impute` with a standard normal prior:
+
+```math
+\mathrm{CIN}_{\mathrm{impute}} \sim \mathrm{Normal}(0,1)
+```
+
+A merged inflow vector is constructed deterministically and used in the concentration model:
+
+```math
+\mathrm{CIN}^{\ast}_i =
+\begin{cases}
+\mathrm{CIN}_i, & \text{if observed}\\
+\mathrm{CIN}_{\mathrm{impute},j}, & \text{if missing (mapped by index)}
+\end{cases}
+```
+
+---
+
+# Temporal structure: multi-output Gaussian process (as implemented)
+
+Year-by-analyte GP term $f_{y,a}$ is constructed from a separable covariance:
+
+```math
+\mathrm{vec}(F_{\mathrm{year}})\sim \mathrm{Normal}\!\left(0,\ \Sigma_A \otimes K_{\mathrm{year}}\right)
+```
+
+Stan uses `cov_GPL2(D, etasq_year, rhosq_year, delta)` to build $K_{\mathrm{year}}$ from the year-distance matrix $D$:
+
+```math
+K_{\mathrm{year},ij} = \eta^2 \exp\!\left(-\rho^2 d_{ij}^2\right),
+\qquad K_{\mathrm{year},ii} \leftarrow K_{\mathrm{year},ii} + \delta
+```
+
+with $\delta = 0.01$ in the Stan call.
+
+Cross-analyte covariance is represented via a Cholesky factor:
+
+```math
+\Sigma_A = L_{Agp} L_{Agp}^\top,
+\qquad L_{Agp} = \mathrm{diag}(\sigma_{Agp})\,L_{\mathrm{corr},Agp}
+```
+
+and the GP realization is built non-centrally:
+
+```math
+F_{\mathrm{year}} = L_t Z_{gp} L_{Agp}^\top
+```
+
+where $L_t$ is the Cholesky factor of $K_{\mathrm{year}}$ and $Z_{gp}$ is standard normal.
+
+---
+
+# Load propagation (post-processing)
+
+Event loads are computed from posterior draws after back-transforming concentration and volume from their modeled scales to original units in post-processing (see `stir-bayes-load1p7p5.Rmd`). At the event level for analyte $a$:
+
+```math
+L_{i,a} = C_{i,a}\,V_i
+```
+
+Annual loads:
+
+```math
+L_{y,a} = \sum_{i\in y} L_{i,a}
+```
+
+Uncertainty is propagated by applying these calculations to each posterior draw.
+
+---
+
+# Missingness handling summary (as implemented)
+
+- Missing `C` rows: excluded from observation likelihood; inferred via $C_{\mathrm{true}}$  
+- Missing `VOL` rows: excluded from observation likelihood; inferred via $V_{\mathrm{true}}$  
+- Missing `RES` rows: imputed via residue submodel into $\mathrm{RES}^{\ast}$  
+- Missing `CIN` rows: imputed via $\mathrm{CIN}_{\mathrm{impute}}$ into $\mathrm{CIN}^{\ast}$  
+
+---
+
+**Version 1p7p5** is the finalized Bayesian model implementation for Kerbel STIR × EoF water-quality analyses.
