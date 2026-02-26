@@ -1382,6 +1382,7 @@ ggsave(
 
 ```
 
+
 # 5. Plot posterior slopes for STIR effects on concentration
 
 ```{r stir effects on conc}
@@ -1516,6 +1517,55 @@ plot_stir_volume_effect(
   param = "b_V",
   file = "../figs/v1p7p5_post_STIR_effect_on_volume.jpg"
 )
+```
+
+# ------------------------------------------------------------
+# STIR effects on residue
+# ------------------------------------------------------------
+
+```{r}
+# STIR effect on residue (logit-normal submodel)
+# Scalar slope: b_res_stir
+
+b_res_stir <- post$b_res_stir
+
+dens <- stats::density(b_res_stir)
+
+# ---- Plot to Rmd output ----
+plot(
+  dens,
+  type = "l",
+  lwd  = 3,
+  col  = "darkred",
+  xlab = "STIR effect on logit(Residue proportion)",
+  ylab = "Density",
+  main = "Posterior STIR effect on residue",
+  bty  = "l",
+  # ensure zero is always visible
+  xlim = range(c(dens$x, 0))
+)
+
+abline(v = 0, lty = 2)
+
+# ---- Save identical plot to file ----
+jpeg("../figs/stir_effect_on_residue_density_v1p7p5.jpeg",
+     width = 2000, height = 1300, res = 200)
+
+plot(
+  dens,
+  type = "l",
+  lwd  = 3,
+  col  = "darkred",
+  xlab = "STIR effect on logit(Residue proportion)",
+  ylab = "Density",
+  main = "Posterior STIR effect on residue",
+  bty  = "l",
+  xlim = range(c(dens$x, 0))
+)
+
+abline(v = 0, lty = 2)
+
+dev.off()
 ```
 
 
@@ -2033,7 +2083,7 @@ The simulation functions allow you to generate posterior predicted analyte loads
 **flume**
 
 * Flume hardware type, matching `flume_lookup$FlumeMethod`:
-  “10 V”, “10V”, “60 V Trap”, “7 V”, “8 V”, “Weir”.
+  “10 V”, “60 V Trap”, “7 V”, “8 V”, “Weir”.
 * If left NULL: averaged using the posterior mean of `gamma_F`.
 
 **irrigation**
@@ -2048,6 +2098,19 @@ The simulation functions allow you to generate posterior predicted analyte loads
 
 * Laboratory duplicate indicator (TRUE or FALSE).
 * If NULL: uses the empirical mean duplicate rate across the dataset.
+
+**crop**
+
+* Character crop name matching `crop_lookup$Crop`: `"barley"`, `"dry beans"`, `"grain corn"`, `"silage corn"`, `"winter wheat"`.
+* Affects both volume (`gamma_Cr_V`) and concentration (`gamma_Cr`) random effects.
+* If NULL: averaged over crops using empirical frequency weights from `d_mod`.
+
+**res_z**
+
+* Residue proportion used as an input covariate in both volume and concentration models.
+* Must be strictly between 0 and 1 (interpreted as proportion, not percent).
+* If NULL: uses the empirical mean residue proportion from `d_mod`.
+* The residue submodel is not simulated here, residue is treated as a fixed input scenario.
 
 **cin_z**
 
@@ -2097,12 +2160,12 @@ res_scenario <- simulate_load_curves_with_obs(
   post         = post,
   d_mod        = d_mod,
   analytes     = NULL,
-  STIR_raw_seq = seq(0, 300, length.out = 60),
+  STIR_raw_seq = seq(0, 250, length.out = 60),
   block        = NULL,
   sampler      = NULL,
   flume        = NULL,
   irrigation   = NULL,
-  duplicate    = NULL,
+  duplicate    = FALSE,
   crop         = NULL,
   res_z        = 0.10,   # FIXED residue proportion (0.10 = 10% cover). Use NULL to average observed residue.
   cin_z        = 0,
@@ -2110,6 +2173,42 @@ res_scenario <- simulate_load_curves_with_obs(
   n_draws      = 2000,
   ci_prob      = 0.95
 )
+
+# res_scenario <- simulate_load_curves_with_obs(
+#   post         = post,
+#   d_mod        = d_mod,
+#   analytes     = NULL,
+#   STIR_raw_seq = seq(0, 300, length.out = 60),
+#   block        = 1,
+#   sampler      = NULL,
+#   flume        = "60 V Trap",
+#   irrigation   = 1,
+#   duplicate    = FALSE,
+#   crop         = "silage corn",
+#   res_z        = .15,   # FIXED residue proportion (0.10 = 10% cover). Use NULL to average observed residue.
+#   cin_z        = 0,
+#   year         = 2023,
+#   n_draws      = 2000,
+#   ci_prob      = 0.95
+# )
+
+# res_scenario <- simulate_load_curves_with_obs(
+#   post         = post,
+#   d_mod        = d_mod,
+#   analytes     = NULL,
+#   STIR_raw_seq = seq(0, 300, length.out = 60),
+#   block        = 1,
+#   sampler      = NULL,
+#   flume        = "7 V",
+#   irrigation   = NULL,
+#   duplicate    = FALSE,
+#   crop         = "barley",
+#   res_z        = .15,   # FIXED residue proportion (0.10 = 10% cover). Use NULL to average observed residue.
+#   cin_z        = 0,
+#   year         = 2016,
+#   n_draws      = 2000,
+#   ci_prob      = 0.95
+# )
 
 load_pred_scenario <- res_scenario$pred
 load_obs_scenario  <- res_scenario$obs
@@ -2237,7 +2336,7 @@ rhosq_prior <- rexp(n_prior, rate = 0.5)
 etasq_all <- as.numeric(post$etasq_year)
 rhosq_all <- as.numeric(post$rhosq_year)
 
-set.seed(1)
+set.seed(1337)
 take <- if (length(etasq_all) > n_post) sample.int(length(etasq_all), n_post) else seq_along(etasq_all)
 etasq_post <- etasq_all[take]
 rhosq_post <- rhosq_all[take]
@@ -3095,168 +3194,6 @@ annual_tbl_pred <- make_annual_load_table_all_treatments_pred(
 ```
 
 
-```{r plot annual loads fxn}
-plot_annual_by_treatment_pretty <- function(
-  annual_tbl,
-  analyte_pick,
-  metric = c("load","conc","volume"),
-  source_label = NULL,
-  draw_line = TRUE,
-  show_points = TRUE,
-  dodge = 0.20,
-  prob_ci = NULL
-) {
-  metric <- match.arg(metric)
-
-  stopifnot(all(c("Year","analyte","treatment") %in% names(annual_tbl)))
-
-  y_mean <- paste0(metric, "_mean")
-  y_low  <- paste0(metric, "_low")
-  y_high <- paste0(metric, "_high")
-
-  # Backward compatibility: accept old *_low95/*_high95
-  if (!all(c(y_low, y_high) %in% names(annual_tbl))) {
-    y_low  <- paste0(metric, "_low95")
-    y_high <- paste0(metric, "_high95")
-  }
-
-  stopifnot(all(c(y_mean, y_low, y_high) %in% names(annual_tbl)))
-
-  d <- annual_tbl %>%
-    dplyr::filter(as.character(analyte) == analyte_pick) %>%
-    dplyr::mutate(
-      Year = as.integer(Year),
-      treatment = factor(treatment, levels = c("CT","MT","ST"))
-    ) %>%
-    dplyr::arrange(Year, treatment)
-
-  if (nrow(d) == 0) stop("No rows found for analyte = '", analyte_pick, "'.")
-
-  # determine CI label
-  if (is.null(prob_ci)) {
-    if ("prob_ci" %in% names(d)) prob_ci <- unique(d$prob_ci)[1]
-  }
-  ci_txt <- if (!is.null(prob_ci) && is.finite(prob_ci)) {
-    sprintf(" (%.0f%% interval)", 100 * prob_ci)
-  } else {
-    ""
-  }
-
-  ylab <- switch(
-    metric,
-    "load"   = paste0("Annual load (g)", ci_txt),
-    "conc"   = paste0("Flow-weighted concentration (mg/L)", ci_txt),
-    "volume" = paste0("Annual volume (L)", ci_txt)
-  )
-
-  pd <- ggplot2::position_dodge(width = dodge)
-
-  # Okabe–Ito colorblind-safe palette
-  trt_cols <- c(
-    CT = "#0072B2",
-    MT = "#E69F00",
-    ST = "#009E73"
-  )
-
-  ttl <- paste0(analyte_pick, ": annual ", metric, " by treatment")
-  if (!is.null(source_label)) ttl <- paste0(ttl, " (", source_label, ")")
-
-  p <- ggplot2::ggplot(
-    d,
-    ggplot2::aes(
-      x = Year,
-      y = .data[[y_mean]],
-      color = treatment,
-      group = treatment
-    )
-  ) +
-    ggplot2::geom_errorbar(
-      ggplot2::aes(ymin = .data[[y_low]], ymax = .data[[y_high]]),
-      width = 0,
-      position = pd,
-      linewidth = 1.6,
-      alpha = 0.7
-    )
-
-  if (draw_line) {
-    p <- p + ggplot2::geom_line(
-      position = pd,
-      linewidth = 1.1,
-      alpha = 0.9
-    )
-  }
-
-  if (show_points) {
-    p <- p + ggplot2::geom_point(
-      position = pd,
-      size = 2.7,
-      stroke = 0.2,
-      shape = 16
-    )
-  }
-
-  p +
-    ggplot2::scale_color_manual(values = trt_cols) +
-    ggplot2::scale_x_continuous(
-      breaks = sort(unique(d$Year)),
-      expand = ggplot2::expansion(mult = c(0.01, 0.02))
-    ) +
-    ggplot2::labs(
-      x = "Year",
-      y = ylab,
-      title = ttl,
-      color = "Treatment"
-    ) +
-    ggplot2::theme_classic(base_size = 14) +
-    ggplot2::theme(
-      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-      plot.title = ggplot2::element_text(face = "bold"),
-      legend.position = "right",
-      legend.box = "vertical",
-      legend.key.height = grid::unit(0.9, "lines"),
-      panel.grid.major.y = ggplot2::element_line(color = "grey90", linewidth = 0.4)
-    )
-}
-```
-
-```{r plot annual loads execution}
-# Modeled-only (v1p7p5 annual_tbl_pred)
-p_mod <- plot_annual_by_treatment_pretty(
-  annual_tbl = annual_tbl_pred,
-  analyte_pick = "TSS",
-  metric = "load",
-  source_label = "Modeled",
-  draw_line = TRUE
-)
-
-ggplot2::ggsave(
-  filename = "../figs/TSS_annual_load_modeled_only_v1p7p5.png",
-  plot = p_mod,
-  width = 8,
-  height = 5,
-  dpi = 300
-)
-
-# Observed-only
-p_obs <- plot_annual_by_treatment_pretty(
-  annual_tbl = annual_tbl_obs,
-  analyte_pick = "TSS",
-  metric = "load",
-  source_label = "Observed",
-  draw_line = FALSE
-)
-
-ggplot2::ggsave(
-  filename = "../figs/TSS_annual_load_observed_only_v1p7p5.png",
-  plot = p_obs,
-  width = 8,
-  height = 5,
-  dpi = 300
-)
-
-```
-
-
 ```{r bind obs and modeled}
 bind_observed_modeled <- function(annual_tbl_pred, annual_tbl_obs) {
 
@@ -3443,10 +3380,11 @@ plot_annual_by_treatment_obs_vs_mod <- function(
       ggplot2::aes(
         x = Year,
         y = .data[[y_mean]],
-        fill = treatment
+        fill = treatment,
+        shape = source              # NEW: adds "Modeled vs Observed" legend without changing appearance
       ),
       position = pd,
-      shape = 21,
+      #shape = 21,
       size = 3.4,
       stroke = 0.9,
       color = "black"
@@ -3473,10 +3411,11 @@ plot_annual_by_treatment_obs_vs_mod <- function(
       ggplot2::aes(
         x = Year,
         y = .data[[y_mean]],
-        color = treatment
+        color = treatment,
+        shape = source              # NEW
       ),
       position = pd,
-      shape = 21,
+      #shape = 21,
       fill = "white",
       size = 2.8,
       stroke = 1.2
@@ -3484,6 +3423,24 @@ plot_annual_by_treatment_obs_vs_mod <- function(
 
     ggplot2::scale_color_manual(values = trt_cols, name = "Treatment") +
     ggplot2::scale_fill_manual(values = trt_cols, guide = "none") +
+
+    # NEW: keep shapes identical in the plot, but create a legend for source
+    ggplot2::scale_shape_manual(
+      values = c(Modeled = 21, Observed = 21),
+      name = "Estimate type",
+      drop = FALSE
+    ) +
+    ggplot2::guides(
+      shape = ggplot2::guide_legend(
+        override.aes = list(
+          fill  = c("black", "white"),
+          color = c("black", "black"),
+          stroke = c(0.9, 1.2),
+          size = c(3.4, 2.8)
+        )
+      )
+    ) +
+
     ggplot2::scale_x_continuous(
       breaks = sort(unique(d$Year)),
       expand = ggplot2::expansion(mult = c(0.01, 0.02))
@@ -3491,8 +3448,7 @@ plot_annual_by_treatment_obs_vs_mod <- function(
     ggplot2::labs(
       x = "Year",
       y = ylab,
-      title = paste0(analyte_pick, ": annual ", metric, " by treatment"),
-      shape = "Estimate type"
+      title = paste0(analyte_pick, ": annual ", metric, " by treatment")
     ) +
     ggplot2::theme_bw(base_size = 13) +
     ggplot2::theme(
@@ -3592,6 +3548,317 @@ log_load <- save_all_analyte_obs_vs_mod_plots(annual_both, metric = "load")
 
 ```
 
+```{r annual-volume-obs-vs-modeled-plot}
+# ============================================================
+# Annual runoff volume by treatment: Observed vs Bayes Modeled
+# Uses the same visual design as your load plots
+# Converts to kiloliters (kL) for more manageable y-axis values
+# ============================================================
+
+stopifnot(exists("annual_combined_out") || exists("annual_both"))
+
+# Prefer annual_combined_out from your export chunk (it is standardized)
+vol_src <- if (exists("annual_combined_out")) annual_combined_out else annual_both
+
+# Keep only the two sources we need (handle either naming convention)
+vol_src <- vol_src %>%
+  dplyr::mutate(
+    source = dplyr::case_when(
+      source %in% c("Bayes_Modeled", "Modeled") ~ "Modeled",
+      source %in% c("Observed")                 ~ "Observed",
+      TRUE ~ as.character(source)
+    )
+  ) %>%
+  dplyr::filter(source %in% c("Modeled","Observed")) %>%
+  dplyr::mutate(
+    Year = as.integer(Year),
+    treatment = factor(as.character(treatment), levels = c("CT","MT","ST")),
+    source = factor(as.character(source), levels = c("Modeled","Observed"))
+  )
+
+# Volume is duplicated across analytes in your annual tables, so collapse safely.
+# If it's truly identical across analytes, mean() will preserve it.
+vol_annual <- vol_src %>%
+  dplyr::group_by(Year, treatment, source) %>%
+  dplyr::summarise(
+    volume_mean = mean(volume_mean, na.rm = TRUE) / 1000,
+    volume_low  = mean(volume_low,  na.rm = TRUE) / 1000,
+    volume_high = mean(volume_high, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  ) %>%
+  dplyr::arrange(Year, treatment, source)
+
+if (nrow(vol_annual) == 0) stop("No annual volume rows found after filtering sources.")
+
+# Split for cleaner layering (same as your load plot function)
+d_mod <- vol_annual %>% dplyr::filter(source == "Modeled")
+d_obs <- vol_annual %>% dplyr::filter(source == "Observed")
+
+pd <- ggplot2::position_dodge(width = 0.20)
+
+trt_cols <- c(
+  CT = "#1f77b4",
+  MT = "#ff7f0e",
+  ST = "#2ca02c"
+)
+
+p_vol <- ggplot2::ggplot() +
+  # Modeled uncertainty
+  ggplot2::geom_linerange(
+    data = d_mod,
+    ggplot2::aes(x = Year, ymin = volume_low, ymax = volume_high, color = treatment),
+    position = pd,
+    linewidth = 1.6,
+    alpha = 0.45,
+    show.legend = FALSE
+  ) +
+  # Modeled line
+  ggplot2::geom_line(
+    data = d_mod,
+    ggplot2::aes(x = Year, y = volume_mean, color = treatment, group = treatment),
+    position = pd,
+    linewidth = 1.2,
+    alpha = 0.9
+  ) +
+  # Modeled points (filled, black outline) + legend mapping
+  ggplot2::geom_point(
+    data = d_mod,
+    ggplot2::aes(x = Year, y = volume_mean, fill = treatment, shape = source),
+    position = pd,
+    size = 3.4,
+    stroke = 0.9,
+    color = "black"
+  ) +
+  # Observed uncertainty
+  ggplot2::geom_linerange(
+    data = d_obs,
+    ggplot2::aes(x = Year, ymin = volume_low, ymax = volume_high, color = treatment),
+    position = pd,
+    linewidth = 1.2,
+    alpha = 0.35,
+    show.legend = FALSE
+  ) +
+  # Observed points (open, treatment outline) + legend mapping
+  ggplot2::geom_point(
+    data = d_obs,
+    ggplot2::aes(x = Year, y = volume_mean, color = treatment, shape = source),
+    position = pd,
+    fill = "white",
+    size = 2.8,
+    stroke = 1.2
+  ) +
+  ggplot2::scale_color_manual(values = trt_cols, name = "Treatment") +
+  ggplot2::scale_fill_manual(values = trt_cols, guide = "none") +
+  ggplot2::scale_shape_manual(
+    values = c(Modeled = 21, Observed = 21),
+    name = "Estimate type",
+    drop = FALSE
+  ) +
+  ggplot2::guides(
+    shape = ggplot2::guide_legend(
+      override.aes = list(
+        fill   = c("black", "white"),
+        color  = c("black", "black"),
+        stroke = c(0.9, 1.2),
+        size   = c(3.4, 2.8)
+      )
+    )
+  ) +
+  ggplot2::scale_x_continuous(
+    breaks = sort(unique(vol_annual$Year)),
+    expand = ggplot2::expansion(mult = c(0.01, 0.02))
+  ) +
+  ggplot2::labs(
+    x = "Year",
+    y = "Annual runoff volume (kL)",
+    title = "Annual runoff volume by treatment"
+  ) +
+  ggplot2::theme_bw(base_size = 13) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+    plot.title = ggplot2::element_text(face = "bold"),
+    legend.position = "right",
+    panel.grid.minor = ggplot2::element_blank()
+  )
+
+# ------------------------------------------------------------
+# Save volume plot
+# ------------------------------------------------------------
+fig_dir <- file.path("../figs", paste0("annual_volume_", model_version))
+dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
+
+fig_file <- file.path(
+  "../figs",
+  paste0("annual_volume_obs_vs_modeled_", model_version, ".jpg")
+)
+
+ggplot2::ggsave(
+  filename = fig_file,
+  plot = p_vol,
+  width = 9,
+  height = 5.5,
+  dpi = 300
+)
+
+message("[OK] Wrote: ", fig_file)
+p_vol
+```
+
+```{r export-annual-volume-wide-csv}
+# ============================================================
+# Export annual volume summary (Modeled + optional Observed)
+# Row = Year
+# Columns = CT/MT/ST with mean/low/high
+# Also writes a publication-ready version: "mean (low, high)"
+# Units: kL (converted from L by /1000)
+# ============================================================
+
+stopifnot(exists("annual_combined_out") || exists("annual_both"))
+stopifnot(exists("model_version"))
+
+vol_src <- if (exists("annual_combined_out")) annual_combined_out else annual_both
+
+vol_src <- vol_src %>%
+  dplyr::mutate(
+    source = dplyr::case_when(
+      source %in% c("Bayes_Modeled", "Modeled") ~ "Modeled",
+      source %in% c("Observed")                 ~ "Observed",
+      TRUE ~ as.character(source)
+    )
+  ) %>%
+  dplyr::filter(source %in% c("Modeled","Observed")) %>%
+  dplyr::mutate(
+    Year = as.integer(Year),
+    treatment = factor(as.character(treatment), levels = c("CT","MT","ST")),
+    source = factor(as.character(source), levels = c("Modeled","Observed"))
+  )
+
+# Collapse across analytes (volume repeats per analyte)
+vol_annual <- vol_src %>%
+  dplyr::group_by(Year, treatment, source) %>%
+  dplyr::summarise(
+    volume_mean = mean(volume_mean, na.rm = TRUE) / 1000,
+    volume_low  = mean(volume_low,  na.rm = TRUE) / 1000,
+    volume_high = mean(volume_high, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  )
+
+out_dir <- "../out"
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+# ---------- (A) Modeled wide export ----------
+vol_modeled_wide <- vol_annual %>%
+  dplyr::filter(source == "Modeled") %>%
+  dplyr::mutate(col = paste0(as.character(treatment), "_mod")) %>%
+  dplyr::select(Year, col, volume_mean, volume_low, volume_high) %>%
+  tidyr::pivot_wider(
+    names_from  = col,
+    values_from = c(volume_mean, volume_low, volume_high),
+    names_glue  = "{col}_{.value}"
+  ) %>%
+  dplyr::rename_with(~ gsub("_volume_", "_volume_kL_", .x, fixed = TRUE)) %>%
+  dplyr::arrange(Year)
+
+# ----- Add Total row (sum across years) -----
+vol_modeled_wide <- vol_modeled_wide %>% dplyr::mutate(Year = as.character(Year))
+
+vol_modeled_total <- vol_modeled_wide %>%
+  dplyr::summarise(
+    Year = "Total",
+    dplyr::across(-Year, ~ sum(.x, na.rm = TRUE))
+  )
+
+vol_modeled_wide <- dplyr::bind_rows(vol_modeled_wide, vol_modeled_total)
+
+f_modeled <- file.path(out_dir, paste0("annual_volume_kL_wide_modeled_", model_version, ".csv"))
+readr::write_csv(vol_modeled_wide, f_modeled)
+message("[OK] Wrote: ", f_modeled)
+
+# ---------- (B) Pub-ready modeled export ----------
+fmt_ci <- function(mean, low, high, digits = 0) {
+  ifelse(
+    is.finite(mean) & is.finite(low) & is.finite(high),
+    paste0(
+      formatC(mean, format = "f", digits = digits),
+      " (",
+      formatC(low,  format = "f", digits = digits),
+      ", ",
+      formatC(high, format = "f", digits = digits),
+      ")"
+    ),
+    NA_character_
+  )
+}
+
+vol_modeled_pub <- vol_modeled_wide %>%
+  dplyr::transmute(
+    Year,
+    CT = fmt_ci(CT_mod_volume_kL_mean, CT_mod_volume_kL_low, CT_mod_volume_kL_high, digits = 0),
+    MT = fmt_ci(MT_mod_volume_kL_mean, MT_mod_volume_kL_low, MT_mod_volume_kL_high, digits = 0),
+    ST = fmt_ci(ST_mod_volume_kL_mean, ST_mod_volume_kL_low, ST_mod_volume_kL_high, digits = 0)
+  )
+
+# ----- Add Total row to pub table -----
+vol_modeled_pub_total <- vol_modeled_wide %>%
+  dplyr::filter(Year == "Total") %>%
+  dplyr::transmute(
+    Year = "Total",
+    CT = fmt_ci(CT_mod_volume_kL_mean,
+                CT_mod_volume_kL_low,
+                CT_mod_volume_kL_high,
+                digits = 0),
+    MT = fmt_ci(MT_mod_volume_kL_mean,
+                MT_mod_volume_kL_low,
+                MT_mod_volume_kL_high,
+                digits = 0),
+    ST = fmt_ci(ST_mod_volume_kL_mean,
+                ST_mod_volume_kL_low,
+                ST_mod_volume_kL_high,
+                digits = 0)
+  )
+
+vol_modeled_pub <- dplyr::bind_rows(
+  vol_modeled_pub,
+  vol_modeled_pub_total
+)
+
+f_modeled_pub <- file.path(out_dir, paste0("annual_volume_kL_wide_modeled_pub_", model_version, ".csv"))
+readr::write_csv(vol_modeled_pub, f_modeled_pub)
+message("[OK] Wrote: ", f_modeled_pub)
+
+# ---------- Optional: Observed wide export too ----------
+vol_observed_wide <- vol_annual %>%
+  dplyr::filter(source == "Observed") %>%
+  dplyr::mutate(col = paste0(as.character(treatment), "_obs")) %>%
+  dplyr::select(Year, col, volume_mean, volume_low, volume_high) %>%
+  tidyr::pivot_wider(
+    names_from  = col,
+    values_from = c(volume_mean, volume_low, volume_high),
+    names_glue  = "{col}_{.value}"
+  ) %>%
+  dplyr::rename_with(~ gsub("_volume_", "_volume_kL_", .x, fixed = TRUE)) %>%
+  dplyr::arrange(Year)
+
+f_obs <- file.path(out_dir, paste0("annual_volume_kL_wide_observed_", model_version, ".csv"))
+readr::write_csv(vol_observed_wide, f_obs)
+message("[OK] Wrote: ", f_obs)
+
+vol_observed_pub <- vol_observed_wide %>%
+  dplyr::transmute(
+    Year,
+    CT = fmt_ci(CT_obs_volume_kL_mean, CT_obs_volume_kL_low, CT_obs_volume_kL_high, digits = 0),
+    MT = fmt_ci(MT_obs_volume_kL_mean, MT_obs_volume_kL_low, MT_obs_volume_kL_high, digits = 0),
+    ST = fmt_ci(ST_obs_volume_kL_mean, ST_obs_volume_kL_low, ST_obs_volume_kL_high, digits = 0)
+  )
+
+f_obs_pub <- file.path(out_dir, paste0("annual_volume_kL_wide_observed_pub_", model_version, ".csv"))
+readr::write_csv(vol_observed_pub, f_obs_pub)
+message("[OK] Wrote: ", f_obs_pub)
+
+# Print the modeled pub-ready table in the Rmd
+vol_modeled_pub
+
+```
 
 
 ```{r export bayes annual predictions}
@@ -3888,7 +4155,91 @@ export_annual_draws <- function(
   dplyr::bind_rows(out[seq_len(kk - 1L)]) %>%
     dplyr::arrange(analyte, Year, treatment, draw)
 }
+```
 
+```{r study-period-load-table-kg}
+# ============================================================
+# Study-period total loads by treatment (Modeled) in kg
+# ============================================================
+
+stopifnot(exists("annual_pred_out"))
+stopifnot(all(c("analyte","treatment","load_mean","load_low","load_high") %in% names(annual_pred_out)))
+
+study_load_tbl <- annual_pred_out %>%
+  dplyr::filter(source == "Bayes_Modeled") %>%
+  dplyr::group_by(analyte, treatment) %>%
+  dplyr::summarise(
+    load_sum_mean_kg = sum(load_mean, na.rm = TRUE) / 1000,
+    load_sum_low_kg  = sum(load_low,  na.rm = TRUE) / 1000,
+    load_sum_high_kg = sum(load_high, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  ) %>%
+  dplyr::mutate(
+    treatment = factor(as.character(treatment), levels = c("CT","MT","ST"))
+  ) %>%
+  dplyr::arrange(analyte, treatment)
+
+study_load_wide <- study_load_tbl %>%
+  dplyr::mutate(col = paste0(as.character(treatment), "_mod")) %>%
+  dplyr::select(analyte, col,
+                load_sum_mean_kg,
+                load_sum_low_kg,
+                load_sum_high_kg) %>%
+  tidyr::pivot_wider(
+    names_from  = col,
+    values_from = c(load_sum_mean_kg,
+                    load_sum_low_kg,
+                    load_sum_high_kg),
+    names_glue  = "{col}_{.value}"
+  ) %>%
+  dplyr::arrange(analyte)
+
+# ---- Save to /out ----
+out_file <- file.path("../out",
+                      paste0("study_period_total_loads_kg_", model_version, ".csv"))
+
+readr::write_csv(study_load_wide, out_file)
+message("[OK] Wrote: ", out_file)
+
+study_load_wide
+
+# ============================================================
+# Publication-ready summary (one column per treatment)
+# Cells: "mean (low, high)" in kg
+# ============================================================
+
+fmt_ci <- function(mean, low, high, digits = 2) {
+  ifelse(
+    is.finite(mean) & is.finite(low) & is.finite(high),
+    paste0(
+      formatC(mean, format = "f", digits = digits),
+      " (",
+      formatC(low,  format = "f", digits = digits),
+      ", ",
+      formatC(high, format = "f", digits = digits),
+      ")"
+    ),
+    NA_character_
+  )
+}
+
+study_load_pub <- study_load_wide %>%
+  dplyr::transmute(
+    analyte,
+    CT = fmt_ci(CT_mod_load_sum_mean_kg, CT_mod_load_sum_low_kg, CT_mod_load_sum_high_kg, digits = 2),
+    MT = fmt_ci(MT_mod_load_sum_mean_kg, MT_mod_load_sum_low_kg, MT_mod_load_sum_high_kg, digits = 2),
+    ST = fmt_ci(ST_mod_load_sum_mean_kg, ST_mod_load_sum_low_kg, ST_mod_load_sum_high_kg, digits = 2)
+  )
+
+pub_file <- file.path("../out", paste0("study_period_total_loads_kg_pub_", model_version, ".csv"))
+readr::write_csv(study_load_pub, pub_file)
+message("[OK] Wrote: ", pub_file)
+
+study_load_pub
+```
+
+
+```{r export bayes annual predictions}
 # Uncomment to write per-draw table (can be big):
 annual_draws <- export_annual_draws(
   post = post,
