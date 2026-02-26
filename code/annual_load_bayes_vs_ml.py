@@ -1,45 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""annual_load_bayes_vs_ml.py
+"""
+annual_load_bayes_vs_ml.py
 
 Creates annual load comparison plots faceted by Treatment (CT/MT/ST) and
-computes quantitative metrics summarizing Bayes vs ML performance against
-Observed annual loads.
+computes quantitative goodness-of-fit (GoF) metrics comparing Bayes vs ML
+against Observed annual loads.
 
-Adds (optional) CRPS (Continuous Ranked Probability Score) using per-draw
-annual load tables from Bayes and ML, if present.
+New in this drop-in (v1p7p5 request):
+  - Adds NRMSE_sd = RMSE / SD(Observed).
+  - Writes 3 GoF figures by analyte (Treatment aggregated to ALL):
+      1) Paired bars: CRPS_norm_mean by analyte (Bayes vs ML)
+      2) Paired bars: NRMSE_mean by analyte (Bayes vs ML), ranked by Bayes (best→worst)
+      3) Scatter: Coverage vs MeanWidth by analyte (Bayes vs ML), with nominal coverage line.
+  - Saves GoF figures to: figs/annual_bayes_vs_ml_gof_jpg_<tag> (or without tag)
+  - Saves metrics to: out/bayes_vs_ml_metrics_<tag> (or without tag)
 
-Plots:
-  - Bayes modeled: solid line + filled markers + colored CI band (if low/high exist)
-  - ML modeled   : dashed line + filled markers + colored CI band (if low/high exist)
-  - Observed     : hollow markers + vertical error bars (if low/high exist)
+Optional:
+  - CRPS (Continuous Ranked Probability Score) is computed if per-draw annual load files exist.
 
-Key implementation rule:
-  Observed values are ONLY plotted from rows explicitly labeled as observed
+Key rule:
+  Observed values are ONLY taken from rows explicitly labeled as observed
   in the Bayes summary file. We do NOT infer "observed" from missing CI columns.
-
-Inputs (repo-root relative defaults):
-  Bayes summary (contains modeled + observed rows):
-    out/annual_load_summary_bayes_plus_observed_v1p6.csv
-  ML summary (imputed-inclusive):
-    out/ml_catboost_conformal_loyo/annual_load_summary_imputed.csv
-
-Optional draws for CRPS:
-  Bayes draws:
-    out/annual_load_draws_bayes_v1p6.csv
-  ML draws:
-    out/ml_catboost_conformal_loyo/annual_load_draws.csv
-
-Outputs:
-  Figures:
-    figs/annual_bayes_vs_ml_faceted_jpg/annual_load_<analyte>_bayes_vs_ml_faceted.jpg
-
-  Metrics:
-    out/bayes_vs_ml_metrics/
-      metrics_by_analyte_treatment.csv
-      metrics_by_analyte_overall.csv
-      metrics_overall.csv
 
 """
 
@@ -56,6 +39,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
+# ----------------------------
+# Repo utilities
+# ----------------------------
 def find_repo_root(start: Path) -> Path:
     cur = start.resolve()
     for _ in range(12):
@@ -114,45 +100,9 @@ def pick_first_existing(df: pd.DataFrame, candidates: List[str]) -> Optional[str
     return None
 
 
-def standardize_summary(
-    df: pd.DataFrame,
-    source_name: str,
-    series_label: str,
-    center_candidates: List[str],
-    low_candidates: List[str],
-    high_candidates: List[str],
-    input_units: str = "mg",
-) -> pd.DataFrame:
-    df = normalize_cols(df)
-    need = {"Year", "Treatment", "Analyte"}
-    missing = need - set(df.columns)
-    if missing:
-        raise ValueError(f"{source_name}: missing required columns: {sorted(missing)}")
-
-    c_center = pick_first_existing(df, center_candidates)
-    c_low = pick_first_existing(df, low_candidates)
-    c_high = pick_first_existing(df, high_candidates)
-
-    if c_center is None:
-        raise ValueError(
-            f"{source_name}: could not find a center column. Tried: {center_candidates}. "
-            f"Available columns: {list(df.columns)}"
-        )
-
-    out = df.loc[:, ["Year", "Treatment", "Analyte"]].copy()
-    out["source"] = source_name
-    out["series"] = series_label
-
-    out["center_mg"] = units_to_mg(safe_numeric(df[c_center]), input_units)
-    out["low_mg"] = units_to_mg(safe_numeric(df[c_low]), input_units) if c_low is not None else np.nan
-    out["high_mg"] = units_to_mg(safe_numeric(df[c_high]), input_units) if c_high is not None else np.nan
-
-    out = out.dropna(subset=["Year", "Treatment", "Analyte", "center_mg"]).copy()
-    out["Year"] = out["Year"].astype(int)
-
-    return out
-
-
+# ----------------------------
+# Units
+# ----------------------------
 def mg_to_units(x: pd.Series, units: str) -> pd.Series:
     u = units.lower().strip()
     if u == "mg":
@@ -165,7 +115,6 @@ def mg_to_units(x: pd.Series, units: str) -> pd.Series:
 
 
 def units_to_mg(x: pd.Series, units: str) -> pd.Series:
-    """Convert values in the given units to mg (internal standard)."""
     u = str(units).lower().strip()
     if u == "mg":
         return x
@@ -174,11 +123,13 @@ def units_to_mg(x: pd.Series, units: str) -> pd.Series:
     if u == "kg":
         return x * 1e6
     if u == "auto":
-        # Caller should handle 'auto' by inspecting column names.
         return x
     raise ValueError("input units must be one of: mg, g, kg, auto")
 
 
+# ----------------------------
+# Analyte canonicalization
+# ----------------------------
 def _analyte_key(x: str) -> str:
     if x is None:
         return ""
@@ -228,6 +179,48 @@ def canonicalize_analytes(df: pd.DataFrame) -> pd.DataFrame:
     keys = df["Analyte"].map(_analyte_key)
     df["Analyte"] = keys.map(ANALYTE_CANON).fillna(df["Analyte"])
     return df
+
+
+# ----------------------------
+# Summary standardization
+# ----------------------------
+def standardize_summary(
+    df: pd.DataFrame,
+    source_name: str,
+    series_label: str,
+    center_candidates: List[str],
+    low_candidates: List[str],
+    high_candidates: List[str],
+    input_units: str = "mg",
+) -> pd.DataFrame:
+    df = normalize_cols(df)
+    need = {"Year", "Treatment", "Analyte"}
+    missing = need - set(df.columns)
+    if missing:
+        raise ValueError(f"{source_name}: missing required columns: {sorted(missing)}")
+
+    c_center = pick_first_existing(df, center_candidates)
+    c_low = pick_first_existing(df, low_candidates)
+    c_high = pick_first_existing(df, high_candidates)
+
+    if c_center is None:
+        raise ValueError(
+            f"{source_name}: could not find a center column. Tried: {center_candidates}. "
+            f"Available columns: {list(df.columns)}"
+        )
+
+    out = df.loc[:, ["Year", "Treatment", "Analyte"]].copy()
+    out["source"] = source_name
+    out["series"] = series_label
+
+    out["center_mg"] = units_to_mg(safe_numeric(df[c_center]), input_units)
+    out["low_mg"] = units_to_mg(safe_numeric(df[c_low]), input_units) if c_low is not None else np.nan
+    out["high_mg"] = units_to_mg(safe_numeric(df[c_high]), input_units) if c_high is not None else np.nan
+
+    out = out.dropna(subset=["Year", "Treatment", "Analyte", "center_mg"]).copy()
+    out["Year"] = out["Year"].astype(int)
+
+    return out
 
 
 def detect_series_column(df: pd.DataFrame) -> str:
@@ -296,6 +289,9 @@ def split_bayes_observed_modeled(bayes_raw: pd.DataFrame, input_units: str = "mg
     return bayes_modeled, observed
 
 
+# ----------------------------
+# Annual faceted plots
+# ----------------------------
 def plot_analyte_faceted(
     analyte: str,
     bayes: pd.DataFrame,
@@ -402,6 +398,9 @@ def plot_analyte_faceted(
     plt.close(fig)
 
 
+# ----------------------------
+# GoF metrics
+# ----------------------------
 def _rmse(err: np.ndarray) -> float:
     return float(np.sqrt(np.nanmean(err ** 2))) if err.size else float("nan")
 
@@ -422,6 +421,13 @@ def _nrmse_range(rmse: float, y: np.ndarray) -> float:
     if not np.isfinite(rng) or rng == 0.0 or not np.isfinite(rmse):
         return float("nan")
     return float(rmse / rng)
+
+
+def _nrmse_sd(rmse: float, y: np.ndarray) -> float:
+    sd = float(np.nanstd(y)) if y.size else float("nan")
+    if not np.isfinite(sd) or sd == 0.0 or not np.isfinite(rmse):
+        return float("nan")
+    return float(rmse / sd)
 
 
 def compute_metrics_point_interval(
@@ -464,6 +470,7 @@ def compute_metrics_point_interval(
             "RMSE": rmse,
             "NRMSE_mean": _nrmse_mean(rmse, y),
             "NRMSE_range": _nrmse_range(rmse, y),
+            "NRMSE_sd": _nrmse_sd(rmse, y),
             "Coverage": cover,
             "MeanWidth": width,
             "IntervalProb": interval_prob,
@@ -474,6 +481,9 @@ def compute_metrics_point_interval(
     return pd.DataFrame(out_rows)
 
 
+# ----------------------------
+# CRPS (from draws)
+# ----------------------------
 def _pairwise_abs_mean_fast(x: np.ndarray) -> float:
     x = x[np.isfinite(x)]
     n = x.size
@@ -507,7 +517,7 @@ def standardize_draws(df: pd.DataFrame, label: str, input_units: str = "auto") -
     value_candidates = [
         # mg
         "load_mg", "annual_load_mg", "annualLoad_mg", "AnnualLoad_mg", "annualload_mg",
-        "load_draw_mg", "load_draw_mgg", "y_mg", "draw_value_mg",
+        "load_draw_mg", "y_mg", "draw_value_mg",
         # g
         "load_g", "annual_load_g", "annualLoad_g", "AnnualLoad_g", "load_draw_g", "draw_value_g",
         # kg
@@ -526,9 +536,6 @@ def standardize_draws(df: pd.DataFrame, label: str, input_units: str = "auto") -
     out = out.rename(columns={draw_id_col: "draw_id", value_col: "draw_value_mg"})
     out["draw_value_mg"] = safe_numeric(out["draw_value_mg"])
 
-    # Unit normalization: convert everything to mg internally.
-    # 1) If the column name encodes units, honor that.
-    # 2) Otherwise, use the caller-provided input_units (default: 'auto' = no additional scaling).
     vcol_lower = str(value_col).lower()
     if vcol_lower.endswith("_g") or vcol_lower in {"load_g", "annual_load_g"}:
         out["draw_value_mg"] = out["draw_value_mg"] * 1e3
@@ -537,7 +544,6 @@ def standardize_draws(df: pd.DataFrame, label: str, input_units: str = "auto") -
     elif vcol_lower.endswith("_mg") or vcol_lower in {"load_mg", "annual_load_mg"}:
         pass
     else:
-        # Generic column, units are ambiguous. Use input_units if supplied.
         if input_units is not None and str(input_units).lower().strip() in {"mg", "g", "kg"}:
             out["draw_value_mg"] = units_to_mg(out["draw_value_mg"], str(input_units))
 
@@ -601,6 +607,9 @@ def compute_crps_table(
     return out.loc[:, ["Analyte", "Treatment", "method", "n", "CRPS"]]
 
 
+# ----------------------------
+# Aggregation (Treatment -> ALL) + GoF plots
+# ----------------------------
 def aggregate_overall(metrics_by_group: pd.DataFrame) -> pd.DataFrame:
     if metrics_by_group.empty:
         return pd.DataFrame()
@@ -628,6 +637,7 @@ def aggregate_overall(metrics_by_group: pd.DataFrame) -> pd.DataFrame:
             "RMSE": rmse_overall,
             "NRMSE_mean": wmean(g["NRMSE_mean"].to_numpy(dtype=float), n),
             "NRMSE_range": wmean(g["NRMSE_range"].to_numpy(dtype=float), n),
+            "NRMSE_sd": wmean(g["NRMSE_sd"].to_numpy(dtype=float), n),
             "Coverage": wmean(g["Coverage"].to_numpy(dtype=float), n),
             "MeanWidth": wmean(g["MeanWidth"].to_numpy(dtype=float), n),
             "IntervalProb": g["IntervalProb"].iloc[0] if "IntervalProb" in g.columns else np.nan,
@@ -649,6 +659,7 @@ def aggregate_overall(metrics_by_group: pd.DataFrame) -> pd.DataFrame:
             "RMSE": rmse_overall,
             "NRMSE_mean": wmean(g["NRMSE_mean"].to_numpy(dtype=float), n),
             "NRMSE_range": wmean(g["NRMSE_range"].to_numpy(dtype=float), n),
+            "NRMSE_sd": wmean(g["NRMSE_sd"].to_numpy(dtype=float), n),
             "Coverage": wmean(g["Coverage"].to_numpy(dtype=float), n),
             "MeanWidth": wmean(g["MeanWidth"].to_numpy(dtype=float), n),
             "IntervalProb": g["IntervalProb"].iloc[0] if "IntervalProb" in g.columns else np.nan,
@@ -659,73 +670,169 @@ def aggregate_overall(metrics_by_group: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _prep_by_analyte_all(metrics_by_analyte_overall: pd.DataFrame) -> pd.DataFrame:
+    """Prepare Treatment-aggregated metrics for GoF plots.
+
+    - Keeps ONLY analytes where BOTH Bayes and ML rows exist (Treatment == 'ALL').
+    - Returns a DataFrame sorted by analyte then method (ordering may later be overridden per-plot).
+    """
+    d = metrics_by_analyte_overall.copy()
+    d = d[(d["Treatment"] == "ALL") & (d["Analyte"] != "ALL")].copy()
+
+    # Enforce "shared analytes only" for GoF plots (Bayes and ML must both be present)
+    have_bayes = set(d.loc[d["method"] == "Bayes", "Analyte"].astype(str))
+    have_ml = set(d.loc[d["method"] == "ML", "Analyte"].astype(str))
+    shared = sorted(have_bayes.intersection(have_ml))
+    dropped = sorted((have_bayes.union(have_ml)) - set(shared))
+
+    if dropped:
+        print(f"[INFO] GoF: dropping {len(dropped)} analyte(s) missing Bayes or ML: {', '.join(dropped)}")
+    else:
+        print("[INFO] GoF: all analytes have both Bayes and ML.")
+
+    d = d[d["Analyte"].astype(str).isin(shared)].copy()
+
+    # Default ordering (plots can re-order)
+    order = sorted(d["Analyte"].unique())
+    d["Analyte"] = pd.Categorical(d["Analyte"], categories=order, ordered=True)
+    return d.sort_values(["Analyte", "method"])
+
+
+def plot_paired_bars_by_analyte(d_all: pd.DataFrame, metric: str, outpath: Path, title: str, ylabel: str) -> None:
+    """Paired bar chart (Bayes vs ML) by analyte.
+
+    Rules:
+      - Only analytes where BOTH Bayes and ML are present are eligible (should already be enforced upstream),
+        but we also enforce it here for safety.
+      - Drops analytes where either Bayes or ML is non-finite for the requested metric.
+      - Orders analytes from best (lowest Bayes value) to worst (highest Bayes value).
+    """
+    d = d_all.copy()
+
+    # Pivot to ensure paired values exist
+    pvt = d.pivot_table(index="Analyte", columns="method", values=metric, aggfunc="first")
+    if "Bayes" not in pvt.columns or "ML" not in pvt.columns:
+        print(f"[WARN] GoF plot skipped (missing Bayes/ML columns after pivot): {metric}")
+        return
+
+    # Keep only analytes where BOTH methods have finite values for this metric
+    keep_mask = np.isfinite(pvt["Bayes"].to_numpy(dtype=float)) & np.isfinite(pvt["ML"].to_numpy(dtype=float))
+    pvt_keep = pvt.loc[keep_mask].copy()
+
+    dropped = [str(a) for a in pvt.index if a not in pvt_keep.index]
+    if dropped:
+        print(f"[INFO] GoF: for metric '{metric}', dropping {len(dropped)} analyte(s) with missing/non-finite Bayes or ML values.")
+
+    if pvt_keep.empty:
+        print(f"[WARN] GoF plot skipped (no analytes with paired finite values): {metric}")
+        return
+
+    # Order by Bayes (ascending = best)
+    pvt_keep = pvt_keep.sort_values("Bayes", ascending=True)
+
+    analytes = [str(a) for a in pvt_keep.index.tolist()]
+    bayes_vals = pvt_keep["Bayes"].to_numpy(dtype=float)
+    ml_vals = pvt_keep["ML"].to_numpy(dtype=float)
+
+    x = np.arange(len(analytes), dtype=float)
+    width = 0.38
+
+    fig, ax = plt.subplots(figsize=(max(10, 0.55 * len(analytes)), 5.6))
+    ax.bar(x - width / 2, bayes_vals, width=width, label="Bayes")
+    ax.bar(x + width / 2, ml_vals, width=width, label="ML")
+
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel("Analyte (ranked by Bayes, best → worst)")
+    ax.set_xticks(x)
+    ax.set_xticklabels(analytes, rotation=45, ha="right")
+    ax.grid(True, axis="y", alpha=0.30)
+    ax.legend(frameon=True)
+
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=220, format="jpg")
+    plt.close(fig)
+
+
+def plot_coverage_vs_width(d_all: pd.DataFrame, outpath: Path, nominal: float = 0.95) -> None:
+    d = d_all.copy()
+    d = d[np.isfinite(d["Coverage"].to_numpy(dtype=float)) & np.isfinite(d["MeanWidth"].to_numpy(dtype=float))].copy()
+    if d.empty:
+        print("[WARN] Coverage vs width plot skipped (Coverage/MeanWidth missing or non-finite).")
+        return
+
+    fig, ax = plt.subplots(figsize=(8.4, 5.6))
+
+    for method, g in d.groupby("method"):
+        ax.scatter(g["Coverage"].to_numpy(dtype=float), g["MeanWidth"].to_numpy(dtype=float), label=str(method), s=70)
+        for _, r in g.iterrows():
+            ax.annotate(
+                str(r["Analyte"]),
+                (float(r["Coverage"]), float(r["MeanWidth"])),
+                textcoords="offset points",
+                xytext=(5, 3),
+                fontsize=8,
+                alpha=0.8,
+            )
+
+    ax.axvline(nominal, linestyle="--", linewidth=1.5, color="0.4")
+    ax.set_xlabel("Coverage")
+    ax.set_ylabel("Mean interval width (mg)")
+    ax.set_title("Uncertainty calibration by analyte (Coverage vs MeanWidth)")
+    ax.grid(True, alpha=0.30)
+    ax.set_xlim(0, 1.0)
+    try:
+        ax.set_yscale("log")
+    except Exception:
+        pass
+
+    ax.legend(frameon=True)
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=220, format="jpg")
+    plt.close(fig)
+
+
+# ----------------------------
+# Main
+# ----------------------------
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", type=str, default=None, help="Repo root (optional). Auto-detected if omitted.")
     ap.add_argument("--bayes", type=str, default=None, help="Bayes annual load summary CSV (contains observed+modeled).")
     ap.add_argument("--ml", type=str, default=None, help="ML annual load summary CSV (imputed-inclusive).")
+
     ap.add_argument("--units", type=str, default="g", choices=["mg", "g", "kg"], help="Units for plotting.")
-    ap.add_argument(
-        "--bayes_input_units",
-        type=str,
-        default="g",
-        choices=["mg", "g", "kg"],
-        help="Units stored in the Bayes summary CSV. Internally converted to mg for scoring/plotting."
-    )
-    ap.add_argument(
-        "--ml_input_units",
-        type=str,
-        default="mg",
-        choices=["mg", "g", "kg"],
-        help="Units stored in the ML summary CSV. Internally converted to mg for scoring/plotting."
-    )
-    ap.add_argument(
-        "--bayes_draws_units",
-        type=str,
-        default="auto",
-        choices=["auto", "mg", "g", "kg"],
-        help="Units stored in Bayes draws CSV for CRPS. Use 'auto' to infer from column names."
-    )
-    ap.add_argument(
-        "--ml_draws_units",
-        type=str,
-        default="auto",
-        choices=["auto", "mg", "g", "kg"],
-        help="Units stored in ML draws CSV for CRPS. Use 'auto' to infer from column names."
-    )
+    ap.add_argument("--bayes_input_units", type=str, default="g", choices=["mg", "g", "kg"])
+    ap.add_argument("--ml_input_units", type=str, default="mg", choices=["mg", "g", "kg"])
+
+    ap.add_argument("--bayes_draws_units", type=str, default="auto", choices=["auto", "mg", "g", "kg"])
+    ap.add_argument("--ml_draws_units", type=str, default="auto", choices=["auto", "mg", "g", "kg"])
+
     ap.add_argument("--analytes", type=str, default=None, help="Comma-separated analytes to plot (default: all).")
     ap.add_argument("--shared_only", action="store_true", help="Only plot analytes present in BOTH Bayes and ML.")
-    ap.add_argument("--skip_plots", action="store_true", help="Only compute metrics, do not render plots.")
+    ap.add_argument("--skip_plots", action="store_true", help="Only compute metrics, do not render annual plots.")
+    ap.add_argument("--skip_gof_plots", action="store_true", help="Skip GoF plots by analyte.")
 
-    ap.add_argument(
-        "--tag",
-        type=str,
-        default=None,
-        help="Optional label to version outputs (e.g., v1p7). Creates separate figs/ and metrics/ folders."
-    )
+    ap.add_argument("--tag", type=str, default=None, help="Optional label to version outputs (e.g., v1p7p5).")
 
     ap.add_argument("--skip_crps", action="store_true", help="Skip CRPS even if draws exist.")
-    ap.add_argument("--bayes_draws", type=str, default=None, help="Bayes draws CSV (default: out/annual_load_draws_bayes_v1p6.csv)")
-    ap.add_argument("--ml_draws", type=str, default=None, help="ML draws CSV (default: out/ml_catboost_conformal_loyo/annual_load_draws.csv)")
+    ap.add_argument("--bayes_draws", type=str, default=None, help="Bayes draws CSV (optional override).")
+    ap.add_argument("--ml_draws", type=str, default=None, help="ML draws CSV (optional override).")
     ap.add_argument("--crps_max_draws", type=int, default=None, help="Subsample cap per group for CRPS.")
     ap.add_argument("--crps_seed", type=int, default=1, help="Seed for CRPS subsampling.")
 
     args = ap.parse_args()
 
     repo = Path(args.repo).resolve() if args.repo else find_repo_root(Path.cwd())
-
-    # Clean tag (used for default inputs + versioned outputs)
     tag = None if args.tag is None else re.sub(r"[^A-Za-z0-9_.-]+", "_", args.tag.strip())
 
-    # --- Default input paths ---
-    # Bayes defaults now respect --tag, but fall back to v1p6 if a tag-specific file is missing.
+    # --- inputs ---
     if args.bayes:
         bayes_path = Path(args.bayes).resolve()
     else:
         cand = repo / "out" / f"annual_load_summary_bayes_plus_observed_{tag}.csv" if tag else None
         bayes_path = cand if (cand is not None and cand.exists()) else (repo / "out" / "annual_load_summary_bayes_plus_observed_v1p6.csv")
 
-    # ML is not versioned by tag (unless you explicitly pass --ml)
     ml_path = Path(args.ml).resolve() if args.ml else (repo / "out" / "ml_catboost_conformal_loyo" / "annual_load_summary_imputed.csv")
 
     if not bayes_path.exists():
@@ -733,16 +840,27 @@ def main() -> None:
     if not ml_path.exists():
         raise FileNotFoundError(f"ML file not found: {ml_path}")
 
-    # Versioned outputs (avoid overwriting prior runs)
     figs_dirname = "annual_bayes_vs_ml_faceted_jpg" + (f"_{tag}" if tag else "")
+    gof_figs_dirname = "annual_bayes_vs_ml_faceted_jpg" + (f"_{tag}" if tag else "")
     metrics_dirname = "bayes_vs_ml_metrics" + (f"_{tag}" if tag else "")
 
     figs_outdir = repo / "figs" / figs_dirname
     figs_outdir.mkdir(parents=True, exist_ok=True)
 
+    gof_outdir = repo / "figs" / gof_figs_dirname
+    gof_outdir.mkdir(parents=True, exist_ok=True)
+
     metrics_outdir = repo / "out" / metrics_dirname
     metrics_outdir.mkdir(parents=True, exist_ok=True)
 
+    print(f"[INFO] Repo        : {repo}")
+    print(f"[INFO] Bayes       : {bayes_path}")
+    print(f"[INFO] ML          : {ml_path}")
+    print(f"[INFO] Figs outdir  : {figs_outdir}")
+    print(f"[INFO] GoF outdir   : {gof_outdir}")
+    print(f"[INFO] Metrics dir  : {metrics_outdir}")
+
+    # --- read ---
     bayes_raw = pd.read_csv(bayes_path)
     ml_raw = pd.read_csv(ml_path)
 
@@ -777,16 +895,7 @@ def main() -> None:
     trts_avail = sorted(set(bayes_modeled["Treatment"]).union(set(ml_std["Treatment"])).union(set(observed["Treatment"])))
     use_trts = treatments if all(t in trts_avail for t in treatments) else [t for t in treatments if t in trts_avail] or trts_avail
 
-    print(f"[INFO] Repo        : {repo}")
-    print(f"[INFO] Bayes       : {bayes_path}")
-    print(f"[INFO] ML          : {ml_path}")
-    print(f"[INFO] Figs outdir  : {figs_outdir}")
-    print(f"[INFO] Metrics dir  : {metrics_outdir}")
-    print(f"[INFO] Units       : {args.units}\n[INFO] Bayes input : {args.bayes_input_units} (summary), {args.bayes_draws_units} (draws)\n[INFO] ML input    : {args.ml_input_units} (summary), {args.ml_draws_units} (draws)")
-    print(f"[INFO] Facets      : {use_trts}")
-    print(f"[INFO] Bayes analytes: {len(bayes_an)} | ML analytes: {len(ml_an)} | Shared: {len(shared)}")
-    print(f"[INFO] Analytes to plot: {len(analytes)} {'(shared_only)' if args.shared_only else '(union/default)'}")
-
+    # interval prob (optional metadata)
     bayes_interval_prob = None
     ml_interval_prob = None
     if "interval_prob" in bayes_raw.columns:
@@ -800,10 +909,13 @@ def main() -> None:
         except Exception:
             ml_interval_prob = None
 
+    # --- point + interval metrics ---
     metrics_bayes = compute_metrics_point_interval(observed=observed, pred=bayes_modeled, method_label="Bayes", interval_prob=bayes_interval_prob)
     metrics_ml = compute_metrics_point_interval(observed=observed, pred=ml_std, method_label="ML", interval_prob=ml_interval_prob)
     metrics_by_group = pd.concat([metrics_bayes, metrics_ml], ignore_index=True)
 
+    # --- CRPS (optional) ---
+    have_crps = False
     if not args.skip_crps:
         if args.bayes_draws:
             bayes_draws_path = Path(args.bayes_draws).resolve()
@@ -814,14 +926,9 @@ def main() -> None:
         ml_draws_path = Path(args.ml_draws).resolve() if args.ml_draws else (repo / "out" / "ml_catboost_conformal_loyo" / "annual_load_draws.csv")
 
         if bayes_draws_path.exists() and ml_draws_path.exists():
-            print(f"[INFO] CRPS draws (Bayes): {bayes_draws_path}")
-            print(f"[INFO] CRPS draws (ML)   : {ml_draws_path}")
-
-            print("[INFO] Reading Bayes draws...")
             bayes_draws_raw = pd.read_csv(bayes_draws_path)
             bayes_draws, _ = standardize_draws(bayes_draws_raw, label="Bayes", input_units=args.bayes_draws_units)
 
-            print("[INFO] Reading ML draws...")
             ml_draws_raw = pd.read_csv(ml_draws_path)
             ml_draws, _ = standardize_draws(ml_draws_raw, label="ML", input_units=args.ml_draws_units)
 
@@ -829,75 +936,45 @@ def main() -> None:
             crps_ml = compute_crps_table(observed, ml_draws, "ML", args.crps_max_draws, args.crps_seed, "[INFO]")
             crps = pd.concat([crps_bayes, crps_ml], ignore_index=True)
 
+            # Avoid suffixing problems: drop any placeholder CRPS columns before merge.
+            for c in ["CRPS", "CRPS_norm_mean"]:
+                if c in metrics_by_group.columns:
+                    metrics_by_group = metrics_by_group.drop(columns=[c])
+
             metrics_by_group = metrics_by_group.merge(
                 crps.loc[:, ["Analyte", "Treatment", "method", "CRPS"]],
                 on=["Analyte", "Treatment", "method"],
                 how="left",
-                suffixes=("", "_crps"),
             )
-
-            # If metrics_by_group already had a CRPS column (initialized as NaN),
-            # the merge will create CRPS_crps. Coalesce to a single CRPS column.
-            if "CRPS_crps" in metrics_by_group.columns:
-                metrics_by_group["CRPS"] = metrics_by_group["CRPS_crps"].combine_first(metrics_by_group.get("CRPS"))
-                metrics_by_group = metrics_by_group.drop(columns=["CRPS_crps"])
-            print("[OK] CRPS computed and merged into metrics.")
-
-            # Mean-normalized CRPS uses the mean absolute observed load for each (Analyte, Treatment)
-            # as the scale factor. This enables scale-adjusted comparisons (e.g., across analytes).
-            obs_scale = (
-                observed.loc[:, ["Analyte", "Treatment", "center_mg"]]
-                .assign(mean_abs_obs=lambda d: d["center_mg"].abs())
-                .groupby(["Analyte", "Treatment"], dropna=False)["mean_abs_obs"]
-                .mean()
-                .reset_index()
-            )
-
-            metrics_by_group = metrics_by_group.merge(
-                obs_scale,
-                on=["Analyte", "Treatment"],
-                how="left",
-            )
-
-            if "CRPS" in metrics_by_group.columns:
-                metrics_by_group["CRPS_norm_mean"] = np.where(
-                np.isfinite(metrics_by_group["CRPS"]) & np.isfinite(metrics_by_group["mean_abs_obs"]) & (metrics_by_group["mean_abs_obs"] > 0),
-                metrics_by_group["CRPS"] / metrics_by_group["mean_abs_obs"],
-                np.nan,
-            )
-            else:
-                metrics_by_group["CRPS_norm_mean"] = np.nan
+            have_crps = True
         else:
-            print("[WARN] CRPS skipped because draws file(s) missing:")
+            print("[WARN] CRPS skipped because draws file(s) missing.")
             if not bayes_draws_path.exists():
                 print(f"       - missing Bayes draws: {bayes_draws_path}")
             if not ml_draws_path.exists():
                 print(f"       - missing ML draws   : {ml_draws_path}")
-    else:
-        print("[INFO] CRPS disabled via --skip_crps")
-    # Ensure mean-normalized CRPS column exists even when CRPS was skipped/missing.
-    if "mean_abs_obs" not in metrics_by_group.columns:
-        obs_scale = (
-            observed.loc[:, ["Analyte", "Treatment", "center_mg"]]
-            .assign(mean_abs_obs=lambda d: d["center_mg"].abs())
-            .groupby(["Analyte", "Treatment"], dropna=False)["mean_abs_obs"]
-            .mean()
-            .reset_index()
-        )
-        metrics_by_group = metrics_by_group.merge(
-            obs_scale, on=["Analyte", "Treatment"], how="left"
-        )
 
-    if "CRPS_norm_mean" not in metrics_by_group.columns:
-        if "CRPS" in metrics_by_group.columns:
-            metrics_by_group["CRPS_norm_mean"] = np.where(
+    # Scale for CRPS normalization (always compute, cheap)
+    obs_scale = (
+        observed.loc[:, ["Analyte", "Treatment", "center_mg"]]
+        .assign(mean_abs_obs=lambda d: d["center_mg"].abs())
+        .groupby(["Analyte", "Treatment"], dropna=False)["mean_abs_obs"]
+        .mean()
+        .reset_index()
+    )
+    metrics_by_group = metrics_by_group.merge(obs_scale, on=["Analyte", "Treatment"], how="left")
+
+    if have_crps and "CRPS" in metrics_by_group.columns:
+        metrics_by_group["CRPS_norm_mean"] = np.where(
             np.isfinite(metrics_by_group["CRPS"]) & np.isfinite(metrics_by_group["mean_abs_obs"]) & (metrics_by_group["mean_abs_obs"] > 0),
             metrics_by_group["CRPS"] / metrics_by_group["mean_abs_obs"],
             np.nan,
         )
-        else:
-            metrics_by_group["CRPS_norm_mean"] = np.nan
+    else:
+        metrics_by_group["CRPS"] = np.nan
+        metrics_by_group["CRPS_norm_mean"] = np.nan
 
+    # --- aggregate + write metrics ---
     metrics_by_group = metrics_by_group.sort_values(["Analyte", "Treatment", "method"])
     metrics_by_analyte_overall = aggregate_overall(metrics_by_group)
     metrics_overall = metrics_by_analyte_overall.loc[metrics_by_analyte_overall["Analyte"].eq("ALL")].copy()
@@ -912,13 +989,49 @@ def main() -> None:
     print(f"     - {metrics_outdir / 'metrics_by_analyte_overall.csv'}")
     print(f"     - {metrics_outdir / 'metrics_overall.csv'}")
 
+    # --- annual plots ---
     if not args.skip_plots:
         for an in analytes:
             safe_an = re.sub(r"[^A-Za-z0-9]+", "_", an.strip().lower()).strip("_")
             out_jpg = figs_outdir / f"annual_load_{safe_an}_bayes_vs_ml_faceted.jpg"
-            plot_analyte_faceted(an, bayes_modeled, ml_std, observed, out_jpg, units=args.units, treatments=use_trts[:3] if len(use_trts) >= 3 else use_trts)
+            plot_analyte_faceted(
+                an,
+                bayes_modeled,
+                ml_std,
+                observed,
+                out_jpg,
+                units=args.units,
+                treatments=use_trts[:3] if len(use_trts) >= 3 else use_trts,
+            )
+        print(f"[OK] Wrote {len(analytes)} annual JPG figures to: {figs_outdir}")
 
-        print(f"[OK] Wrote {len(analytes)} JPG figures to: {figs_outdir}")
+    # --- GoF plots ---
+    if not args.skip_gof_plots:
+        d_all = _prep_by_analyte_all(metrics_by_analyte_overall)
+
+        plot_paired_bars_by_analyte(
+            d_all=d_all,
+            metric="NRMSE_mean",
+            outpath=gof_outdir / "gof_nrmse_mean_by_analyte.jpg",
+            title="NRMSE (normalized by mean |Observed|) by analyte",
+            ylabel="RMSE / mean(|Observed|)",
+        )
+
+        plot_paired_bars_by_analyte(
+            d_all=d_all,
+            metric="CRPS_norm_mean",
+            outpath=gof_outdir / "gof_crps_norm_mean_by_analyte.jpg",
+            title="CRPS (mean-normalized) by analyte",
+            ylabel="CRPS / mean(|Observed|)",
+        )
+
+        plot_coverage_vs_width(
+            d_all=d_all,
+            outpath=gof_outdir / "gof_coverage_vs_width.jpg",
+            nominal=0.95,
+        )
+
+        print(f"[OK] Wrote GoF JPG figures to: {gof_outdir}")
 
 
 if __name__ == "__main__":
