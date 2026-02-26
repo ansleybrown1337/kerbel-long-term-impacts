@@ -4258,7 +4258,8 @@ annual_draws <- export_annual_draws(
   seed = 1
 )
 
-export_dir <- file.path(getwd(), "out")
+# Save to repo-level out folder (one level up from /code)
+export_dir <- "../out"
 dir.create(export_dir, showWarnings = FALSE, recursive = TRUE)
 
 draws_file <- file.path(
@@ -4267,5 +4268,6 @@ draws_file <- file.path(
 )
 
 readr::write_csv(annual_draws, draws_file)
+message("[OK] Wrote: ", draws_file)
 
 ```
