@@ -54,3 +54,4 @@ out/*.rds
 # big ML files
 out/ml_catboost_conformal_loyo/imputed_row_draws.csv
 /code/out_cmdstanr
+.venv/
