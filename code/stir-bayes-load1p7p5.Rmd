@@ -99,6 +99,7 @@ wq_clean <- wq_clean %>%
     Analyte      = if ("Analyte" %in% names(.)) factor(Analyte) else Analyte,
     analyte_abbr = if ("analyte_abbr" %in% names(.)) factor(analyte_abbr, levels = abbr_levels) else analyte_abbr,
     Crop         = if ("Crop" %in% names(.)) factor(Crop) else Crop,
+    previous_crop= if ("previous_crop" %in% names(.)) factor(Crop) else Crop,
 
     # Add original row number for tracking
     orig_row = dplyr::row_number()

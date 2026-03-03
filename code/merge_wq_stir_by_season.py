@@ -313,7 +313,27 @@ def attach_season_windows(dfw: pd.DataFrame, dfc: pd.DataFrame, debug: bool = Fa
         dfc.loc[swapped, "PlantDate"] = dfc.loc[swapped, "HarvestDate"]
         dfc.loc[swapped, "HarvestDate"] = tmp
 
-    # -----------------------------
+    
+    # ------------------------------------------------------------
+    # Previous crop (rotation) feature
+    # ------------------------------------------------------------
+    # previous_crop is defined at the season level (crop-records table),
+    # within each Treatment, as the prior season's Crop.
+    #
+    # Assumption: the crop prior to the first observed season (e.g., 2011)
+    # was 'grain corn' in 2010, so the first season's previous_crop is set
+    # to 'grain corn' (per Treatment).
+    #
+    # This is computed here (on dfc) so it naturally propagates to all WQ
+    # rows within each season after the join.
+    if "Crop" in dfc.columns and "SeasonYear" in dfc.columns and "Treatment" in dfc.columns:
+        dfc["Crop"] = dfc["Crop"].astype("string")
+        dfc = dfc.sort_values(["Treatment", "SeasonYear", "PlantDate"], kind="mergesort")
+        dfc["previous_crop"] = dfc.groupby("Treatment", dropna=False)["Crop"].shift(1)
+        # Fill the first season per Treatment with the known prior crop assumption
+        dfc["previous_crop"] = dfc["previous_crop"].fillna("grain corn")
+
+# -----------------------------
     # Attach windows to WQ by join
     # -----------------------------
     dfw = dfw.reset_index(drop=False).rename(columns={"index": "_wq_idx"})

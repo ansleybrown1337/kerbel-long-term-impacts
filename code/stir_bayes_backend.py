@@ -114,12 +114,59 @@ def _to_bool_best_effort(s: pd.Series) -> pd.Series:
 
 
 def clean_wq_stir(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cleaning + feature engineering for the Bayes STIR pipeline.
+
+    Backwards compatible behavior:
+      - Legacy numeric columns (Result_mg_L, Inflow_Result_mg_L) are preserved exactly as before,
+        including any nondetect-to-zero mapping that _token_to_numeric() performs.
+      - Existing z-score columns (cout_z, cin_z, stir_season_z, stir_cumall_z, volume_z) are preserved.
+
+    New outputs (for future left-censoring / LOD modeling):
+      - Result_is_nd (0/1) and Result_mg_L_cens (Float64 with NDs as NA)
+      - Inflow_is_nd (0/1) and Inflow_Result_mg_L_cens (Float64 with NDs as NA)
+      - Result_lod_mg_L and Inflow_lod_mg_L (RL preferred, else MDL)
+
+    New outputs (to move standardization out of Stan):
+      - IRR_z: global z-score of Irrigation
+      - inflow_volume_z: global z-score of Inflow_Volume
+    """
     out = df.copy()
 
     # --- STEP 2A: Handle WQ flags ("u","U","NA","NA.IRR") ---
     for col in ["Result_mg_L", "Inflow_Result_mg_L"]:
         if col in out.columns:
             out[col] = _token_series(out[col])
+
+    # --- STEP 2A.1: Preserve ND information for censoring (backwards compatible) ---
+    # We DO NOT modify legacy numeric columns here. We only create parallel *_cens columns and flags.
+    def _nd_mask_from_tokens(s: pd.Series) -> pd.Series:
+        # Match typical lab "U" qualifier. Adjust here if your token grammar changes.
+        ss = s.astype("string").str.strip()
+        return ss.str.upper().str.startswith("U")
+
+    # Outflow ND flag + LOD
+    if "Result_mg_L" in out.columns:
+        tok = out["Result_mg_L"].astype("string").str.strip()
+        nd_mask = _nd_mask_from_tokens(tok)
+        out["Result_is_nd"] = nd_mask.fillna(False).astype(int)
+        out["Result_mg_L_cens"] = pd.Series(pd.NA, index=out.index, dtype="Float64")
+
+        # LOD: prefer RL, then MDL (both already in mg/L in the cleaned table)
+        rl = pd.to_numeric(out["RL_mg_L"], errors="coerce") if "RL_mg_L" in out.columns else pd.Series(pd.NA, index=out.index)
+        mdl = pd.to_numeric(out["MDL_mg_L"], errors="coerce") if "MDL_mg_L" in out.columns else pd.Series(pd.NA, index=out.index)
+        out["Result_lod_mg_L"] = rl.combine_first(mdl).astype("Float64")
+
+    # Inflow ND flag + LOD
+    if "Inflow_Result_mg_L" in out.columns:
+        tok = out["Inflow_Result_mg_L"].astype("string").str.strip()
+        nd_mask = _nd_mask_from_tokens(tok)
+        out["Inflow_is_nd"] = nd_mask.fillna(False).astype(int)
+        out["Inflow_Result_mg_L_cens"] = pd.Series(pd.NA, index=out.index, dtype="Float64")
+
+        rl = pd.to_numeric(out["RL_mg_L"], errors="coerce") if "RL_mg_L" in out.columns else pd.Series(pd.NA, index=out.index)
+        mdl = pd.to_numeric(out["MDL_mg_L"], errors="coerce") if "MDL_mg_L" in out.columns else pd.Series(pd.NA, index=out.index)
+        out["Inflow_lod_mg_L"] = rl.combine_first(mdl).astype("Float64")
 
     # Drop no-runoff cases entirely: Result_mg_L == "NA.IRR"
     if "Result_mg_L" in out.columns:
@@ -128,18 +175,26 @@ def clean_wq_stir(df: pd.DataFrame) -> pd.DataFrame:
         drop_mask = rm.str.upper().eq("NA.IRR")
         out = out.loc[~drop_mask].copy()
 
-    # Apply token -> numeric conversions
+    # Apply token -> numeric conversions (legacy behavior preserved)
     if "Result_mg_L" in out.columns:
         out["Result_mg_L"] = _token_to_numeric(out["Result_mg_L"])
+        # Fill detected values into cens column (NDs remain NA)
+        if "Result_mg_L_cens" in out.columns and "Result_is_nd" in out.columns:
+            det = out["Result_is_nd"].fillna(0).astype(int).eq(0)
+            out.loc[det, "Result_mg_L_cens"] = pd.to_numeric(out.loc[det, "Result_mg_L"], errors="coerce").astype("Float64")
+
     if "Inflow_Result_mg_L" in out.columns:
         out["Inflow_Result_mg_L"] = _token_to_numeric(out["Inflow_Result_mg_L"])
+        if "Inflow_Result_mg_L_cens" in out.columns and "Inflow_is_nd" in out.columns:
+            det = out["Inflow_is_nd"].fillna(0).astype(int).eq(0)
+            out.loc[det, "Inflow_Result_mg_L_cens"] = pd.to_numeric(out.loc[det, "Inflow_Result_mg_L"], errors="coerce").astype("Float64")
 
     # --- STEP 2B: Type enforcement (best-effort, only if columns exist) ---
     if "Treatment" in out.columns:
         trt = out["Treatment"].astype("string").str.strip().str.upper()
         # Keep only expected levels; unknown -> NA
-        trt = trt.where(trt.isin(["CT","MT","ST"]))
-        out["Treatment"] = pd.Categorical(trt, categories=["CT","MT","ST"], ordered=True)
+        trt = trt.where(trt.isin(["CT", "MT", "ST"]))
+        out["Treatment"] = pd.Categorical(trt, categories=["CT", "MT", "ST"], ordered=True)
 
     for c in ["Rep", "Analyte", "Irrigation", "InflowOutflow", "Crop"]:
         if c in out.columns:
@@ -152,7 +207,8 @@ def clean_wq_stir(df: pd.DataFrame) -> pd.DataFrame:
     if "SeasonYear" in out.columns:
         out["SeasonYear"] = pd.to_numeric(out["SeasonYear"], errors="coerce")
 
-    for c in ["Season_STIR_toDate", "CumAll_STIR_toDate", "Volume", "Inflow_Volume"]:
+    # Numeric columns (include Irrigation because we compute IRR_z here)
+    for c in ["Season_STIR_toDate", "CumAll_STIR_toDate", "Volume", "Inflow_Volume", "Irrigation"]:
         if c in out.columns:
             out[c] = pd.to_numeric(out[c], errors="coerce")
 
@@ -180,6 +236,13 @@ def clean_wq_stir(df: pd.DataFrame) -> pd.DataFrame:
     if "Volume" in out.columns:
         out["volume_z"] = _zscore(out["Volume"])
 
+    # NEW: global irrigation z-score (replaces Stan transformed-data IRR_z)
+    if "Irrigation" in out.columns:
+        out["IRR_z"] = _zscore(out["Irrigation"])
+
+    # NEW: global inflow volume z-score (candidate covariate for future model)
+    if "Inflow_Volume" in out.columns:
+        out["inflow_volume_z"] = _zscore(out["Inflow_Volume"])
 
     # --- Residue: percent cover to proportion for Beta modeling ---
     # Input expected on 0–100 scale as Residue_PercentCover.
@@ -189,9 +252,8 @@ def clean_wq_stir(df: pd.DataFrame) -> pd.DataFrame:
         out["residue_prop"] = _clamp01(rp)
         # 1 if residue was observed in the input table, else 0
         out["residue_obs"] = out["Residue_PercentCover"].notna().astype(int)
+
     return out
-
-
 def main() -> None:
     ap = argparse.ArgumentParser(description="Bayes-specific cleaning for Kerbel STIR × WQ merged data.")
     ap.add_argument("--in", dest="src", default="out/pipeline_csvs/wq_with_stir_by_season.csv",
