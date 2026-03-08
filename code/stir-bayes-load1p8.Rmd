@@ -35,7 +35,7 @@ source("./stir-bayes-backend.R")
 model_version <- if (exists("model_version")) model_version else "v1p8"
 ```
 
-# Model 1.7 (Concentration + Volume Joint Model with Crop and Residue Effects with latent true processes)
+# Model 1.8 
 
 * Joint Bayesian model for **OUT concentration and OUT volume** fit simultaneously
 * Model uses multivariate normal (MVN) hierarchical structure for analyte-specific parameters
@@ -754,13 +754,14 @@ fit <- mod$sample(
   data            = stan_dat_cmd,
   chains          = 4,
   parallel_chains = 4,
-  iter_warmup     = 3000,
+  iter_warmup     = 2000,
   iter_sampling   = 1000,
   refresh         = 100,
   show_messages   = TRUE,
   output_dir      = "out_cmdstanr",
-  save_warmup     = TRUE,
-  adapt_delta     = 0.98,
+  # save_warmup     = TRUE,
+  adapt_delta     = 0.95,
+  init            = 0.1,
   max_treedepth   = 15
 )
 
@@ -2944,7 +2945,6 @@ ggsave(
 )
 
 ```
-
 
 
 ```{r year effects plot}
