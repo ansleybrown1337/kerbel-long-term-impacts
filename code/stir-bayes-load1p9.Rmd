@@ -32,10 +32,98 @@ library(purrr)
 ```{r setup, include=FALSE}
 # If you rely on helper functions (e.g., make_year_dist_mat), source them here:
 source("./stir-bayes-backend.R")
-model_version <- "v1p8"
+model_version <- "v1p9"
 ```
 
-# Model 1.8 
+```{r notification-helper, include=FALSE}
+# Optional email notification after long sampling runs.
+# To enable, define these environment variables before knitting/running:
+#   STAN_NOTIFY_TO
+#   STAN_NOTIFY_FROM
+#   STAN_NOTIFY_USER
+#   STAN_NOTIFY_PASS
+#   STAN_NOTIFY_HOST   (for example: smtp.gmail.com)
+#   STAN_NOTIFY_PORT   (for example: 465 or 587)
+# This function is safe to leave in place when no SMTP credentials are set.
+
+notify_sampling_done <- function(subject = NULL, body = NULL) {
+
+  required <- c(
+    "STAN_NOTIFY_TO",
+    "STAN_NOTIFY_FROM",
+    "STAN_NOTIFY_USER",
+    "STAN_NOTIFY_PASS",
+    "STAN_NOTIFY_HOST",
+    "STAN_NOTIFY_PORT"
+  )
+
+  vals <- Sys.getenv(required, unset = "")
+  names(vals) <- required
+
+  if (any(vals == "")) {
+    missing_vars <- names(vals)[vals == ""]
+    message(
+      "Sampling-finished email skipped: missing environment variable(s): ",
+      paste(missing_vars, collapse = ", ")
+    )
+    return(invisible(FALSE))
+  }
+
+  if (!requireNamespace("blastula", quietly = TRUE)) {
+    message("Sampling-finished email skipped: install.packages('blastula') is required.")
+    return(invisible(FALSE))
+  }
+
+  smtp_port <- suppressWarnings(as.integer(Sys.getenv("STAN_NOTIFY_PORT")))
+  if (is.na(smtp_port)) {
+    message("Sampling-finished email skipped: STAN_NOTIFY_PORT is not a valid integer.")
+    return(invisible(FALSE))
+  }
+
+  use_ssl <- identical(smtp_port, 465L)
+
+  if (is.null(subject)) {
+    subject <- sprintf("Stan sampling finished: %s", model_version)
+  }
+
+  if (is.null(body)) {
+    body <- paste0(
+      "Your CmdStan fit finished sampling.\n\n",
+      "Model version: ", model_version, "\n",
+      "Time finished: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
+    )
+  }
+
+  email_obj <- blastula::compose_email(
+    body = blastula::md(body)
+  )
+
+  tryCatch({
+    blastula::smtp_send(
+      email = email_obj,
+      from = Sys.getenv("STAN_NOTIFY_FROM"),
+      to = Sys.getenv("STAN_NOTIFY_TO"),
+      subject = subject,
+      credentials = blastula::creds_envvar(
+        user = Sys.getenv("STAN_NOTIFY_USER"),
+        pass_envvar = "STAN_NOTIFY_PASS",
+        host = Sys.getenv("STAN_NOTIFY_HOST"),
+        port = smtp_port,
+        use_ssl = use_ssl
+      )
+    )
+
+    message("Sampling-finished email sent.")
+    invisible(TRUE)
+
+  }, error = function(e) {
+    message("Sampling-finished email failed: ", conditionMessage(e))
+    invisible(FALSE)
+  })
+}
+```
+
+# Model 1.9 
 
 * Joint Bayesian model for **OUT concentration and OUT volume** fit simultaneously
 * Model uses multivariate normal (MVN) hierarchical structure for analyte-specific parameters
@@ -51,6 +139,7 @@ model_version <- "v1p8"
 * v1.5 only has cmdstan model, no rethinking/ulam version
 * v1.6 adds crop type effects and residue cover at planting effects
 * v1.7 promotes residue, volume, and inflow concentration to latent processes with full Bayesian imputation and joint propagation. Also uses new python wq_cleaned.csv, which has been tested to be identical to previous versions.
+* v1.9 keeps the v1p9 joint structure but moves OUT concentration and OUT volume onto a log scale before standardization, so all back-transformed predictions remain strictly positive.
 
 
 # 1. Load and lightly type-enforce the Bayes-clean dataset (from Python pipeline)
@@ -171,11 +260,39 @@ na_table
 
 ```
 
+```{r positive-support-transforms}
+# ------------------------------------------------------------
+# v1p9 positive-support outcome transform
+# ------------------------------------------------------------
+# We keep the joint Gaussian model in Stan, but we apply it to
+# z-scored LOG outcomes instead of z-scored raw outcomes.
+#
+# This means:
+#   C_model scale   = z(log(Result_mg_L)) by analyte
+#   VOL_model scale = z(log(Volume_L)) globally
+#
+# Back-transformation later uses exp(...), which guarantees
+# strictly positive concentration and volume predictions.
+# ------------------------------------------------------------
+
+eps_outcome <- 1e-8
+
+d_mod <- d_mod %>%
+  dplyr::mutate(
+    Result_mg_L_num = suppressWarnings(as.numeric(Result_mg_L)),
+    Volume_num      = suppressWarnings(as.numeric(Volume)),
+    RL_mg_L_num     = suppressWarnings(as.numeric(RL_mg_L)),
+    Result_mg_L_pos = dplyr::if_else(is.na(Result_mg_L_num), NA_real_, pmax(Result_mg_L_num, eps_outcome)),
+    Volume_pos      = dplyr::if_else(is.na(Volume_num),      NA_real_, pmax(Volume_num,      eps_outcome)),
+    RL_mg_L_pos     = dplyr::if_else(is.na(RL_mg_L_num),     NA_real_, pmax(RL_mg_L_num,     eps_outcome))
+  )
+```
+
 Create analyte index and build data list for ulam:
 
 ```{r make-stan-dat}
 # 2. Build indices and standardized predictors -----------------------------
-# DROP-IN replacement (v1p8, corrected):
+# DROP-IN replacement (v1p9, corrected):
 # - Ensures censored rows are NOT treated as missing in C by constructing C_vec (dummy-filled on censored rows)
 # - Removes PrevCr_n from stan_dat (Stan uses Cr_n for both Cr and PrevCr indexing)
 # - Adds explicit guardrails that catch the main failure modes before you run Stan
@@ -193,12 +310,12 @@ irr_z_candidates <- c("irr_z","IRR_z","irr_num_z")
 irr_z_col <- irr_z_candidates[irr_z_candidates %in% names(d_mod)][1]
 if (is.na(irr_z_col)) {
   stop("No irrigation z-score column found. Expected one of: ", paste(irr_z_candidates, collapse = ", "),
-       ". (Pipeline should provide IRR_z in v1p8 workflow.)")
+       ". (Pipeline should provide IRR_z in v1p9 workflow.)")
 }
 
 # Censoring columns (pipeline-provided)
 if (!("Result_is_nd" %in% names(d_mod))) {
-  stop("Missing 'Result_is_nd' column (0/1). v1p8 expects pipeline to provide this.")
+  stop("Missing 'Result_is_nd' column (0/1). v1p9 expects pipeline to provide this.")
 }
 lod_candidates <- c("Result_lod_mg_L","RL_mg_L")
 lod_col <- lod_candidates[lod_candidates %in% names(d_mod)][1]
@@ -269,6 +386,17 @@ d_mod <- d_mod %>%
     )
   )
 
+# Global z-score for LOG volume (positive-support outcome scale for v1p9)
+V_mean_log <- mean(log(d_mod$Volume_pos), na.rm = TRUE)
+V_sd_log   <- stats::sd(log(d_mod$Volume_pos), na.rm = TRUE)
+if (!is.finite(V_sd_log) || V_sd_log == 0) V_sd_log <- 1
+
+d_mod <- d_mod %>%
+  dplyr::mutate(
+    volume_log = dplyr::if_else(is.finite(Volume_pos), log(Volume_pos), NA_real_),
+    volume_z   = (volume_log - V_mean_log) / V_sd_log
+  )
+
 # Drop storm rows (no ordinal irrigation meaning)
 d_mod <- d_mod %>%
   dplyr::filter(!is.na(irr_num))
@@ -289,55 +417,50 @@ d_mod <- d_mod %>%
     )
   )
 
-# ---- Censoring vectors for Stan (C on cout_z scale) ----
-C_cens <- as.integer(d_mod$Result_is_nd == 1)
-lod_mg_L <- as.numeric(d_mod[[lod_col]])
+# ---- Censoring vectors for Stan (C on z-scored LOG concentration scale) ----
+C_cens <- as.integer(d_mod$Result_is_nd %in% 1)
 
-# Convert mg/L LOD -> cout_z scale by analyte-specific linear mapping:
-#   cout_z ≈ alpha_a + beta_a * log(Result_mg_L)  (fit using non-censored observations)
-C_cens_limit <- rep(NA_real_, nrow(d_mod))
+# Build analyte-specific log-scale standardization from detected observations only.
+# If an analyte is too sparse after removing ND rows, fall back to all finite rows.
+c_scale_tbl <- d_mod %>%
+  dplyr::group_by(A) %>%
+  dplyr::group_modify(~{
+    x_det <- log(.x$Result_mg_L_pos[(!(.x$Result_is_nd %in% 1)) & is.finite(.x$Result_mg_L_pos)])
+    if (length(x_det) >= 2 && stats::sd(x_det, na.rm = TRUE) > 0) {
+      tibble::tibble(c_mean_log = mean(x_det, na.rm = TRUE),
+                     c_sd_log   = stats::sd(x_det, na.rm = TRUE))
+    } else {
+      x_all <- log(.x$Result_mg_L_pos[is.finite(.x$Result_mg_L_pos)])
+      if (length(x_all) < 2 || !is.finite(stats::sd(x_all, na.rm = TRUE)) || stats::sd(x_all, na.rm = TRUE) == 0) {
+        tibble::tibble(c_mean_log = 0, c_sd_log = 1)
+      } else {
+        tibble::tibble(c_mean_log = mean(x_all, na.rm = TRUE),
+                       c_sd_log   = stats::sd(x_all, na.rm = TRUE))
+      }
+    }
+  }) %>%
+  dplyr::ungroup()
 
-for (a in sort(unique(d_mod$A))) {
-  idx_a <- which(d_mod$A == a)
-
-  fit_idx <- idx_a[
-    !is.na(d_mod$cout_z[idx_a]) &
-      !is.na(d_mod$Result_mg_L[idx_a]) &
-      (d_mod$Result_is_nd[idx_a] == 0) &
-      (d_mod$Result_mg_L[idx_a] > 0) &
-      !is.na(lod_mg_L[idx_a]) & (lod_mg_L[idx_a] > 0)
-  ]
-
-  if (length(fit_idx) >= 20) {
-    x <- log(d_mod$Result_mg_L[fit_idx])
-    y <- d_mod$cout_z[fit_idx]
-    co <- coef(lm(y ~ x))
-    alpha <- unname(co[1]); beta <- unname(co[2])
-    C_cens_limit[idx_a] <- alpha + beta * log(lod_mg_L[idx_a])
-  }
-}
-
-# Fallback for analytes with too few points for a stable mapping
-if (anyNA(C_cens_limit)) {
-  fit_all <- which(
-    !is.na(d_mod$cout_z) &
-      !is.na(d_mod$Result_mg_L) &
-      (d_mod$Result_is_nd == 0) &
-      (d_mod$Result_mg_L > 0) &
-      !is.na(lod_mg_L) & (lod_mg_L > 0)
+d_mod <- d_mod %>%
+  dplyr::left_join(c_scale_tbl, by = "A") %>%
+  dplyr::mutate(
+    conc_log = dplyr::if_else(C_cens == 0L & is.finite(Result_mg_L_pos), log(Result_mg_L_pos), NA_real_),
+    cout_z   = (conc_log - c_mean_log) / c_sd_log
   )
-  if (length(fit_all) < 50) {
-    stop("Not enough non-censored observations to infer cout_z <-> log(mg/L) mapping for censoring limits.")
-  }
-  co_all <- coef(lm(d_mod$cout_z[fit_all] ~ log(d_mod$Result_mg_L[fit_all])))
-  miss <- which(is.na(C_cens_limit))
-  C_cens_limit[miss] <- unname(co_all[1]) + unname(co_all[2]) * log(lod_mg_L[miss])
+
+# Reporting limits are transformed directly onto the same z-scored LOG scale.
+C_cens_limit <- rep(NA_real_, nrow(d_mod))
+rl_ok <- is.finite(d_mod$RL_mg_L_pos) & is.finite(d_mod$c_mean_log) & is.finite(d_mod$c_sd_log) & d_mod$c_sd_log > 0
+C_cens_limit[rl_ok] <- (log(d_mod$RL_mg_L_pos[rl_ok]) - d_mod$c_mean_log[rl_ok]) / d_mod$c_sd_log[rl_ok]
+
+# Fallback for any censored row that still lacks a limit
+if (any(C_cens == 1L & !is.finite(C_cens_limit))) {
+  fallback_rl <- suppressWarnings(min(d_mod$RL_mg_L_pos[d_mod$RL_mg_L_pos > 0], na.rm = TRUE))
+  if (!is.finite(fallback_rl)) fallback_rl <- eps_outcome
+  idx_fix <- which(C_cens == 1L & !is.finite(C_cens_limit))
+  C_cens_limit[idx_fix] <- (log(fallback_rl) - d_mod$c_mean_log[idx_fix]) / d_mod$c_sd_log[idx_fix]
 }
 
-# Safety: Stan only uses limit when C_cens==1, but avoid NA/Inf anyway
-C_cens_limit[!is.finite(C_cens_limit)] <- 0
-
-# ---- Critical fix: construct C_vec so censored rows are NOT treated as missing ----
 # If cout_z is NA on ND rows, we provide a dummy finite value (ignored by Stan when C_cens==1).
 C_vec <- d_mod$cout_z
 C_vec[C_cens == 1 & is.na(C_vec)] <- 0
@@ -439,8 +562,18 @@ stopifnot(length(stan_dat$C_cens_limit) == stan_dat$N)
 stopifnot(all(stan_dat$C_cens %in% c(0L, 1L)))
 
 # Extra guardrails that specifically protect censoring correctness
-if (any(C_cens == 1 & is.na(d_mod$cout_z))) {
-  message("Note: cout_z is NA for some censored rows; using dummy C=0 for those rows so censoring likelihood is applied.")
+if (any(C_cens == 1L & is.na(d_mod$cout_z))) {
+  message(
+    "Some censored rows have NA cout_z, which is expected under left-censoring. ",
+    "Dummy C values are inserted only for Stan input safety; the censored likelihood uses C_cens_limit, not the dummy C value."
+  )
+}
+
+if (any(C_cens == 0L & is.na(d_mod$cout_z))) {
+  message(
+    "Some non-censored rows have NA cout_z. These are treated as true missing concentrations ",
+    "and excluded from the concentration observation likelihood via is_C_miss."
+  )
 }
 stopifnot(all(is.finite(stan_dat$C[C_cens == 1])))
 stopifnot(all(is.finite(stan_dat$C_cens_limit[C_cens == 1])))
@@ -480,7 +613,7 @@ for (nm in vec_names) {
 
 ```{r cmdstan model fit}
 # ======================================================================
-# Fit cmdstan model (v1p8) with censoring + missingness (CIN/VIN/VOL/RES)
+# Fit cmdstan model (v1p9) with censoring + missingness (CIN/VIN/VOL/RES)
 # CLEAN drop-in replacement for your "Fit cmdstan model" block
 #
 # Key points:
@@ -491,8 +624,8 @@ for (nm in vec_names) {
 #      using an analyte-specific mapping: cout_z ≈ alpha_a + beta_a*log(mg/L).
 # ======================================================================
 
-# Force recompile to ensure v1p8 is what runs
-mod <- cmdstan_model("m_stir_mogp_v1p8.stan", force_recompile = TRUE)
+# Force recompile to ensure v1p9 is what runs
+mod <- cmdstan_model("m_stir_mogp_v1p9.stan", force_recompile = TRUE)
 
 # Start from base stan_dat you built earlier
 stan_dat_cmd <- stan_dat
@@ -538,7 +671,7 @@ stopifnot(
 # 2) Censoring: ND flag + RL/LOD, convert RL to cout_z scale
 # -------------------------------------------------------------------
 if (!("Result_is_nd" %in% names(d_mod))) {
-  stop("Expected pipeline column 'Result_is_nd' (0/1) for v1p8 censoring.")
+  stop("Expected pipeline column 'Result_is_nd' (0/1) for v1p9 censoring.")
 }
 C_cens <- as.integer(d_mod$Result_is_nd == 1)
 
@@ -769,8 +902,19 @@ fit <- mod$sample(
 
 
 ```{r cmdstan model fit}
-saveRDS(fit, file = "./out_cmdstanr/fit_mogp_v1p8.rds")
-# fit <- readRDS("./out_cmdstanr/fit_mogp_v1p8.rds")
+saveRDS(fit, file = "./out_cmdstanr/fit_mogp_v1p9.rds")
+# fit <- readRDS("./out_cmdstanr/fit_mogp_v1p9.rds")
+
+fit_rds_path <- "./out_cmdstanr/fit_mogp_v1p9.rds"
+notify_sampling_done(
+  subject = sprintf("Stan sampling finished: %s", model_version),
+  body = paste0(
+    "Your CmdStan fit finished sampling.\n\n",
+    "Model version: ", model_version, "\n",
+    "Saved fit: ", normalizePath(fit_rds_path, winslash = "/", mustWork = FALSE), "\n",
+    "Time finished: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
+  )
+)
 
 ```
 
@@ -781,7 +925,7 @@ saveRDS(fit, file = "./out_cmdstanr/fit_mogp_v1p8.rds")
 
 ```{r}
 # ============================================================
-# v1p8 DIAGNOSTICS: key (non-latent) research parameters
+# v1p9 DIAGNOSTICS: key (non-latent) research parameters
 # - Produces a clean table of R-hat + ESS (bulk/tail)
 # - Uses robust regex-based inclusion/exclusion so it won't
 #   break when parameter names change (e.g., gamma_CR removed)
@@ -797,7 +941,7 @@ saveRDS(fit, file = "./out_cmdstanr/fit_mogp_v1p8.rds")
 }
 
 # --- Helper: filter to "important" parameters ---
-pick_key_vars_v1p8 <- function(fit) {
+pick_key_vars_v1p9 <- function(fit) {
   vars <- .all_vars(fit)
 
   # 1) Explicit INCLUDE patterns (edit freely)
@@ -844,7 +988,7 @@ pick_key_vars_v1p8 <- function(fit) {
     # drop transformed parameters that are huge arrays unless you want them
     unique()
 
-  # If you want to *force include* some known v1p8 names, add them here:
+  # If you want to *force include* some known v1p9 names, add them here:
   # (These are optional; only kept if they actually exist in the fit.)
   force_include <- c(
     # Typical names in your lineage; safe because we intersect with vars
@@ -864,10 +1008,10 @@ pick_key_vars_v1p8 <- function(fit) {
 
 # --- Main: summarise key vars (Rhat + ESS) ---
 summarise_key_vars <- function(fit, max_print = 250) {
-  key_vars <- pick_key_vars_v1p8(fit)
+  key_vars <- pick_key_vars_v1p9(fit)
 
   if (length(key_vars) == 0) {
-    stop("No key variables matched. Consider relaxing include/exclude patterns in pick_key_vars_v1p8().")
+    stop("No key variables matched. Consider relaxing include/exclude patterns in pick_key_vars_v1p9().")
   }
 
   summ <- fit$summary(variables = key_vars) %>%
@@ -880,7 +1024,7 @@ summarise_key_vars <- function(fit, max_print = 250) {
     )
 
   cat("\n============================================================\n")
-  cat("[v1p8] Key parameter diagnostics (sorted by worst R-hat)\n")
+  cat("[v1p9] Key parameter diagnostics (sorted by worst R-hat)\n")
   cat("  Total key vars:", nrow(summ), "\n")
   cat("  R-hat > 1.01:", sum(summ$rhat > 1.01, na.rm = TRUE), "\n")
   cat("  ESS bulk < 200:", sum(summ$ess_bulk < 200, na.rm = TRUE), "\n")
@@ -944,7 +1088,31 @@ draws %>%
 ```{r, fig.width=10, fig.height=7}
 # Takes a long time to run (2-3+ hours)
 #cmdstan_dashboard(fit, vars = vars_important, trank = TRUE)
+
+dashboard_png <- sprintf("./out_cmdstanr/cmdstan_dashboard_%s.png", model_version)
+
+dir.create(dirname(dashboard_png), showWarnings = FALSE, recursive = TRUE)
+
+dashboard_saved <- FALSE
+try({
+  grDevices::png(filename = dashboard_png, width = 2200, height = 1600, res = 220)
+  cmdstan_dashboard(fit)
+  grDevices::dev.off()
+  dashboard_saved <- file.exists(dashboard_png)
+}, silent = TRUE)
+
+if (!dashboard_saved) {
+  try({
+    if (grDevices::dev.cur() > 1) grDevices::dev.off()
+  }, silent = TRUE)
+  message("Could not save cmdstan_dashboard() directly as PNG. Rendering dashboard to report only.")
+}
+
 cmdstan_dashboard(fit)
+
+if (dashboard_saved) {
+  message("Saved dashboard image to: ", normalizePath(dashboard_png, winslash = "/", mustWork = FALSE))
+}
 
 ```
 
@@ -953,16 +1121,15 @@ cmdstan_dashboard(fit)
 ```{r stan analyte effects}
 ## =====================================================================
 ## Extract posterior samples from cmdstanr into a "rethinking-style" list
-## DROP-IN replacement for v1p8 (NO fit$summary; uses fit$draws only)
+## DROP-IN replacement for v1p9 (NO fit$summary; uses fit$draws only)
 ##
-## Core fix:
-##   - Uses fit$draws(...) directly
-##   - Removes stale duplicate pull_draws_mat() pathway
-##   - Keeps downstream compatibility objects used by older chunks
+## Core fix vs your failing attempt:
+##   cmdstanr/posterior store indexed names like alpha[1], not base "alpha",
+##   so we must request indexed variable names explicitly.
 ##
-## v1p8 specifics:
-##   - Residue crop effect is by previous crop: gamma_PCr_res, sigma_PCr_res
-##   - Aliased to gamma_Cr_res / sigma_Cr_res for downstream compatibility
+## v1p9 specifics:
+##   - Residue crop effect is by *previous crop*: gamma_PCr_res, sigma_PCr_res
+##     (we alias to gamma_Cr_res / sigma_Cr_res for downstream compatibility)
 ## =====================================================================
 
 dat_used <- if (exists("stan_dat_cmd")) stan_dat_cmd else stan_dat
@@ -975,7 +1142,7 @@ F_n   <- dat_used$F_n
 Y_n   <- dat_used$Y_n
 Cr_n  <- dat_used$Cr_n
 N     <- dat_used$N
-PCr_n <- if (!is.null(dat_used$PrevCr_n)) dat_used$PrevCr_n else Cr_n
+PCr_n <- if (!is.null(dat_used$PrevCr_n)) dat_used$PrevCr_n else Cr_n  # v1p9 residue groups
 
 # Residue placeholder check (all-constant means no supported effect yet)
 res_sd <- suppressWarnings(sd(dat_used$RES, na.rm = TRUE))
@@ -985,7 +1152,6 @@ res_is_placeholder <- is.na(res_sd) || res_sd == 0
 vnames_vec <- function(name, n) {
   paste0(name, "[", seq_len(n), "]")
 }
-
 vnames_mat <- function(name, n1, n2) {
   # CmdStan column order is typically: [1,1],[2,1],...,[n1,1],[1,2],...,[n1,n2]
   out <- character(n1 * n2)
@@ -998,7 +1164,20 @@ vnames_mat <- function(name, n1, n2) {
   }
   out
 }
-
+vnames_3d <- function(name, n1, n2, n3) {
+  # Typical order: i fastest, then j, then k
+  out <- character(n1 * n2 * n3)
+  k <- 1L
+  for (kk in seq_len(n3)) {
+    for (jj in seq_len(n2)) {
+      for (ii in seq_len(n1)) {
+        out[k] <- paste0(name, "[", ii, ",", jj, ",", kk, "]")
+        k <- k + 1L
+      }
+    }
+  }
+  out
+}
 vnames_2d_y_a <- function(name, Y_n, A_n) {
   # F_year is declared as matrix[Y_n, A_n]
   vnames_mat(name, Y_n, A_n)
@@ -1019,40 +1198,40 @@ vars_indexed <- c(
   vnames_mat("gamma_F", A_n, F_n),
 
   # crop effects
-  vnames_mat("gamma_Cr",   A_n, Cr_n),
+  vnames_mat("gamma_Cr", A_n, Cr_n),
   vnames_vec("gamma_Cr_V", Cr_n),
 
-  # irrigation effect by analyte
+  # irrigation effect by analyte (vector)
   vnames_vec("beta_irr", A_n),
 
-  # GP year effect
+  # GP year effect: matrix[Y_n, A_n]
   vnames_2d_y_a("F_year", Y_n, A_n),
 
-  # multi-output GP Cholesky correlation matrix
+  # multi-output GP Cholesky correlation matrix (A_n x A_n)
   vnames_mat("L_corr_Agp", A_n, A_n),
 
-  # multi-output GP SDs
+  # multi-output GP SDs (vector)
   vnames_vec("sigma_Agp", A_n),
 
   # concentration SD structure
-  vnames_vec("sigma_C_obs",          A_n),
-  vnames_vec("z_log_sigma_C_obs",    A_n),
-
-  # random-effect SDs
+  vnames_vec("sigma_C_obs", A_n),
+  vnames_vec("z_log_sigma_C_obs", A_n),
+  
+  # random-effect SDs (needed for SD diagnostics)
   vnames_vec("sigma_A", 4),
   vnames_vec("sigma_B", B_n),
   vnames_vec("sigma_S", S_n),
   vnames_vec("sigma_F", F_n),
 
-  # latent states
-  vnames_vec("mu_C",     N),
-  vnames_vec("C_true",   N),
-  vnames_vec("mu_V",     N),
-  vnames_vec("V_true",   N),
-  vnames_vec("mu_res",   N),
-  vnames_vec("RES_star", N),
+  # latent states (length N) used by downstream plots
+  vnames_vec("mu_C",    N),
+  vnames_vec("C_true",  N),
+  vnames_vec("mu_V",    N),
+  vnames_vec("V_true",  N),
+  vnames_vec("mu_res",  N),
+  vnames_vec("RES_star",N),
 
-  # v1p8 residue crop grouping (PrevCr)
+  # v1p9 residue crop grouping (PrevCr)
   vnames_vec("gamma_PCr_res", PCr_n)
 )
 
@@ -1061,7 +1240,9 @@ vars_scalars <- c(
   "a_V", "b_V", "beta_vol", "beta_vin", "beta_res_V",
   "mu_beta_irr", "sigma_V", "sigma_VOL_obs",
 
-  # irrigation hierarchy
+  # irrigation hierarchy (vector sigma_beta_irr + Cholesky L_beta_irr)
+  # sigma_beta_irr is vector length A_n; L_beta_irr is matrix A_n x A_n (Cholesky)
+  # (these are used in some diagnostics/plots; harmless to include)
   vnames_vec("sigma_beta_irr", A_n),
   vnames_mat("L_beta_irr", A_n, A_n),
 
@@ -1079,105 +1260,75 @@ vars_scalars <- c(
   "res_base", "b_res_stir", "sigma_PCr_res", "sigma_res_obs"
 )
 
+# Flatten (vars_scalars contains indexed names too)
 vars_to_pull <- c(vars_indexed, vars_scalars)
 
-# ---- Pull draws directly from cmdstanr ----
+# ---- Pull draws (NO fit$summary) ----
+# If you ever want to reduce memory: set max_draws <- 500 and subsample posterior draws
 draws_mat <- fit$draws(variables = vars_to_pull, format = "matrix")
 n_draws <- nrow(draws_mat)
 
 # ---- Utilities to retrieve indexed/scalar params from draws_mat ----
-get_param_mat <- function(dm, par) {
-  sel <- grepl(paste0("^", par, "\\["), colnames(dm))
+get_param_mat <- function(draws_mat, par) {
+  sel <- grepl(paste0("^", par, "\\["), colnames(draws_mat))
   if (!any(sel)) stop("No indexed columns found for parameter '", par, "'.")
-  dm[, sel, drop = FALSE]
+  draws_mat[, sel, drop = FALSE]
+}
+get_param_vec <- function(draws_mat, par) {
+  if (!(par %in% colnames(draws_mat))) stop("No scalar column found for parameter '", par, "'.")
+  draws_mat[, par]
 }
 
-get_param_vec <- function(dm, par) {
-  if (!(par %in% colnames(dm))) stop("No scalar column found for parameter '", par, "'.")
-  dm[, par]
-}
-
-# ---- analyte-level matrices (draws × A_n) ----
+# ---- analyte-level matrices (draws × A_n)
 alpha_mat      <- get_param_mat(draws_mat, "alpha")
 beta_stir_mat  <- get_param_mat(draws_mat, "beta_stir")
 beta_cin_mat   <- get_param_mat(draws_mat, "beta_cin")
 beta_dup_mat   <- get_param_mat(draws_mat, "beta_dup")
 beta_res_C_mat <- get_param_mat(draws_mat, "beta_res_C")
 
-# ---- analyte × block random effects: draws × A_n × B_n ----
+# ---- analyte × block random effects: draws × A_n × B_n
 gamma_B_mat <- get_param_mat(draws_mat, "gamma_B")
-if (ncol(gamma_B_mat) != A_n * B_n) {
-  stop("gamma_B dimension mismatch: expected ", A_n * B_n, " columns but found ", ncol(gamma_B_mat), ".")
-}
 gamma_B_arr <- array(NA_real_, dim = c(n_draws, A_n, B_n))
 k <- 1L
-for (b in seq_len(B_n)) for (a in seq_len(A_n)) {
-  gamma_B_arr[, a, b] <- gamma_B_mat[, k]
-  k <- k + 1L
-}
+for (b in seq_len(B_n)) for (a in seq_len(A_n)) { gamma_B_arr[, a, b] <- gamma_B_mat[, k]; k <- k + 1L }
 
-# ---- analyte × sampler random effects: draws × A_n × S_n ----
+# ---- analyte × sampler random effects: draws × A_n × S_n
 gamma_S_mat <- get_param_mat(draws_mat, "gamma_S")
-if (ncol(gamma_S_mat) != A_n * S_n) {
-  stop("gamma_S dimension mismatch: expected ", A_n * S_n, " columns but found ", ncol(gamma_S_mat), ".")
-}
 gamma_S_arr <- array(NA_real_, dim = c(n_draws, A_n, S_n))
 k <- 1L
-for (s in seq_len(S_n)) for (a in seq_len(A_n)) {
-  gamma_S_arr[, a, s] <- gamma_S_mat[, k]
-  k <- k + 1L
-}
+for (s in seq_len(S_n)) for (a in seq_len(A_n)) { gamma_S_arr[, a, s] <- gamma_S_mat[, k]; k <- k + 1L }
 
-# ---- analyte × flume random effects: draws × A_n × F_n ----
+# ---- analyte × flume random effects: draws × A_n × F_n
 gamma_F_mat <- get_param_mat(draws_mat, "gamma_F")
-if (ncol(gamma_F_mat) != A_n * F_n) {
-  stop("gamma_F dimension mismatch: expected ", A_n * F_n, " columns but found ", ncol(gamma_F_mat), ".")
-}
 gamma_F_arr <- array(NA_real_, dim = c(n_draws, A_n, F_n))
 k <- 1L
-for (f in seq_len(F_n)) for (a in seq_len(A_n)) {
-  gamma_F_arr[, a, f] <- gamma_F_mat[, k]
-  k <- k + 1L
-}
+for (f in seq_len(F_n)) for (a in seq_len(A_n)) { gamma_F_arr[, a, f] <- gamma_F_mat[, k]; k <- k + 1L }
 
-# ---- GP year effects: draws × Y_n × A_n ----
+# ---- GP year effects: draws × Y_n × A_n
 F_mat <- get_param_mat(draws_mat, "F_year")
-if (ncol(F_mat) != Y_n * A_n) {
-  stop("F_year dimension mismatch: expected ", Y_n * A_n, " columns but found ", ncol(F_mat), ".")
-}
 F_array <- array(NA_real_, dim = c(n_draws, Y_n, A_n))
 k <- 1L
-for (a in seq_len(A_n)) for (y in seq_len(Y_n)) {
-  F_array[, y, a] <- F_mat[, k]
-  k <- k + 1L
-}
+for (a in seq_len(A_n)) for (y in seq_len(Y_n)) { F_array[, y, a] <- F_mat[, k]; k <- k + 1L }
 
-# ---- crop effects on concentration: gamma_Cr[A, Cr] ----
+# ---- crop effects on concentration: gamma_Cr[A, Cr]
 gamma_Cr_mat <- get_param_mat(draws_mat, "gamma_Cr")
 if (ncol(gamma_Cr_mat) != A_n * Cr_n) {
   stop("gamma_Cr dimension mismatch: expected ", A_n * Cr_n, " columns but found ", ncol(gamma_Cr_mat), ".")
 }
 gamma_Cr_arr <- array(NA_real_, dim = c(n_draws, A_n, Cr_n))
 k <- 1L
-for (cr in seq_len(Cr_n)) for (a in seq_len(A_n)) {
-  gamma_Cr_arr[, a, cr] <- gamma_Cr_mat[, k]
-  k <- k + 1L
-}
+for (cr in seq_len(Cr_n)) for (a in seq_len(A_n)) { gamma_Cr_arr[, a, cr] <- gamma_Cr_mat[, k]; k <- k + 1L }
 
-# ---- crop effects on volume: gamma_Cr_V[Cr] ----
+# ---- crop effects on volume: gamma_Cr_V[Cr]
 gamma_Cr_V_mat <- get_param_mat(draws_mat, "gamma_Cr_V")
 if (ncol(gamma_Cr_V_mat) != Cr_n) {
   stop("gamma_Cr_V dimension mismatch: expected ", Cr_n, " columns but found ", ncol(gamma_Cr_V_mat), ".")
 }
 
-# ---- volume + irrigation terms ----
+# ---- volume + irrigation terms
 beta_vol_vec      <- get_param_vec(draws_mat, "beta_vol")
 beta_vin_vec      <- get_param_vec(draws_mat, "beta_vin")
 beta_irr_mat      <- get_param_mat(draws_mat, "beta_irr")
-if (ncol(beta_irr_mat) != A_n) {
-  stop("beta_irr dimension mismatch: expected ", A_n, " columns but found ", ncol(beta_irr_mat), ".")
-}
-
 a_V_vec           <- get_param_vec(draws_mat, "a_V")
 b_V_vec           <- get_param_vec(draws_mat, "b_V")
 sigma_V_vec       <- get_param_vec(draws_mat, "sigma_V")
@@ -1185,79 +1336,225 @@ sigma_VOL_obs_vec <- get_param_vec(draws_mat, "sigma_VOL_obs")
 beta_res_V_vec    <- get_param_vec(draws_mat, "beta_res_V")
 mu_beta_irr_vec   <- get_param_vec(draws_mat, "mu_beta_irr")
 
-# ---- irrigation hierarchy ----
+# ---- sigma objects (v1p9)
+sigma_analyte_vec        <- get_param_vec(draws_mat, "sigma_analyte")
+sigma_C_obs_mat          <- get_param_mat(draws_mat, "sigma_C_obs")
+mu_log_sigma_C_obs_vec   <- get_param_vec(draws_mat, "mu_log_sigma_C_obs")
+tau_log_sigma_C_obs_vec  <- get_param_vec(draws_mat, "tau_log_sigma_C_obs")
+z_log_sigma_C_obs_mat    <- get_param_mat(draws_mat, "z_log_sigma_C_obs")
+sigma_Cr_mat             <- get_param_mat(draws_mat, "sigma_Cr")
+sigma_Cr_V_vec           <- get_param_vec(draws_mat, "sigma_Cr_V")
+etasq_year_vec           <- get_param_vec(draws_mat, "etasq_year")
+rhosq_year_vec           <- get_param_vec(draws_mat, "rhosq_year")
+
+# ---- latent states used downstream
+mu_C_mat    <- get_param_mat(draws_mat, "mu_C")
+C_true_mat  <- get_param_mat(draws_mat, "C_true")
+mu_V_mat    <- get_param_mat(draws_mat, "mu_V")
+V_true_mat  <- get_param_mat(draws_mat, "V_true")
+mu_res_mat  <- get_param_mat(draws_mat, "mu_res")
+RES_star_mat<- get_param_mat(draws_mat, "RES_star")
+
+# ---- residue submodel (v1p9: previous crop)
+res_base_vec      <- get_param_vec(draws_mat, "res_base")
+b_res_stir_vec    <- get_param_vec(draws_mat, "b_res_stir")
+gamma_PCr_res_mat <- get_param_mat(draws_mat, "gamma_PCr_res")  # draws × PCr_n
+sigma_PCr_res_vec <- get_param_vec(draws_mat, "sigma_PCr_res")
+sigma_res_obs_vec <- get_param_vec(draws_mat, "sigma_res_obs")
+
+# Alias for downstream chunks that expect "Cr"-named residue group effects
+gamma_Cr_res_mat <- gamma_PCr_res_mat
+sigma_Cr_res_vec <- sigma_PCr_res_vec
+
+# ---- Assemble posterior list (keep names used by v1p7p5 downstream code)
+post <- list(
+  alpha         = alpha_mat,
+  beta_stir     = beta_stir_mat,
+  beta_cin      = beta_cin_mat,
+  beta_dup      = beta_dup_mat,
+  beta_res_C    = beta_res_C_mat,
+
+  gamma_B       = gamma_B_arr,
+  gamma_S       = gamma_S_arr,
+  gamma_F       = gamma_F_arr,
+
+  gamma_Cr      = gamma_Cr_arr,       # draws × A_n × Cr_n
+  gamma_Cr_V    = gamma_Cr_V_mat,     # draws × Cr_n
+
+  beta_vol      = beta_vol_vec,
+  beta_vin      = beta_vin_vec,
+  beta_irr      = beta_irr_mat,
+  mu_beta_irr   = mu_beta_irr_vec,
+  a_V           = a_V_vec,
+  b_V           = b_V_vec,
+  sigma_V       = sigma_V_vec,
+  sigma_VOL_obs = sigma_VOL_obs_vec,
+  beta_res_V    = beta_res_V_vec,
+
+  # C model SDs
+  sigma_analyte = sigma_analyte_vec,
+  sigma_C_obs   = sigma_C_obs_mat,
+  mu_log_sigma_C_obs  = mu_log_sigma_C_obs_vec,
+  tau_log_sigma_C_obs = tau_log_sigma_C_obs_vec,
+  z_log_sigma_C_obs   = z_log_sigma_C_obs_mat,
+
+  # crop SDs
+  sigma_Cr      = sigma_Cr_mat,
+  sigma_Cr_V    = sigma_Cr_V_vec,
+
+  # GP
+  F_year        = F_array,
+  etasq_year    = etasq_year_vec,
+  rhosq_year    = rhosq_year_vec,
+
+  # latent states used by plots
+  mu_C          = mu_C_mat,
+  C_true        = C_true_mat,
+  mu_V          = mu_V_mat,
+  V_true        = V_true_mat,
+  mu_res        = mu_res_mat,
+  RES_star      = RES_star_mat,
+
+  # residue submodel (aliased to legacy names)
+  res_base      = res_base_vec,
+  b_res_stir    = b_res_stir_vec,
+  gamma_Cr_res  = gamma_Cr_res_mat,
+  sigma_Cr_res  = sigma_Cr_res_vec,
+  sigma_res_obs = sigma_res_obs_vec
+)
+
+draws_mat <- pull_draws_mat(vars_to_pull)
+n_draws <- nrow(draws_mat)
+
+# ---- Helpers to extract scalars / indexed params ----
+get_param_mat <- function(dm, par) {
+  sel <- grepl(paste0("^", par, "\\["), colnames(dm))
+  if (!any(sel)) stop("No indexed columns found for parameter '", par, "'.")
+  dm[, sel, drop = FALSE]
+}
+get_param_vec <- function(dm, par) {
+  if (!(par %in% colnames(dm))) stop("No scalar column found for parameter '", par, "'.")
+  dm[, par]
+}
+
+# ---- Analyte-level (draws × A_n) ----
+alpha_mat      <- get_param_mat(draws_mat, "alpha")
+beta_stir_mat  <- get_param_mat(draws_mat, "beta_stir")
+beta_cin_mat   <- get_param_mat(draws_mat, "beta_cin")
+beta_dup_mat   <- get_param_mat(draws_mat, "beta_dup")
+beta_res_C_mat <- get_param_mat(draws_mat, "beta_res_C")
+
+# ---- Random effects: gamma_B[A,B], gamma_S[A,S], gamma_F[A,F] ----
+gamma_B_mat <- get_param_mat(draws_mat, "gamma_B")
+gamma_B_arr <- array(NA_real_, dim = c(n_draws, A_n, B_n))
+k <- 1L
+for (b in seq_len(B_n)) for (a in seq_len(A_n)) { gamma_B_arr[, a, b] <- gamma_B_mat[, k]; k <- k + 1L }
+
+gamma_S_mat <- get_param_mat(draws_mat, "gamma_S")
+gamma_S_arr <- array(NA_real_, dim = c(n_draws, A_n, S_n))
+k <- 1L
+for (s in seq_len(S_n)) for (a in seq_len(A_n)) { gamma_S_arr[, a, s] <- gamma_S_mat[, k]; k <- k + 1L }
+
+gamma_F_mat <- get_param_mat(draws_mat, "gamma_F")
+gamma_F_arr <- array(NA_real_, dim = c(n_draws, A_n, F_n))
+k <- 1L
+for (f in seq_len(F_n)) for (a in seq_len(A_n)) { gamma_F_arr[, a, f] <- gamma_F_mat[, k]; k <- k + 1L }
+
+# ---- GP year effects: F_year[Y,A] ----
+F_mat <- get_param_mat(draws_mat, "F_year")
+F_array <- array(NA_real_, dim = c(n_draws, Y_n, A_n))
+k <- 1L
+for (a in seq_len(A_n)) for (y in seq_len(Y_n)) { F_array[, y, a] <- F_mat[, k]; k <- k + 1L }
+
+# ---- Crop effects on concentration: gamma_Cr[A,Cr] ----
+gamma_Cr_mat <- get_param_mat(draws_mat, "gamma_Cr")
+if (ncol(gamma_Cr_mat) != A_n * Cr_n) {
+  stop("gamma_Cr dimension mismatch: expected ", A_n * Cr_n, " but found ", ncol(gamma_Cr_mat), ".")
+}
+gamma_Cr_arr <- array(NA_real_, dim = c(n_draws, A_n, Cr_n))
+k <- 1L
+for (cr in seq_len(Cr_n)) for (a in seq_len(A_n)) { gamma_Cr_arr[, a, cr] <- gamma_Cr_mat[, k]; k <- k + 1L }
+
+# ---- Crop effects on volume: gamma_Cr_V[Cr] ----
+gamma_Cr_V_mat <- get_param_mat(draws_mat, "gamma_Cr_V")
+if (ncol(gamma_Cr_V_mat) != Cr_n) {
+  stop("gamma_Cr_V dimension mismatch: expected ", Cr_n, " but found ", ncol(gamma_Cr_V_mat), ".")
+}
+
+# ---- Irrigation hierarchy: beta_irr[A], plus mu/sigma/L ----
+beta_irr_mat <- get_param_mat(draws_mat, "beta_irr")
+if (ncol(beta_irr_mat) != A_n) {
+  stop("beta_irr dimension mismatch: expected ", A_n, " but found ", ncol(beta_irr_mat), ".")
+}
+
+mu_beta_irr_vec   <- get_param_vec(draws_mat, "mu_beta_irr")
 sigma_beta_irr_mat <- get_param_mat(draws_mat, "sigma_beta_irr")
 if (ncol(sigma_beta_irr_mat) != A_n) {
-  stop("sigma_beta_irr dimension mismatch: expected ", A_n, " columns but found ", ncol(sigma_beta_irr_mat), ".")
+  stop("sigma_beta_irr dimension mismatch: expected ", A_n, " but found ", ncol(sigma_beta_irr_mat), ".")
 }
 
 L_beta_irr_mat <- get_param_mat(draws_mat, "L_beta_irr")
 if (ncol(L_beta_irr_mat) != A_n * A_n) {
-  stop("L_beta_irr dimension mismatch: expected ", A_n * A_n, " columns but found ", ncol(L_beta_irr_mat), ".")
+  stop("L_beta_irr dimension mismatch: expected ", A_n*A_n, " but found ", ncol(L_beta_irr_mat), ".")
 }
 L_beta_irr_arr <- array(NA_real_, dim = c(n_draws, A_n, A_n))
 k <- 1L
-for (j in seq_len(A_n)) for (i in seq_len(A_n)) {
-  L_beta_irr_arr[, i, j] <- L_beta_irr_mat[, k]
-  k <- k + 1L
-}
+for (j in seq_len(A_n)) for (i in seq_len(A_n)) { L_beta_irr_arr[, i, j] <- L_beta_irr_mat[, k]; k <- k + 1L }
 
 # ---- GP correlation + SD ----
 sigma_Agp_mat <- get_param_mat(draws_mat, "sigma_Agp")
-if (ncol(sigma_Agp_mat) != A_n) {
-  stop("sigma_Agp dimension mismatch: expected ", A_n, " columns but found ", ncol(sigma_Agp_mat), ".")
-}
-
+if (ncol(sigma_Agp_mat) != A_n) stop("sigma_Agp dimension mismatch: expected ", A_n, " but found ", ncol(sigma_Agp_mat), ".")
 L_corr_Agp_mat <- get_param_mat(draws_mat, "L_corr_Agp")
-if (ncol(L_corr_Agp_mat) != A_n * A_n) {
-  stop("L_corr_Agp dimension mismatch: expected ", A_n * A_n, " columns but found ", ncol(L_corr_Agp_mat), ".")
-}
+if (ncol(L_corr_Agp_mat) != A_n * A_n) stop("L_corr_Agp dimension mismatch: expected ", A_n*A_n, " but found ", ncol(L_corr_Agp_mat), ".")
 L_corr_Agp_arr <- array(NA_real_, dim = c(n_draws, A_n, A_n))
 k <- 1L
-for (j in seq_len(A_n)) for (i in seq_len(A_n)) {
-  L_corr_Agp_arr[, i, j] <- L_corr_Agp_mat[, k]
-  k <- k + 1L
-}
+for (j in seq_len(A_n)) for (i in seq_len(A_n)) { L_corr_Agp_arr[, i, j] <- L_corr_Agp_mat[, k]; k <- k + 1L }
 
 # ---- Scalars + SD structures ----
+beta_vol_vec       <- get_param_vec(draws_mat, "beta_vol")
+beta_vin_vec       <- get_param_vec(draws_mat, "beta_vin")
+a_V_vec            <- get_param_vec(draws_mat, "a_V")
+b_V_vec            <- get_param_vec(draws_mat, "b_V")
+sigma_V_vec        <- get_param_vec(draws_mat, "sigma_V")
+sigma_VOL_obs_vec  <- get_param_vec(draws_mat, "sigma_VOL_obs")
+beta_res_V_vec     <- get_param_vec(draws_mat, "beta_res_V")
+
 sigma_A_mat <- get_param_mat(draws_mat, "sigma_A")
 sigma_B_mat <- get_param_mat(draws_mat, "sigma_B")
 sigma_S_mat <- get_param_mat(draws_mat, "sigma_S")
 sigma_F_mat <- get_param_mat(draws_mat, "sigma_F")
 
-sigma_Cr_mat            <- get_param_mat(draws_mat, "sigma_Cr")
-sigma_Cr_V_vec          <- get_param_vec(draws_mat, "sigma_Cr_V")
-etasq_year_vec          <- get_param_vec(draws_mat, "etasq_year")
-rhosq_year_vec          <- get_param_vec(draws_mat, "rhosq_year")
-sigma_analyte_vec       <- get_param_vec(draws_mat, "sigma_analyte")
-sigma_C_obs_mat         <- get_param_mat(draws_mat, "sigma_C_obs")
+sigma_Cr_mat <- get_param_mat(draws_mat, "sigma_Cr")
+sigma_Cr_V_vec <- get_param_vec(draws_mat, "sigma_Cr_V")
+
+etasq_year_vec <- get_param_vec(draws_mat, "etasq_year")
+rhosq_year_vec <- get_param_vec(draws_mat, "rhosq_year")
+
+sigma_analyte_vec <- get_param_vec(draws_mat, "sigma_analyte")
+sigma_C_obs_mat   <- get_param_mat(draws_mat, "sigma_C_obs")
 mu_log_sigma_C_obs_vec  <- get_param_vec(draws_mat, "mu_log_sigma_C_obs")
 tau_log_sigma_C_obs_vec <- get_param_vec(draws_mat, "tau_log_sigma_C_obs")
 z_log_sigma_C_obs_mat   <- get_param_mat(draws_mat, "z_log_sigma_C_obs")
 
-# ---- latent states used downstream ----
-mu_C_mat     <- get_param_mat(draws_mat, "mu_C")
-C_true_mat   <- get_param_mat(draws_mat, "C_true")
-mu_V_mat     <- get_param_mat(draws_mat, "mu_V")
-V_true_mat   <- get_param_mat(draws_mat, "V_true")
-mu_res_mat   <- get_param_mat(draws_mat, "mu_res")
+# ---- Latent states (draws × N) ----
+mu_C_mat   <- get_param_mat(draws_mat, "mu_C")
+C_true_mat <- get_param_mat(draws_mat, "C_true")
+mu_V_mat   <- get_param_mat(draws_mat, "mu_V")
+V_true_mat <- get_param_mat(draws_mat, "V_true")
+mu_res_mat <- get_param_mat(draws_mat, "mu_res")
 RES_star_mat <- get_param_mat(draws_mat, "RES_star")
 
-# ---- residue submodel (v1p8: previous crop) ----
-res_base_vec      <- get_param_vec(draws_mat, "res_base")
-b_res_stir_vec    <- get_param_vec(draws_mat, "b_res_stir")
+# ---- Residue submodel (v1p9: previous crop) ----
+res_base_vec   <- get_param_vec(draws_mat, "res_base")
+b_res_stir_vec <- get_param_vec(draws_mat, "b_res_stir")
 gamma_PCr_res_mat <- get_param_mat(draws_mat, "gamma_PCr_res")
 if (ncol(gamma_PCr_res_mat) != PCr_n) {
-  stop("gamma_PCr_res dimension mismatch: expected ", PCr_n, " columns but found ", ncol(gamma_PCr_res_mat), ".")
+  stop("gamma_PCr_res dimension mismatch: expected ", PCr_n, " but found ", ncol(gamma_PCr_res_mat), ".")
 }
 sigma_PCr_res_vec <- get_param_vec(draws_mat, "sigma_PCr_res")
 sigma_res_obs_vec <- get_param_vec(draws_mat, "sigma_res_obs")
 
-# ---- aliases for downstream chunks expecting "Cr"-named residue effects ----
-gamma_Cr_res_mat <- gamma_PCr_res_mat
-sigma_Cr_res_vec <- sigma_PCr_res_vec
-
-# ---- Assemble posterior list ----
+# ---- Assemble posterior list (keep v1p7p5 names where downstream code expects them) ----
 post <- list(
   # concentration fixed effects
   alpha      = alpha_mat,
@@ -1272,83 +1569,79 @@ post <- list(
   gamma_F = gamma_F_arr,
 
   # crop effects
-  gamma_Cr   = gamma_Cr_arr,    # draws × A_n × Cr_n
-  gamma_Cr_V = gamma_Cr_V_mat,  # draws × Cr_n
+  gamma_Cr   = gamma_Cr_arr,     # draws × A × Cr
+  gamma_Cr_V = gamma_Cr_V_mat,   # draws × Cr
 
   # volume / irrigation
-  beta_vol       = beta_vol_vec,
-  beta_vin       = beta_vin_vec,
-  beta_irr       = beta_irr_mat,
-  mu_beta_irr    = mu_beta_irr_vec,
+  beta_vol      = beta_vol_vec,
+  beta_vin      = beta_vin_vec,
+  beta_irr      = beta_irr_mat,
+  mu_beta_irr   = mu_beta_irr_vec,
   sigma_beta_irr = sigma_beta_irr_mat,
-  L_beta_irr     = L_beta_irr_arr,
-  a_V            = a_V_vec,
-  b_V            = b_V_vec,
-  sigma_V        = sigma_V_vec,
-  sigma_VOL_obs  = sigma_VOL_obs_vec,
-  beta_res_V     = beta_res_V_vec,
+  L_beta_irr    = L_beta_irr_arr,
+  a_V           = a_V_vec,
+  b_V           = b_V_vec,
+  sigma_V       = sigma_V_vec,
+  sigma_VOL_obs = sigma_VOL_obs_vec,
+  beta_res_V    = beta_res_V_vec,
 
-  # group SDs
+  # SDs for group effects
   sigma_A = sigma_A_mat,
   sigma_B = sigma_B_mat,
   sigma_S = sigma_S_mat,
   sigma_F = sigma_F_mat,
 
   # concentration SD structure
-  sigma_analyte        = sigma_analyte_vec,
-  sigma_C_obs          = sigma_C_obs_mat,
-  mu_log_sigma_C_obs   = mu_log_sigma_C_obs_vec,
-  tau_log_sigma_C_obs  = tau_log_sigma_C_obs_vec,
-  z_log_sigma_C_obs    = z_log_sigma_C_obs_mat,
+  sigma_analyte = sigma_analyte_vec,
+  sigma_C_obs   = sigma_C_obs_mat,
+  mu_log_sigma_C_obs  = mu_log_sigma_C_obs_vec,
+  tau_log_sigma_C_obs = tau_log_sigma_C_obs_vec,
+  z_log_sigma_C_obs   = z_log_sigma_C_obs_mat,
 
   # crop SDs
   sigma_Cr   = sigma_Cr_mat,
   sigma_Cr_V = sigma_Cr_V_vec,
 
   # GP
-  F_year     = F_array,
-  etasq_year = etasq_year_vec,
-  rhosq_year = rhosq_year_vec,
-  sigma_Agp  = sigma_Agp_mat,
-  L_corr_Agp = L_corr_Agp_arr,
+  F_year      = F_array,
+  etasq_year  = etasq_year_vec,
+  rhosq_year  = rhosq_year_vec,
+  sigma_Agp   = sigma_Agp_mat,
+  L_corr_Agp  = L_corr_Agp_arr,
 
   # latent states
-  mu_C     = mu_C_mat,
-  C_true   = C_true_mat,
-  mu_V     = mu_V_mat,
-  V_true   = V_true_mat,
-  mu_res   = mu_res_mat,
+  mu_C    = mu_C_mat,
+  C_true  = C_true_mat,
+  mu_V    = mu_V_mat,
+  V_true  = V_true_mat,
+  mu_res  = mu_res_mat,
   RES_star = RES_star_mat,
 
-  # residue submodel, native names
+  # residue submodel (v1p9-native names)
   res_base      = res_base_vec,
   b_res_stir    = b_res_stir_vec,
   gamma_PCr_res = gamma_PCr_res_mat,
   sigma_PCr_res = sigma_PCr_res_vec,
   sigma_res_obs = sigma_res_obs_vec,
 
-  # backwards-compatible aliases
-  gamma_Cr_res = gamma_Cr_res_mat,
-  sigma_Cr_res = sigma_Cr_res_vec,
+  # backwards-compatible aliases (so older plotting chunks still work)
+  gamma_Cr_res  = gamma_PCr_res_mat,
+  sigma_Cr_res  = sigma_PCr_res_vec,
 
-  # placeholder flag
+  # residue placeholder flag for downstream summaries
   res_is_placeholder = res_is_placeholder
 )
 
-# ---- Quick sanity print ----
-cat("\n[v1p8] post assembled.\n")
-cat("  draws:", n_draws,
-    " A_n:", A_n,
-    " Y_n:", Y_n,
-    " Cr_n:", Cr_n,
-    " PrevCr_n:", PCr_n, "\n")
+# Quick sanity print (fast, no summary())
+cat("\n[v1p9] post assembled.\n")
+cat("  draws:", n_draws, " A_n:", A_n, " Y_n:", Y_n, " Cr_n:", Cr_n, " PrevCr_n:", PCr_n, "\n")
 cat("  residue placeholder:", post$res_is_placeholder, "\n")
 ```
 
 
 ## 5a. Posterior effects of residue and crop
 
-The v1p8 model includes (i) an analyte-specific residue slope on concentration (`beta_res_C[A]`), (ii) a scalar residue slope on volume (`beta_res_V`), (iii) analyte-specific crop intercepts on concentration (`gamma_Cr[A,Cr]`), and (iv) crop intercepts on volume (`gamma_Cr_V[Cr]`). The plots below provide quick, publication-ready summaries of these terms.
+The v1p9 model includes (i) an analyte-specific residue slope on concentration (`beta_res_C[A]`), (ii) a scalar residue slope on volume (`beta_res_V`), (iii) analyte-specific crop intercepts on concentration (`gamma_Cr[A,Cr]`), and (iv) crop intercepts on volume (`gamma_Cr_V[Cr]`). The plots below provide quick, publication-ready summaries of these terms.
 
 ```{r residue effects on concentration}
 # Residue effect on concentration by analyte
@@ -1393,7 +1686,7 @@ p_resC_ridge <- ggplot(post_resC_long, aes(x = beta_resC, y = analyte_abbr)) +
   labs(
     x = "Residue effect on concentration",
     y = "Analyte",
-    #title = "Posterior residue effects on concentration (v1p8)",
+    #title = "Posterior residue effects on concentration (v1p9)",
     subtitle = if (res_is_placeholder)
       "Residue is currently a placeholder (all zeros), effects are not identifiable"
       else NULL
@@ -1407,7 +1700,7 @@ p_resC_ridge <- ggplot(post_resC_long, aes(x = beta_resC, y = analyte_abbr)) +
 p_resC_ridge
 
 ggsave(
-  filename = "../figs/residue_effect_on_concentration_by_analyte_v1p8.jpg",
+  filename = "../figs/residue_effect_on_concentration_by_analyte_v1p9.jpg",
   plot = p_resC_ridge,
   width = 10,
   height = 7,
@@ -1438,7 +1731,7 @@ plot(
 )
 abline(v = 0, lty = 2)
 
-jpeg("../figs/residue_effect_on_volume_density_v1p8.jpeg", width = 2000, height = 1300, res = 200)
+jpeg("../figs/residue_effect_on_volume_density_v1p9.jpeg", width = 2000, height = 1300, res = 200)
 plot(
   dens,
   type = "l",
@@ -1537,7 +1830,7 @@ p_cropC_ridge <- ggplot(cropC_long, aes(x = crop_eff, y = analyte_abbr)) +
 p_cropC_ridge
 
 ggsave(
-  filename = "../figs/crop_effects_on_concentration_by_analyte_v1p8.jpg",
+  filename = "../figs/crop_effects_on_concentration_by_analyte_v1p9.jpg",
   plot = p_cropC_ridge,
   width = 9,
   height = 12,
@@ -1601,7 +1894,7 @@ p_cropV_ridge <- ggplot(post_cropV_long, aes(x = crop_eff_V, y = Crop)) +
 p_cropV_ridge
 
 ggsave(
-  filename = "../figs/crop_effects_on_volume_v1p8.jpg",
+  filename = "../figs/crop_effects_on_volume_v1p9.jpg",
   plot = p_cropV_ridge,
   width = 10,
   height = 6,
@@ -1621,7 +1914,7 @@ ggsave(
 ```{r irrigation effects on conc}
 # ------------------------------------------------------------
 # Irrigation-count effects on concentration by analyte
-# beta_irr_mat is draws × A_n (MVN prior across analytes in v1p8)
+# beta_irr_mat is draws × A_n (MVN prior across analytes in v1p9)
 # Note: Stan standardizes IRR internally (IRR_z), so beta_irr is per +1 SD(IRR)
 # ------------------------------------------------------------
 
@@ -1674,7 +1967,7 @@ p_irr_ridge <- ggplot(post_irr_long, aes(x = beta_irr, y = Analyte)) +
 p_irr_ridge
 
 ggsave(
-  filename = "../figs/irr_effects_on_concentration_v1p8.jpg",
+  filename = "../figs/irr_effects_on_concentration_v1p9.jpg",
   plot = p_irr_ridge,
   width = 10,
   height = 6,
@@ -1812,11 +2105,11 @@ plot_stir_volume_effect <- function(fit, param = "b_V",
 # Plot to device
 plot_stir_volume_effect(fit, param = "b_V")
 
-# Save to file (v1p8 filename)
+# Save to file (v1p9 filename)
 plot_stir_volume_effect(
   fit,
   param = "b_V",
-  file = "../figs/v1p8_post_STIR_effect_on_volume.jpg"
+  file = "../figs/v1p9_post_STIR_effect_on_volume.jpg"
 )
 ```
 
@@ -1849,7 +2142,7 @@ plot(
 abline(v = 0, lty = 2)
 
 # ---- Save identical plot to file ----
-jpeg("../figs/stir_effect_on_residue_density_v1p8.jpeg",
+jpeg("../figs/stir_effect_on_residue_density_v1p9.jpeg",
      width = 2000, height = 1300, res = 200)
 
 plot(
@@ -1874,7 +2167,7 @@ dev.off()
 
 ```{r load-generative-curves}
 ## Scenario-based STIR -> Load link + posterior predictive curves ----------
-## v1p8 (dual ribbons):
+## v1p9 (dual ribbons):
 ##   1) "mean" ribbon = uncertainty in expected mean relationship (link-style)
 ##   2) "pp" ribbon   = posterior predictive including latent process + obs noise (sim-style)
 ##
@@ -1882,19 +2175,20 @@ dev.off()
 ## - Uses sigma_V + sigma_VOL_obs for volume (latent + obs)
 ## - Uses sigma_analyte + sigma_C_obs[A] for concentration (latent + obs)
 ## - Residue submodel is NOT used; RES is treated as an input covariate.
-## - v1p8: irrigation effect is analyte-specific and IRR is standardized (IRR_z).
+## - v1p9: irrigation effect is analyte-specific and IRR is standardized (IRR_z).
 
 # 1. Back-transform stats (only computed once)
 c_stats <- d_mod %>%
   dplyr::group_by(A) %>%
   dplyr::summarize(
-    c_mean = mean(Result_mg_L, na.rm = TRUE),
-    c_sd   = sd(Result_mg_L,   na.rm = TRUE),
+    c_mean = mean(log(Result_mg_L_pos)[!(Result_is_nd %in% 1) & is.finite(Result_mg_L_pos)], na.rm = TRUE),
+    c_sd   = stats::sd(log(Result_mg_L_pos)[!(Result_is_nd %in% 1) & is.finite(Result_mg_L_pos)], na.rm = TRUE),
     .groups = "drop"
-  )
+  ) %>%
+  dplyr::mutate(c_sd = dplyr::if_else(!is.finite(c_sd) | c_sd == 0, 1, c_sd))
 
-V_mean <- mean(d_mod$Volume, na.rm = TRUE)
-V_sd   <- sd(d_mod$Volume, na.rm = TRUE)
+V_mean <- V_mean_log
+V_sd   <- V_sd_log
 
 # STIR raw mean/sd for Season_STIR_toDate
 stir_mean <- mean(d_mod$Season_STIR_toDate, na.rm = TRUE)
@@ -1904,7 +2198,7 @@ stir_sd   <- sd(d_mod$Season_STIR_toDate, na.rm = TRUE)
 IRR_bar_raw <- mean(d_mod$irr_num, na.rm = TRUE)
 DUP_bar     <- mean(d_mod$dup,     na.rm = TRUE)
 
-# v1p8: IRR standardization to match Stan IRR_z
+# v1p9: IRR standardization to match Stan IRR_z
 irr_mean <- mean(d_mod$irr_num, na.rm = TRUE)
 irr_sd   <- sd(d_mod$irr_num,   na.rm = TRUE)
 if (!is.finite(irr_sd) || irr_sd == 0) irr_sd <- 1
@@ -2088,7 +2382,7 @@ simulate_load_curve_single <- function(
 
   beta_vol     <- post$beta_vol[draw_idx]
 
-  # v1p8: analyte-specific irrigation effect
+  # v1p9: analyte-specific irrigation effect
   beta_irrj    <- post$beta_irr[draw_idx, j_idx]
 
   a_V          <- post$a_V[draw_idx]
@@ -2140,7 +2434,7 @@ simulate_load_curve_single <- function(
       beta_stirj * stz +
       beta_cinj  * cin_z +
       beta_vol   * muV_z +
-      beta_irrj  * IRR_star_z +     # << v1p8 IRR_z scale
+      beta_irrj  * IRR_star_z +     # << v1p9 IRR_z scale
       beta_dupj  * DUP_star +
       beta_resC_j * RES_star +
       gamma_CrC_star +
@@ -2393,7 +2687,7 @@ The simulation functions allow you to generate posterior predicted analyte loads
   1, 10, 2, 3, 4, 5, 6, 7, 8, 9, S1, S2.
 * IRR is a fixed-effect covariate, not a random effect.
 * If left NULL: the function uses the empirical mean of `irr_num` in the dataset.
-* v1p8: internally converted to standardized IRR_z to match the Stan model.
+* v1p9: internally converted to standardized IRR_z to match the Stan model.
 
 **duplicate**
 
@@ -2450,11 +2744,11 @@ This output is designed for straightforward faceted visualization in `ggplot2`.
 
 ```{r load-generative-curves-user-guide}
 ###############################################################
-## USER INPUT GUIDE FOR `simulate_load_curves_with_obs()` (v1p8)
+## USER INPUT GUIDE FOR `simulate_load_curves_with_obs()` (v1p9)
 ###############################################################
 
 # ======================================================================
-# Example scenario run (v1p8 dual ribbons)
+# Example scenario run (v1p9 dual ribbons)
 # ======================================================================
 
 res_scenario <- simulate_load_curves_with_obs(
@@ -2589,7 +2883,7 @@ p_load
 
 
 ```{r save load fig}
-# Save to figs folder (v1p8)
+# Save to figs folder (v1p9)
 ggsave(
   filename = "../figs/load1p8_STIR_load_curves.jpeg",
   plot = p_load,
@@ -2599,77 +2893,6 @@ ggsave(
 
 Plot effects of time (i.e., Year)
 ```{r year covar plot}
-# ============================================================
-# Year-distance covariance functions (prior vs posterior)
-# Self-contained for v1p8
-# ============================================================
-
-# ---- Safety checks ----
-stopifnot(exists("post"))
-
-# cov_fun helper, if not already defined
-if (!exists("cov_fun")) {
-  cov_fun <- function(etasq, rhosq, d) {
-    etasq <- as.numeric(etasq)
-    rhosq <- as.numeric(rhosq)
-    d     <- as.numeric(d)
-    etasq * exp(-rhosq * d^2)
-  }
-}
-
-# transparent color helper, if not already defined
-if (!exists("col_alpha")) {
-  col_alpha <- function(col, alpha = 1) {
-    grDevices::adjustcolor(col, alpha.f = alpha)
-  }
-}
-
-# ---- Build year support from available data/post object ----
-# Prefer explicit years_used if you already created it upstream
-if (!exists("years_used")) {
-  if (exists("dat_used") && !is.null(dat_used$year)) {
-    years_used <- sort(unique(as.numeric(dat_used$year)))
-  } else if (exists("year_id") && exists("year_lookup")) {
-    years_used <- as.numeric(year_lookup[sort(unique(year_id))])
-  } else {
-    # last-resort fallback: use sequential spacing across Y_n
-    Y_n_local <- dim(post$F_year)[2]
-    years_used <- seq_len(Y_n_local)
-    warning("years_used was not found, using sequential indices 1:Y_n as fallback.")
-  }
-}
-
-# Distance support for x-axis
-d_max <- max(dist(years_used))
-x_seq <- seq(0, d_max, length.out = 200)
-
-# ---- Prior draws ----
-n_prior <- 50
-set.seed(1)
-etasq_prior <- rexp(n_prior, rate = 2)
-rhosq_prior <- rexp(n_prior, rate = 0.5)
-
-# ---- Posterior draws ----
-# Pull directly from post
-etasq_all <- as.numeric(post$etasq_year)
-rhosq_all <- as.numeric(post$rhosq_year)
-
-# Drop non-finite values, just in case
-ok_post <- is.finite(etasq_all) & is.finite(rhosq_all)
-etasq_all <- etasq_all[ok_post]
-rhosq_all <- rhosq_all[ok_post]
-
-if (length(etasq_all) == 0 || length(rhosq_all) == 0) {
-  stop("No valid posterior GP hyperparameter draws found in post$etasq_year / post$rhosq_year.")
-}
-
-# Subsample posterior curves for the cloud
-n_post <- min(50, length(etasq_all))
-set.seed(2)
-idx_post <- sample(seq_along(etasq_all), size = n_post, replace = FALSE)
-etasq_post <- etasq_all[idx_post]
-rhosq_post <- rhosq_all[idx_post]
-
 # ---- Mean curves: prior and posterior ----
 prior_cov <- vapply(
   x_seq,
@@ -2678,37 +2901,38 @@ prior_cov <- vapply(
 )
 prior_mean <- prior_cov
 
-post_cov <- vapply(
+pm_cov <- vapply(
   x_seq,
   FUN = function(x) mean(cov_fun(etasq_all, rhosq_all, x), na.rm = TRUE),
   FUN.VALUE = numeric(1)
 )
-post_mean <- post_cov
+post_mean <- pm_cov
 
-# y-axis upper bound
+# y_max guard (include BOTH mean curves)
 y_max <- max(
   cov_fun(etasq_prior, rhosq_prior, 0),
-  cov_fun(etasq_all,  rhosq_all,  0),
+  cov_fun(etasq_post,  rhosq_post,  0),
   prior_mean,
   post_mean,
   na.rm = TRUE
 )
 
 # ---------------------------------
-# Styling choices
+# Styling choices (mean lines)
 # ---------------------------------
 col_prior_mean <- "black"
 col_post_mean  <- "red"
-lty_prior_mean <- 3
-lty_post_mean  <- 2
+lty_prior_mean <- 3  # dotted
+lty_post_mean  <- 2  # dashed
 
+# Draw clouds
 col_prior_draw <- col_alpha("grey10", 0.18)
 col_post_draw  <- col_alpha("firebrick", 0.25)
 
 # ---------------------------------
 # Save figure
 # ---------------------------------
-jpeg("../figs/year_covariance_gp_v1p8.jpeg", width = 2000, height = 1500, res = 220)
+jpeg("../figs/year_covariance_gp_v1p9.jpeg", width = 2000, height = 1500, res = 220)
 
 plot(
   NULL,
@@ -2719,7 +2943,7 @@ plot(
   main = "Year GP covariance: prior vs posterior"
 )
 
-# PRIOR curves
+# PRIOR curves (cloud)
 for (i in seq_len(n_prior)) {
   curve(
     cov_fun(etasq_prior[i], rhosq_prior[i], x),
@@ -2730,8 +2954,8 @@ for (i in seq_len(n_prior)) {
   )
 }
 
-# POSTERIOR curves
-for (i in seq_len(n_post)) {
+# POSTERIOR curves (cloud)
+for (i in seq_len(length(etasq_post))) {
   curve(
     cov_fun(etasq_post[i], rhosq_post[i], x),
     from = 0, to = d_max,
@@ -2741,7 +2965,7 @@ for (i in seq_len(n_post)) {
   )
 }
 
-# Mean lines
+# Mean lines (strong + distinct)
 lines(x_seq, prior_mean, col = col_prior_mean, lwd = 4, lty = lty_prior_mean)
 lines(x_seq, post_mean,  col = col_post_mean,  lwd = 4, lty = lty_post_mean)
 
@@ -2757,7 +2981,7 @@ legend(
 dev.off()
 
 # ---------------------------------
-# Also display inline
+# Also display inline (same code)
 # ---------------------------------
 plot(
   NULL,
@@ -2778,7 +3002,7 @@ for (i in seq_len(n_prior)) {
   )
 }
 
-for (i in seq_len(n_post)) {
+for (i in seq_len(length(etasq_post))) {
   curve(
     cov_fun(etasq_post[i], rhosq_post[i], x),
     from = 0, to = d_max,
@@ -2806,7 +3030,7 @@ legend(
 ```{r analyte persistence plot}
 ## ============================================================
 ## Analyte persistence: lag-1 correlation of latent year effect
-## v1p8 (uses post$F_year: draws × Y × A)
+## v1p9 (uses post$F_year: draws × Y × A)
 ## Ridgeline replacement (overwrites same filename pattern)
 ## ============================================================
 
@@ -2882,7 +3106,7 @@ p_persist_ridge
 
 # Save to figs folder
 ggsave(
-  filename = "../figs/analyte_persistence_precis_v1p8.jpeg",
+  filename = "../figs/analyte_persistence_precis_v1p9.jpeg",
   plot = p_persist_ridge,
   width = 12,
   height = 10,
@@ -2894,7 +3118,7 @@ ggsave(
 
 ```{r year effects plot}
 ## ============================================================
-## Year effects plot: F_year by analyte (v1p8)
+## Year effects plot: F_year by analyte (v1p9)
 ## post$F_year is draws × Y × A
 ## ============================================================
 
@@ -2942,7 +3166,7 @@ gg_F
 
 # Save to figs folder
 ggsave(
-  filename = "../figs/yearly_latent_deviations_v1p8.jpeg",
+  filename = "../figs/yearly_latent_deviations_v1p9.jpeg",
   plot = gg_F,
   width = 12, height = 10, dpi = 300
 )
@@ -2954,7 +3178,7 @@ ggsave(
 
 ```{r pred data generation}
 # ============================================================
-# v1p8: Build a prediction frame that includes "missing chemistry years"
+# v1p9: Build a prediction frame that includes "missing chemistry years"
 # Drop-in replacement with:
 #   1) robust irrigation mapping (keeps S1/S2, avoids coercion warnings)
 #   2) diagnostics explaining why years/rows get dropped
@@ -2964,7 +3188,7 @@ ggsave(
 #      - Residue is required for Stan (RES predictor)
 #        For now we set RES_z = 0 (placeholder; no impact)
 #
-# IMPORTANT v1p8 note:
+# IMPORTANT v1p9 note:
 #   - Irrigation is standardized later as irr_z to match the Stan data scale.
 # ============================================================
 build_d_pred <- function(
@@ -3298,11 +3522,11 @@ annual_tbl_obs <- make_annual_observed_table_all_treatments(
 
 ```{r pred data table}
 # ============================================================
-# v1p8: Annual table from posterior predictions summed over d_pred
+# v1p9: Annual table from posterior predictions summed over d_pred
 # IMPORTANT FIXES:
 #   - De-duplicate to ONE row per event_id for each Year × Treatment × Analyte group before summing
 #   - Irrigation is used on standardized scale irr_z (matches Stan data)
-#   - beta_irr is analyte-specific in v1p8: post$beta_irr[draw, A]
+#   - beta_irr is analyte-specific in v1p9: post$beta_irr[draw, A]
 # ============================================================
 make_annual_load_table_all_treatments_pred <- function(
   post,
@@ -3316,7 +3540,7 @@ make_annual_load_table_all_treatments_pred <- function(
   c_stats,
   V_mean, V_sd,
   stir_mean, stir_sd,
-  irr_mean, irr_sd,             # NEW v1p8
+  irr_mean, irr_sd,             # NEW v1p9
   n_draws = 1500,
   prob_ci = 0.95,
   drop_unmapped_analytes = TRUE,
@@ -3350,7 +3574,7 @@ make_annual_load_table_all_treatments_pred <- function(
     dplyr::mutate(
       Y      = match(Year, years_used),
       STIR_z = (STIR_raw - stir_mean) / stir_sd,
-      irr_z  = (irr_num  - irr_mean)  / irr_sd     # NEW v1p8
+      irr_z  = (irr_num  - irr_mean)  / irr_sd     # NEW v1p9
     )
 
   # ---- drop unmapped analytes instead of stopping ----
@@ -3427,7 +3651,7 @@ make_annual_load_table_all_treatments_pred <- function(
     A  <- dsub1$A;  B <- dsub1$B;  S <- dsub1$S;  Fu <- dsub1$Fu;  Y <- dsub1$Y;  Cr <- dsub1$Cr
     stz <- dsub1$STIR_z
     cin <- dsub1$cin_z
-    irz <- dsub1$irr_z              # NEW v1p8
+    irz <- dsub1$irr_z              # NEW v1p9
     dup <- dsub1$dup
     res <- dsub1$RES_z
     c_mean <- dsub1$c_mean
@@ -3464,7 +3688,7 @@ make_annual_load_table_all_treatments_pred <- function(
         post$beta_res_V[s] * res_ev +
         post$gamma_Cr_V[s, Cr_ev]
 
-      V_ev_raw <- V_mean + V_sd * muV_z_ev
+      V_ev_raw <- exp(V_mean + V_sd * muV_z_ev)
       Vsum <- sum(V_ev_raw, na.rm = TRUE)
 
       # ---- Predict concentration per analyte event-row (one per event_id) ----
@@ -3483,16 +3707,16 @@ make_annual_load_table_all_treatments_pred <- function(
         post$beta_stir[s, A]  * stz +
         post$beta_cin[s, A]   * cin +
         post$beta_vol[s]      * muV_z_row +
-        post$beta_irr[s, A]   * irz +      # NEW v1p8: analyte-specific and standardized
+        post$beta_irr[s, A]   * irz +      # NEW v1p9: analyte-specific and standardized
         post$beta_dup[s, A]   * dup +
         post$beta_res_C[s, A] * res +
         gCrC +
         gB + gS + gF + kY
 
-      C_raw <- c_mean + c_sd * muC_z
+      C_raw <- exp(c_mean + c_sd * muC_z)
 
       # ---- Annual load for this analyte: sum across events ONCE ----
-      V_row_raw <- V_mean + V_sd * muV_z_row
+      V_row_raw <- exp(V_mean + V_sd * muV_z_row)
       Lmg <- sum(C_raw * V_row_raw, na.rm = TRUE)
       Lg  <- Lmg / 1000
 
@@ -3817,7 +4041,7 @@ plot_annual_by_treatment_obs_vs_mod(annual_both, analyte_pick = "NO3", metric = 
 
 ```{r save all plots}
 # ------------------------------------------------------------
-# Save images (v1p8)
+# Save images (v1p9)
 # ------------------------------------------------------------
 sanitize_slug <- function(x) {
   x <- as.character(x)
@@ -3832,7 +4056,7 @@ sanitize_slug <- function(x) {
 save_all_analyte_obs_vs_mod_plots <- function(
   annual_both,
   metric = c("load","conc","volume"),
-  out_dir = file.path("../figs", "annual_obs_vs_modeled_v1p8"),
+  out_dir = file.path("../figs", "annual_obs_vs_modeled_v1p9"),
   width = 9,
   height = 5.5,
   dpi = 300,
@@ -3868,7 +4092,7 @@ save_all_analyte_obs_vs_mod_plots <- function(
       next
     }
 
-    fname <- file.path(out_dir, paste0("annual_", metric, "_", slug, "_obs_vs_modeled_v1p8.", device))
+    fname <- file.path(out_dir, paste0("annual_", metric, "_", slug, "_obs_vs_modeled_v1p9.", device))
 
     ggplot2::ggsave(
       filename = fname,
@@ -4217,7 +4441,7 @@ vol_modeled_pub
 
 ```{r export bayes annual predictions}
 # ============================================================
-# v1p8: Export annual posterior predictions (and optional observed)
+# v1p9: Export annual posterior predictions (and optional observed)
 # ============================================================
 
 export_dir <- "../out"
@@ -4322,7 +4546,7 @@ export_annual_draws <- function(
   c_stats,
   V_mean, V_sd,
   stir_mean, stir_sd,
-  irr_mean, irr_sd,            # NEW v1p8
+  irr_mean, irr_sd,            # NEW v1p9
   n_draws = 400,
   seed = 1,
   drop_unmapped_analytes = TRUE,
@@ -4356,7 +4580,7 @@ export_annual_draws <- function(
     dplyr::mutate(
       Y      = match(Year, years_used),
       STIR_z = (STIR_raw - stir_mean) / stir_sd,
-      irr_z  = (irr_num  - irr_mean)  / irr_sd     # NEW v1p8
+      irr_z  = (irr_num  - irr_mean)  / irr_sd     # NEW v1p9
     )
 
   # ---- Diagnose + optionally drop unmapped analytes ----
@@ -4444,7 +4668,7 @@ export_annual_draws <- function(
       A  <- dsub1$A;  B <- dsub1$B;  Sidx <- dsub1$S;  Fu <- dsub1$Fu;  Y <- dsub1$Y;  Cr <- dsub1$Cr
       stz <- dsub1$STIR_z
       cin <- dsub1$cin_z
-      irz <- dsub1$irr_z               # NEW v1p8
+      irz <- dsub1$irr_z               # NEW v1p9
       dup <- dsub1$dup
       res <- dsub1$RES_z
       c_mean <- dsub1$c_mean
@@ -4461,7 +4685,7 @@ export_annual_draws <- function(
         post$beta_res_V[s]  * ev$RES_z +
         post$gamma_Cr_V[s, ev$Cr]
 
-      Vsum <- sum(V_mean + V_sd * muV_z_ev, na.rm = TRUE)
+      Vsum <- sum(exp(V_mean + V_sd * muV_z_ev), na.rm = TRUE)
 
       muV_z_row <- post$a_V[s] +
         post$b_V[s]         * stz +
@@ -4478,13 +4702,13 @@ export_annual_draws <- function(
         post$beta_stir[s, A]  * stz +
         post$beta_cin[s, A]   * cin +
         post$beta_vol[s]      * muV_z_row +
-        post$beta_irr[s, A]   * irz +      # NEW v1p8
+        post$beta_irr[s, A]   * irz +      # NEW v1p9
         post$beta_dup[s, A]   * dup +
         post$beta_res_C[s, A] * res +
         gCrC + gB + gS + gF + kY
 
-      C_raw <- c_mean + c_sd * muC_z
-      V_row_raw <- V_mean + V_sd * muV_z_row
+      C_raw <- exp(c_mean + c_sd * muC_z)
+      V_row_raw <- exp(V_mean + V_sd * muV_z_row)
 
       Lmg <- sum(C_raw * V_row_raw, na.rm = TRUE)
       Lg  <- Lmg / 1000
