@@ -774,6 +774,19 @@ saveRDS(fit, file = "./out_cmdstanr/fit_mogp_v1p8.rds")
 
 ```
 
+```{r email notification}
+fit_rds_path <- "./out_cmdstanr/fit_mogp_v1p8.rds"
+notify_sampling_done(
+  subject = sprintf("Stan sampling finished: %s", model_version),
+  body = paste0(
+    "Your CmdStan fit finished sampling.\n\n",
+    "Model version: ", model_version, "\n\n",
+    "Saved fit: ", normalizePath(fit_rds_path, winslash = "/", mustWork = FALSE), "\n\n",
+    "Time finished: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
+  )
+)
+
+```
 
 ---
 

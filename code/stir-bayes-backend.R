@@ -431,6 +431,91 @@ cmdstan_dashboard <- function(
   ))
 }
 
+# email notification helper (requires mailR package and SMTP setup)
+# Optional email notification after long sampling runs.
+# To enable, define these environment variables before knitting/running:
+#   STAN_NOTIFY_TO
+#   STAN_NOTIFY_FROM
+#   STAN_NOTIFY_USER
+#   STAN_NOTIFY_PASS
+#   STAN_NOTIFY_HOST   (for example: smtp.gmail.com)
+#   STAN_NOTIFY_PORT   (for example: 465 or 587)
+# This function is safe to leave in place when no SMTP credentials are set.
 
+notify_sampling_done <- function(subject = NULL, body = NULL) {
+  
+  required <- c(
+    "STAN_NOTIFY_TO",
+    "STAN_NOTIFY_FROM",
+    "STAN_NOTIFY_USER",
+    "STAN_NOTIFY_PASS",
+    "STAN_NOTIFY_HOST",
+    "STAN_NOTIFY_PORT"
+  )
+  
+  vals <- Sys.getenv(required, unset = "")
+  names(vals) <- required
+  
+  if (any(vals == "")) {
+    missing_vars <- names(vals)[vals == ""]
+    message(
+      "Sampling-finished email skipped: missing environment variable(s): ",
+      paste(missing_vars, collapse = ", ")
+    )
+    return(invisible(FALSE))
+  }
+  
+  if (!requireNamespace("blastula", quietly = TRUE)) {
+    message("Sampling-finished email skipped: install.packages('blastula') is required.")
+    return(invisible(FALSE))
+  }
+  
+  smtp_port <- suppressWarnings(as.integer(Sys.getenv("STAN_NOTIFY_PORT")))
+  if (is.na(smtp_port)) {
+    message("Sampling-finished email skipped: STAN_NOTIFY_PORT is not a valid integer.")
+    return(invisible(FALSE))
+  }
+  
+  use_ssl <- identical(smtp_port, 465L)
+  
+  if (is.null(subject)) {
+    subject <- sprintf("Stan sampling finished: %s", model_version)
+  }
+  
+  if (is.null(body)) {
+    body <- paste0(
+      "Your CmdStan fit finished sampling.\n\n",
+      "Model version: ", model_version, "\n",
+      "Time finished: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
+    )
+  }
+  
+  email_obj <- blastula::compose_email(
+    body = blastula::md(body)
+  )
+  
+  tryCatch({
+    blastula::smtp_send(
+      email = email_obj,
+      from = Sys.getenv("STAN_NOTIFY_FROM"),
+      to = Sys.getenv("STAN_NOTIFY_TO"),
+      subject = subject,
+      credentials = blastula::creds_envvar(
+        user = Sys.getenv("STAN_NOTIFY_USER"),
+        pass_envvar = "STAN_NOTIFY_PASS",
+        host = Sys.getenv("STAN_NOTIFY_HOST"),
+        port = smtp_port,
+        use_ssl = use_ssl
+      )
+    )
+    
+    message("Sampling-finished email sent.")
+    invisible(TRUE)
+    
+  }, error = function(e) {
+    message("Sampling-finished email failed: ", conditionMessage(e))
+    invisible(FALSE)
+  })
+}
 
 
