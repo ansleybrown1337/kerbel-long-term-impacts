@@ -20,6 +20,7 @@ library(dplyr)
 library(readr)
 library(tidyr)
 library(ggplot2)
+library(blastula)
 
 # If you prefer not to rely on setwd, open the Rproj at repo root and run there.
 # Then all paths below are relative to the project root.
