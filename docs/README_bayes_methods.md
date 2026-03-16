@@ -11,9 +11,27 @@ This document provides technical documentation for the **hierarchical Bayesian m
 
 The model supports research objectives focused on quantifying the effect of tillage intensity on runoff concentration, runoff volume, and annual nutrient and sediment loads, while explicitly accounting for temporal persistence, cross-analyte dependence, structural field design variables, missing-data mechanisms, residue effects, inflow predictors, and censoring of concentration observations below reporting limits.
 
+Inference is conducted in **Stan** using **Hamiltonian Monte Carlo (HMC)** with the **No-U-Turn Sampler (NUTS)**.
+
 **Stan model:** `code/m_stir_mogp_v1p8.stan`  
-**Driver analysis:** `code/stir-bayes-load1p8.Rmd`  
+**Driver analysis:** `code/stir-bayes-load1p8_nonneg.Rmd`  
 **Primary dataset:** `out/wq_cleaned.csv`  
+
+---
+
+## Model summary
+
+| Component | Description |
+| --- | --- |
+| Concentration model | Multi-analyte hierarchical regression for latent true concentration with analyte-specific coefficients and measurement error |
+| Volume model | Hierarchical regression for latent true outflow volume with measurement error |
+| Residue model | Logit-normal submodel for residue proportion, including missing-data imputation and previous-crop effects |
+| Missing predictors | In-model imputation for missing inflow concentration (`CIN`), inflow volume (`VIN`), and residue (`RES`) |
+| Censoring | Left-censored normal likelihood for concentration observations below reporting limits |
+| Temporal structure | Multi-output Gaussian process over year with shared cross-analyte covariance |
+| Latent variables | `C_true` and `V_true` separate underlying event states from observation error; imputed predictors propagate covariate uncertainty |
+| Outputs | Posterior distributions for concentration, volume, and annual loads, plus posterior predictive replicates |
+| Inference | Hamiltonian Monte Carlo in Stan using NUTS |
 
 ---
 
@@ -21,10 +39,10 @@ The model supports research objectives focused on quantifying the effect of till
 
 Both primary outcomes are modeled on the **z-standardized scale** as supplied to Stan:
 
-- `C[i]`: outflow concentration (z scale)  
-- `VOL[i]`: outflow volume (z scale)  
+- `C[i]`: outflow concentration, z scale  
+- `VOL[i]`: outflow volume, z scale  
 
-The model introduces row-level latent “true” values (`C_true`, `V_true`) and applies observation likelihoods only to rows with observed outcomes. Missing rows are inferred through the latent process. Concentration rows flagged as censored are handled through a left-censored likelihood using reporting-limit values transformed to the same z scale as `C`.
+The model introduces row-level latent “true” values, `C_true` and `V_true`, and applies observation likelihoods only to rows with observed outcomes. Missing rows are inferred through the latent process. Concentration rows flagged as censored are handled through a left-censored likelihood using reporting-limit values transformed to the same z scale as `C`.
 
 Residue enters the model on the **proportion scale** in `(0,1)` and is modeled through a separate logit-normal regression with in-model imputation for missing residue rows.
 
@@ -36,7 +54,7 @@ Residue enters the model on the **proportion scale** in `(0,1)` and is modeled t
 
 ### Latent process
 
-For row $i$ with analyte $a=A[i]$ and year index $y=Y[i]$:
+For row `i` with analyte `a = A[i]` and year index `y = Y[i]`:
 
 ```math
 \mu_{C,i} =
@@ -58,7 +76,7 @@ Row-level latent truth is parameterized non-centrally:
 
 ```math
 C_{\mathrm{true},i} = \mu_{C,i} + \sigma_{\mathrm{analyte}}\,z_{C,i},
-\qquad z_{C,i}\sim\mathrm{Normal}(0,1)
+\qquad z_{C,i} \sim \mathrm{Normal}(0,1)
 ```
 
 ### Observation model
@@ -69,7 +87,7 @@ For observed, uncensored concentration rows:
 C_i \sim \mathrm{Normal}\!\left(C_{\mathrm{true},i},\ \sigma_{\mathrm{C,obs},a}\right)
 ```
 
-For observed, left-censored concentration rows (e.g., nondetect / below reporting limit):
+For observed, left-censored concentration rows, for example nondetects or values below reporting limit:
 
 ```math
 C_i < L_i,
@@ -82,17 +100,17 @@ which is implemented in Stan as:
 ```math
 \log \Pr(C_i < L_i)
 =
-\mathrm{normal\_lcdf}\!\left(L_i\mid C_{\mathrm{true},i},\sigma_{\mathrm{C,obs},a}\right)
+\mathrm{normal\_lcdf}\!\left(L_i \mid C_{\mathrm{true},i}, \sigma_{\mathrm{C,obs},a}\right)
 ```
 
-where $L_i$ is the row-specific censoring threshold (`C_cens_limit[i]`) on the same z scale as `C`.
+where `L_i` is the row-specific censoring threshold, `C_cens_limit[i]`, on the same z scale as `C`.
 
 ### Parameter meanings
 
-- $\alpha_a$: analyte-specific intercept (hierarchical MVN)  
+- $\alpha_a$: analyte-specific intercept, hierarchical multivariate prior  
 - $\beta_{\mathrm{stir},a}$: analyte-specific slope on $\mathrm{STIR}_i$  
-- $\beta_{\mathrm{cin},a}$: analyte-specific slope on imputed / observed inflow concentration $\mathrm{CIN}^{\ast}_i$  
-- $\beta_{\mathrm{vol}}$: global coupling from latent true volume $V_{\mathrm{true}}$ to concentration  
+- $\beta_{\mathrm{cin},a}$: analyte-specific slope on imputed or observed inflow concentration $\mathrm{CIN}^{\ast}_i$  
+- $\beta_{\mathrm{vol}}$: global coupling from latent true volume $V_{\mathrm{true},i}$ to concentration  
 - $\beta_{\mathrm{irr},a}$: analyte-specific slope on standardized irrigation-order covariate $\mathrm{IRR}_z$  
 - $\beta_{\mathrm{dup},a}$: analyte-specific duplicate indicator effect  
 - $\beta_{\mathrm{res},a}$: analyte-specific slope on residue proportion $\mathrm{RES}^{\ast}$  
@@ -100,9 +118,9 @@ where $L_i$ is the row-specific censoring threshold (`C_cens_limit[i]`) on the s
 - $\gamma_{a,\mathrm{B}}$: analyte-specific block random effects  
 - $\gamma_{a,\mathrm{S}}$: analyte-specific sampler random effects  
 - $\gamma_{a,\mathrm{Fu}}$: analyte-specific flume random effects  
-- $f_{y,a}$: year-by-analyte Gaussian-process effect (multi-output GP)
+- $f_{y,a}$: year-by-analyte Gaussian-process effect  
 
-**Design note:** Treatment is not included as a separate causal predictor in 1p8 by design. Tillage disturbance enters through $\mathrm{STIR}_i$.
+**Design note:** treatment is not included as a separate causal predictor in v1p8 by design. Tillage disturbance enters through $\mathrm{STIR}_i$.
 
 ---
 
@@ -123,7 +141,7 @@ with non-centered row-level latent truth:
 
 ```math
 V_{\mathrm{true},i} = \mu_{V,i} + \sigma_V\,z_{V,i},
-\qquad z_{V,i}\sim\mathrm{Normal}(0,1)
+\qquad z_{V,i} \sim \mathrm{Normal}(0,1)
 ```
 
 ### Observation model
@@ -136,21 +154,21 @@ For observed volume rows:
 
 ### Parameter meanings
 
-- $a_V$: volume intercept (z scale)  
+- $a_V$: volume intercept, z scale  
 - $b_V$: slope on $\mathrm{STIR}_i$ for outflow volume  
 - $\beta_{\mathrm{vin}}$: slope of inflow volume predictor $\mathrm{VIN}^{\ast}_i$ on outflow volume  
 - $\beta_{\mathrm{res},V}$: slope of residue proportion on outflow volume  
 - $\gamma^{(V)}_{\mathrm{Cr}}$: crop-type effect on volume  
-- $\sigma_V$: latent process SD for volume  
-- $\sigma_{\mathrm{VOL,obs}}$: volume observation (measurement) SD
+- $\sigma_V$: latent process standard deviation for volume  
+- $\sigma_{\mathrm{VOL,obs}}$: volume observation standard deviation  
 
-**Scaling note:** Volume is modeled on the **z scale** in Stan (not log scale), consistent with the upstream pipeline.
+**Scaling note:** volume is modeled on the **z scale** in Stan, not log scale, consistent with the upstream pipeline.
 
 ---
 
 ## 3) Residue model (logit-normal regression with missing-data imputation)
 
-Residue is treated as a proportion in $(0,1)$ and modeled on the logit scale.
+Residue is treated as a proportion in `(0,1)` and modeled on the logit scale.
 
 ### Linear predictor
 
@@ -173,7 +191,7 @@ Observed residue rows satisfy:
 \mathrm{Normal}\!\left(\mu_{\mathrm{res},i},\ \sigma_{\mathrm{res,obs}}\right)
 ```
 
-Missing residue rows are imputed as parameters $\mathrm{RES}_{\mathrm{miss},j}\in(10^{-4},1-10^{-4})$ with:
+Missing residue rows are imputed as parameters $\mathrm{RES}_{\mathrm{miss},j} \in (10^{-4}, 1 - 10^{-4})$ with:
 
 ```math
 \mathrm{logit}(\mathrm{RES}_{\mathrm{miss},j})
@@ -186,8 +204,8 @@ A merged residue vector is then used as a predictor in the concentration and vol
 ```math
 \mathrm{RES}^{\ast}_i =
 \begin{cases}
-\mathrm{RES}_i, & \text{if observed}\\
-\mathrm{RES}_{\mathrm{miss},j}, & \text{if missing (mapped by index)}
+\mathrm{RES}_i, & \text{if observed} \\
+\mathrm{RES}_{\mathrm{miss},j}, & \text{if missing, mapped by index}
 \end{cases}
 ```
 
@@ -196,7 +214,7 @@ A merged residue vector is then used as a predictor in the concentration and vol
 - $\mathrm{res\_base}$: baseline residue proportion  
 - $b_{\mathrm{res,stir}}$: STIR effect on residue proportion  
 - $\gamma^{(\mathrm{res})}_{\mathrm{PrevCr}}$: previous-crop effect on residue  
-- $\sigma_{\mathrm{res,obs}}$: logit-scale residue observation / process SD
+- $\sigma_{\mathrm{res,obs}}$: logit-scale residue observation or process standard deviation  
 
 ---
 
@@ -215,8 +233,8 @@ A merged inflow concentration vector is then used in the concentration model:
 ```math
 \mathrm{CIN}^{\ast}_i =
 \begin{cases}
-\mathrm{CIN}_i, & \text{if observed}\\
-\mathrm{CIN}_{\mathrm{impute},j}, & \text{if missing (mapped by index)}
+\mathrm{CIN}_i, & \text{if observed} \\
+\mathrm{CIN}_{\mathrm{impute},j}, & \text{if missing, mapped by index}
 \end{cases}
 ```
 
@@ -233,8 +251,8 @@ with merged predictor:
 ```math
 \mathrm{VIN}^{\ast}_i =
 \begin{cases}
-\mathrm{VIN}_i, & \text{if observed}\\
-\mathrm{VIN}_{\mathrm{impute},j}, & \text{if missing (mapped by index)}
+\mathrm{VIN}_i, & \text{if observed} \\
+\mathrm{VIN}_{\mathrm{impute},j}, & \text{if missing, mapped by index}
 \end{cases}
 ```
 
@@ -242,13 +260,13 @@ with merged predictor:
 
 # Temporal structure: multi-output Gaussian process (as implemented)
 
-Year-by-analyte GP effects $f_{y,a}$ are constructed from a separable covariance:
+Year-by-analyte Gaussian-process effects $f_{y,a}$ are constructed from a separable covariance:
 
 ```math
-\mathrm{vec}(F_{\mathrm{year}})\sim \mathrm{Normal}\!\left(0,\ \Sigma_A \otimes K_{\mathrm{year}}\right)
+\mathrm{vec}(F_{\mathrm{year}}) \sim \mathrm{Normal}\!\left(0,\ \Sigma_A \otimes K_{\mathrm{year}}\right)
 ```
 
-Stan uses `cov_GPL2(D, etasq_year, rhosq_year, delta)` to build $K_{\mathrm{year}}$ from the year-distance matrix $D$:
+Stan uses `cov_GPL2(D, etasq_year, rhosq_year, delta)` to build $K_{\mathrm{year}}$ from the year-distance matrix `D`:
 
 ```math
 K_{\mathrm{year},ij} = \eta^2 \exp\!\left(-\rho^2 d_{ij}^2\right),
@@ -260,17 +278,17 @@ with $\delta = 0.01$ in the Stan implementation.
 Cross-analyte covariance is represented via a Cholesky factor:
 
 ```math
-\Sigma_A = L_{Agp} L_{Agp}^\top,
+\Sigma_A = L_{Agp} L_{Agp}^{\top},
 \qquad L_{Agp} = \mathrm{diag}(\sigma_{Agp})\,L_{\mathrm{corr},Agp}
 ```
 
-and the GP realization is built non-centrally:
+and the Gaussian-process realization is built non-centrally:
 
 ```math
-F_{\mathrm{year}} = L_t Z_{gp} L_{Agp}^\top
+F_{\mathrm{year}} = L_t Z_{gp} L_{Agp}^{\top}
 ```
 
-where $L_t$ is the Cholesky factor of $K_{\mathrm{year}}$ and $Z_{gp}$ is standard normal.
+where `L_t` is the Cholesky factor of $K_{\mathrm{year}}$ and `Z_gp` is standard normal.
 
 This structure allows analytes to share temporal information while retaining analyte-specific deviations in year effects.
 
@@ -278,7 +296,7 @@ This structure allows analytes to share temporal information while retaining ana
 
 # Load propagation (post-processing)
 
-Event loads are computed from posterior draws after back-transforming concentration and volume from their modeled scales to original units in post-processing (see `stir-bayes-load1p8.Rmd`). At the event level for analyte $a$:
+Event loads are computed from posterior draws after back-transformation of concentration and volume from their modeled scales to original units in post-processing, as implemented in `stir-bayes-load1p8_nonneg.Rmd`. At the event level for analyte `a`:
 
 ```math
 L_{i,a} = C_{i,a}\,V_i
@@ -287,7 +305,7 @@ L_{i,a} = C_{i,a}\,V_i
 Annual loads are then computed as:
 
 ```math
-L_{y,a} = \sum_{i\in y} L_{i,a}
+L_{y,a} = \sum_{i \in y} L_{i,a}
 ```
 
 Uncertainty is propagated by applying these calculations to each posterior draw.
@@ -296,12 +314,12 @@ Uncertainty is propagated by applying these calculations to each posterior draw.
 
 # Missingness and censoring summary (as implemented)
 
-- Missing `C` rows: excluded from the direct observation likelihood; inferred via $C_{\mathrm{true}}$  
+- Missing `C` rows: excluded from the direct observation likelihood and inferred via $C_{\mathrm{true}}$  
 - Censored `C` rows: included via a left-censored normal likelihood using `C_cens_limit`  
-- Missing `VOL` rows: excluded from the direct observation likelihood; inferred via $V_{\mathrm{true}}$  
+- Missing `VOL` rows: excluded from the direct observation likelihood and inferred via $V_{\mathrm{true}}$  
 - Missing `RES` rows: imputed through the residue submodel into $\mathrm{RES}^{\ast}$  
 - Missing `CIN` rows: imputed via $\mathrm{CIN}_{\mathrm{impute}}$ into $\mathrm{CIN}^{\ast}$  
-- Missing `VIN` rows: imputed via $\mathrm{VIN}_{\mathrm{impute}}$ into $\mathrm{VIN}^{\ast}$
+- Missing `VIN` rows: imputed via $\mathrm{VIN}_{\mathrm{impute}}$ into $\mathrm{VIN}^{\ast}$  
 
 ---
 
@@ -311,7 +329,7 @@ The Stan model returns posterior predictive replicates for:
 
 - `VOL_rep[i]`: replicated outflow volume  
 - `C_rep[i]`: replicated concentration  
-- `RES_rep01[i]`: replicated residue proportion
+- `RES_rep01[i]`: replicated residue proportion  
 
 These quantities support posterior predictive checking of measurement-scale fit.
 
