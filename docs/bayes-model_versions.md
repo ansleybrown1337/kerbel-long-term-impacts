@@ -16,6 +16,14 @@ The tables below document what was implemented and whether the model converged u
 **Driver file:** `code/stir-bayes-load1p8.Rmd`  
 **Status:** **CURRENT – Converged and selected for inference**
 
+**Latest implemented model:** `load2p1`
+
+**Stan file:** `code/m_stir_mogp_v2p1.stan`
+
+**Driver file:** `code/stir-bayes-load2p1_nonneg.Rmd`
+
+**Status:** **Completed with improved but not yet acceptable convergence**
+
 | Version    | File            | Key Structural Features                                                                 | Convergence Status | Notes |
 |------------|----------------|------------------------------------------------------------------------------------------|--------------------|-------|
 | 1.0        | load1p0        | Posterior load computation from separate C and V models                                 | Converged          | Initial integrated load workflow |
@@ -32,6 +40,7 @@ The tables below document what was implemented and whether the model converged u
 | 1p7p4      | load1p7p4      | Pre-final restructuring before full stabilization                                       | **Did NOT converge** | Parameterization still unstable |
 | 1p7p5      | load1p7p5      | Finalized latent-state formulation; stabilized non-centered parameterization; full MOGP; includes analyte-specific crop, residue, and irrigation effects | Converged          | Previous selected model |
 | **1p8**    | **load1p8**    | Adds explicit concentration censoring via left-censored likelihood, inflow-volume (`VIN`) imputation, updated residue submodel using previous crop, and retained stabilized latent-state + MOGP structure | **Converged**      | Current selected model |
+| **2p1**    | **load2p1**    | Retains the v1p8 nonnegative workflow and scientific structure, but models outflow volume once per volume-measurement event, VIN once per physical plot event, and residue once per planting-season plot unit before mapping shared values back to analyte rows | **Completed; improved but not fully converged** | Corrects analyte-row pseudo-replication. First completed run had 54 divergences, one chain with E-BFMI 0.267, and 9 research-facing parameters with R-hat > 1.01; not yet selected for inference |
 
 ---
 
@@ -55,6 +64,15 @@ Version **1p8** extends 1p7p5 by preserving the stabilized geometry while adding
 - Posterior predictive quantities for concentration, volume, and residue  
 
 This version satisfies convergence diagnostics and is the official analysis model.
+
+Version **2p1** is the latest implemented successor workflow and corrects analyte-row
+pseudo-replication for volume-measurement-event outflow volume, physical
+plot-event VIN imputation, and planting-season residue likelihood/imputation.
+Its first completed run converged better than the row-replicated formulation,
+but retained 54 divergences, one chain with E-BFMI below 0.3, and 9
+research-facing parameters with R-hat above 1.01. Therefore, v1p8 remains the
+selected model for formal inference until the remaining v2p1 diagnostics are
+resolved.
 
 ---
 

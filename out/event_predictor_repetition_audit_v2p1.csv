@@ -1,0 +1,4 @@
+variable,model_unit,nonmissing_row_values,nonmissing_model_units,approximate_repetition_factor,conflicting_event_groups,mixed_missing_event_groups
+volume_z,event_volume,6965,642,10.848909657320872,0,1
+vin_std,physical_plot_event,6595,324,20.354938271604937,0,0
+RES_input,planting_season_plot,7899,66,119.68181818181819,0,0

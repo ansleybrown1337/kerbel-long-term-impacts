@@ -63,7 +63,24 @@ See the dedicated pipeline README:
 
 ### Bayesian modeling
 See the dedicated methods README:
-➡️ [`docs/README_bayes_Methods.md`](./docs/README_bayes_Methods.md)
+➡️ [`docs/README_bayes_methods.md`](./docs/README_bayes_methods.md)
+
+The latest implemented Bayesian workflow is **v2p1**:
+
+- Stan model: `code/m_stir_mogp_v2p1.stan`
+- Driver: `code/stir-bayes-load2p1_nonneg.Rmd`
+- Detailed unit-of-analysis notes:
+  [`docs/README_bayes_methods_v2p1_notes.md`](./docs/README_bayes_methods_v2p1_notes.md)
+- Model lineage and convergence status:
+  [`docs/bayes-model_versions.md`](./docs/bayes-model_versions.md)
+
+v2p1 corrects pseudo-replication by modeling outflow volume once per
+volume-measurement event, inflow volume once per physical plot runoff event,
+and residue once per planting-season plot. Its first completed run improved
+convergence but retained some divergences, one low-E-BFMI chain, and elevated
+R-hat values. Consequently, v1p8 remains the selected model for formal
+inference while v2p1 remains the latest implementation under diagnostic
+refinement.
 
 ### Machine‑learning modeling
 See the dedicated methods README:
@@ -85,6 +102,8 @@ The Bayesian analysis is the primary inferential framework for this project. It 
 - Full uncertainty propagation
 - Multi‑analyte hierarchical structure
 - Temporal persistence using Gaussian Processes
+- Explicit scientific units of analysis for concentration, volume, inflow
+  volume, and residue
 
 📘 **Full Bayesian methods documentation:**  
 ➡️ [`docs/README_bayes_methods.md`](./docs/README_bayes_methods.md)
@@ -114,6 +133,12 @@ A parallel machine‑learning analysis is implemented using **CatBoost regressio
 ---
 
 ## 6. Key Results at a Glance
+
+> **Model-status note:** The findings and Bayes-versus-ML comparison figures
+> below summarize the previously selected/reporting workflows. They have not
+> been regenerated or approved using v2p1. Although v2p1 is the latest
+> implementation and produced complete outputs, it remains under diagnostic
+> refinement and is not yet used for formal inference.
 
 This study evaluates Bayesian and machine-learning approaches for estimating long-term annual nutrient and sediment loads using a combination of point-based and distribution-aware performance metrics. Although both frameworks achieve comparable accuracy for central estimates of annual loads, they differ fundamentally in how temporal structure, uncertainty, and management effects are represented. The Bayesian model explicitly encodes causal assumptions and temporal dependence, producing calibrated uncertainty that evolves with data availability, whereas the machine-learning model emphasizes flexible pattern recognition and interpolation. These differences are most clearly revealed by probabilistic performance metrics such as CRPS, while recognizing that all observation-based metrics implicitly treat measured loads as truth, despite substantial uncertainty in the load estimation process itself.
 
@@ -194,5 +219,3 @@ This study evaluates Bayesian and machine-learning approaches for estimating lon
 ## 7. License and Citation
 
 Licensed under **GNU GPL2**.
-
-
