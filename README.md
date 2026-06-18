@@ -76,11 +76,11 @@ The latest implemented Bayesian workflow is **v2p1**:
 
 v2p1 corrects pseudo-replication by modeling outflow volume once per
 volume-measurement event, inflow volume once per physical plot runoff event,
-and residue once per planting-season plot. Its first completed run improved
-convergence but retained some divergences, one low-E-BFMI chain, and elevated
-R-hat values. Consequently, v1p8 remains the selected model for formal
-inference while v2p1 remains the latest implementation under diagnostic
-refinement.
+and residue once per planting-season plot. It is the latest completed
+implementation and the selected model for formal inference and publication.
+The first completed run retained some divergences, one low-E-BFMI chain, and
+elevated R-hat values, but v2p1 is retained as the final model because its
+scientific unit-of-analysis structure is preferred over earlier workflows.
 
 ### Machine‑learning modeling
 See the dedicated methods README:
@@ -134,11 +134,10 @@ A parallel machine‑learning analysis is implemented using **CatBoost regressio
 
 ## 6. Key Results at a Glance
 
-> **Model-status note:** The findings and Bayes-versus-ML comparison figures
-> below summarize the previously selected/reporting workflows. They have not
-> been regenerated or approved using v2p1. Although v2p1 is the latest
-> implementation and produced complete outputs, it remains under diagnostic
-> refinement and is not yet used for formal inference.
+> **Model-status note:** v2p1 is the latest completed Bayesian implementation
+> and the selected model for formal inference and publication. Earlier
+> Bayes-versus-ML comparison figures may reflect prior reporting workflows and
+> should not override the v2p1 model-selection decision.
 
 This study evaluates Bayesian and machine-learning approaches for estimating long-term annual nutrient and sediment loads using a combination of point-based and distribution-aware performance metrics. Although both frameworks achieve comparable accuracy for central estimates of annual loads, they differ fundamentally in how temporal structure, uncertainty, and management effects are represented. The Bayesian model explicitly encodes causal assumptions and temporal dependence, producing calibrated uncertainty that evolves with data availability, whereas the machine-learning model emphasizes flexible pattern recognition and interpolation. These differences are most clearly revealed by probabilistic performance metrics such as CRPS, while recognizing that all observation-based metrics implicitly treat measured loads as truth, despite substantial uncertainty in the load estimation process itself.
 

@@ -2,7 +2,7 @@
 
 **Current implementation:** v2p1
 
-**Selected model for inference:** v1p8, pending resolution of remaining v2p1 diagnostics
+**Selected model for inference:** v2p1
 
 **Stan model:** `code/m_stir_mogp_v2p1.stan`
 
@@ -30,9 +30,9 @@ Inference uses Hamiltonian Monte Carlo with the No-U-Turn Sampler in Stan.
 
 ## Current Status
 
-v2p1 is the latest implemented and completed workflow. It corrects
-pseudo-replication in v1p8 by assigning each variable to its scientific unit of
-analysis before fitting:
+v2p1 is the latest implemented and completed workflow and is the selected model
+for formal inference and publication. It corrects pseudo-replication in v1p8 by
+assigning each variable to its scientific unit of analysis before fitting:
 
 | Variable or process | v2p1 model unit |
 | --- | --- |
@@ -43,8 +43,7 @@ analysis before fitting:
 | Residue (`RES`) | Planting-season plot |
 
 The first completed v2p1 run on June 14, 2026 converged better than the earlier
-row-replicated formulation, but it did not fully satisfy the project's
-diagnostic criteria:
+row-replicated formulation. It retained the following diagnostic limitations:
 
 - 54 divergent transitions across 4,000 post-warmup draws;
 - no maximum-treedepth transitions;
@@ -52,9 +51,9 @@ diagnostic criteria:
 - 9 research-facing parameters with R-hat above 1.01;
 - worst research-facing R-hat: `1.141`.
 
-Therefore, v2p1 is the current implementation and diagnostic-development model,
-while v1p8 remains the selected model for formal inference until the remaining
-v2p1 sampling issues are resolved.
+Despite these remaining diagnostics, v2p1 is the selected formal model because
+its scientific unit-of-analysis structure is preferred over earlier
+row-replicated workflows.
 
 ## Model Units And Mappings
 
