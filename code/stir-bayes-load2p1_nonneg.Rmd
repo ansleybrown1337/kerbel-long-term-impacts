@@ -5392,3 +5392,28 @@ readr::write_csv(annual_draws, draws_file)
 message("[OK] Wrote: ", draws_file)
 
 ```
+```{r}
+library(dplyr)
+library(posterior)
+library(tibble)
+
+# Overall summary
+summ <- fit$summary()
+
+overall_diag <- summ %>%
+  summarise(
+    n_parameters = n(),
+    max_rhat = max(rhat, na.rm = TRUE),
+    mean_rhat = mean(rhat, na.rm = TRUE),
+    median_rhat = median(rhat, na.rm = TRUE),
+    n_rhat_gt_1_01 = sum(rhat > 1.01, na.rm = TRUE),
+    n_rhat_gt_1_05 = sum(rhat > 1.05, na.rm = TRUE),
+    min_ess_bulk = min(ess_bulk, na.rm = TRUE),
+    min_ess_tail = min(ess_tail, na.rm = TRUE),
+    median_ess_bulk = median(ess_bulk, na.rm = TRUE),
+    median_ess_tail = median(ess_tail, na.rm = TRUE)
+  )
+
+overall_diag
+```
+

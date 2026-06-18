@@ -7,6 +7,8 @@ annual_load_bayes_vs_ml.py
 Creates annual load comparison plots faceted by Treatment (CT/MT/ST) and
 computes quantitative goodness-of-fit (GoF) metrics comparing Bayes vs ML
 against Observed annual loads.
+Also creates an annual volume comparison plot and volume metrics when Bayes
+annual volume CSVs are available.
 
 New in this drop-in (v1p7p5 request):
   - Adds NRMSE_sd = RMSE / SD(Observed).
@@ -125,6 +127,37 @@ def units_to_mg(x: pd.Series, units: str) -> pd.Series:
     if u == "auto":
         return x
     raise ValueError("input units must be one of: mg, g, kg, auto")
+
+
+def volume_to_kL(x: pd.Series, units: str) -> pd.Series:
+    u = str(units).lower().strip()
+    if u in {"kl", "kiloliter", "kiloliters", "kilolitre", "kilolitres"}:
+        return x
+    if u in {"l", "liter", "liters", "litre", "litres"}:
+        return x / 1e3
+    if u in {"m3", "m^3", "cubic_meter", "cubic_meters", "cubic_metre", "cubic_metres"}:
+        return x
+    raise ValueError("volume units must be one of: L, kL, m3")
+
+
+def kL_to_units(x: pd.Series, units: str) -> pd.Series:
+    u = str(units).lower().strip()
+    if u in {"kl", "kiloliter", "kiloliters", "kilolitre", "kilolitres"}:
+        return x
+    if u in {"l", "liter", "liters", "litre", "litres"}:
+        return x * 1e3
+    if u in {"m3", "m^3", "cubic_meter", "cubic_meters", "cubic_metre", "cubic_metres"}:
+        return x
+    raise ValueError("volume units must be one of: L, kL, m3")
+
+
+def infer_volume_units_from_col(col: str, default_units: str) -> str:
+    c = str(col).lower()
+    if "volume_kl" in c or "_kl_" in c or c.endswith("_kl"):
+        return "kL"
+    if "volume_l" in c or "_l_" in c or c.endswith("_l"):
+        return "L"
+    return default_units
 
 
 # ----------------------------
@@ -289,6 +322,197 @@ def split_bayes_observed_modeled(bayes_raw: pd.DataFrame, input_units: str = "mg
     return bayes_modeled, observed
 
 
+def standardize_volume_wide(
+    df: pd.DataFrame,
+    source_name: str,
+    series_label: str,
+    source_tag: str,
+    input_units: str = "kL",
+    treatments: List[str] = ["CT", "MT", "ST"],
+) -> pd.DataFrame:
+    """Convert Bayes annual volume wide CSVs to the long comparison schema.
+
+    The internal numeric columns are named center_mg/low_mg/high_mg for reuse
+    with the existing metrics functions, but values are annual volume in kL.
+    """
+    df = normalize_cols(df)
+    if "Year" not in df.columns:
+        raise ValueError(f"{source_name}: volume file missing Year column.")
+
+    rows = []
+    for trt in treatments:
+        c_center = pick_first_existing(df, [
+            f"{trt}_{source_tag}_volume_kL_mean",
+            f"{trt}_{source_tag}_volume_mean",
+            f"{trt}_{source_tag}_volume_L_mean",
+            f"{trt}_volume_kL_mean",
+            f"{trt}_volume_mean",
+        ])
+        c_low = pick_first_existing(df, [
+            f"{trt}_{source_tag}_volume_kL_low",
+            f"{trt}_{source_tag}_volume_low",
+            f"{trt}_{source_tag}_volume_L_low",
+            f"{trt}_volume_kL_low",
+            f"{trt}_volume_low",
+        ])
+        c_high = pick_first_existing(df, [
+            f"{trt}_{source_tag}_volume_kL_high",
+            f"{trt}_{source_tag}_volume_high",
+            f"{trt}_{source_tag}_volume_L_high",
+            f"{trt}_volume_kL_high",
+            f"{trt}_volume_high",
+        ])
+
+        if c_center is None:
+            continue
+
+        col_units = infer_volume_units_from_col(c_center, input_units)
+        tmp = pd.DataFrame({
+            "Year": df["Year"],
+            "Treatment": trt,
+            "Analyte": "Volume",
+            "source": source_name,
+            "series": series_label,
+            "center_mg": volume_to_kL(safe_numeric(df[c_center]), col_units),
+            "low_mg": volume_to_kL(safe_numeric(df[c_low]), col_units) if c_low is not None else np.nan,
+            "high_mg": volume_to_kL(safe_numeric(df[c_high]), col_units) if c_high is not None else np.nan,
+        })
+        rows.append(tmp)
+
+    if not rows:
+        raise ValueError(
+            f"{source_name}: no annual volume columns found for tag '{source_tag}'. "
+            f"Available columns: {list(df.columns)}"
+        )
+
+    out = pd.concat(rows, ignore_index=True)
+    out = out.dropna(subset=["Year", "Treatment", "center_mg"]).copy()
+    out["Year"] = safe_numeric(out["Year"]).astype(int)
+    return out
+
+
+def standardize_ml_volume_summary(
+    df: pd.DataFrame,
+    source_name: str = "ML",
+    series_label: str = "ML modeled",
+    input_units: str = "L",
+) -> pd.DataFrame:
+    """Read ML annual volume fields if they are present in the annual summary."""
+    df = normalize_cols(df)
+    if "Year" not in df.columns or "Treatment" not in df.columns:
+        return pd.DataFrame()
+
+    c_center = pick_first_existing(df, ["volume_mean", "volume_kL_mean", "volume_L_mean"])
+    c_low = pick_first_existing(df, ["volume_low", "volume_kL_low", "volume_L_low"])
+    c_high = pick_first_existing(df, ["volume_high", "volume_kL_high", "volume_L_high"])
+
+    if c_center is None:
+        return pd.DataFrame()
+
+    col_units = infer_volume_units_from_col(c_center, input_units)
+    tmp = df.loc[:, ["Year", "Treatment"]].copy()
+    tmp["center_mg"] = volume_to_kL(safe_numeric(df[c_center]), col_units)
+    tmp["low_mg"] = volume_to_kL(safe_numeric(df[c_low]), col_units) if c_low is not None else np.nan
+    tmp["high_mg"] = volume_to_kL(safe_numeric(df[c_high]), col_units) if c_high is not None else np.nan
+    tmp = tmp.dropna(subset=["Year", "Treatment", "center_mg"]).copy()
+    if tmp.empty:
+        return pd.DataFrame()
+
+    # Annual ML summaries are often one row per analyte. Volume is event-level,
+    # so average repeated Year x Treatment estimates into one volume row.
+    out = (
+        tmp.groupby(["Year", "Treatment"], dropna=False)
+        .agg(center_mg=("center_mg", "mean"), low_mg=("low_mg", "mean"), high_mg=("high_mg", "mean"))
+        .reset_index()
+    )
+    out["Analyte"] = "Volume"
+    out["source"] = source_name
+    out["series"] = series_label
+    out["Year"] = safe_numeric(out["Year"]).astype(int)
+    return out.loc[:, ["Year", "Treatment", "Analyte", "source", "series", "center_mg", "low_mg", "high_mg"]]
+
+
+def standardize_ml_volume_from_events(
+    df: pd.DataFrame,
+    source_name: str = "ML",
+    series_label: str = "ML modeled",
+    input_units: str = "L",
+) -> pd.DataFrame:
+    """Aggregate ML event-level filled volume to annual Treatment volume.
+
+    This is a fallback for older ML annual summaries that only contain load
+    columns. The ML event files repeat each event by analyte, so rows are first
+    deduplicated to unique water-quality events.
+    """
+    df = normalize_cols(df)
+    if "Year" not in df.columns or "Treatment" not in df.columns:
+        raise ValueError("ML volume events file must contain Year and Treatment columns.")
+
+    if "NoRunoff" in df.columns:
+        no_runoff = df["NoRunoff"]
+        if no_runoff.dtype == bool:
+            no_runoff_mask = no_runoff.fillna(False)
+        else:
+            no_runoff_mask = no_runoff.astype(str).str.strip().str.lower().isin({"true", "t", "1", "yes", "y"})
+        df = df.loc[~no_runoff_mask].copy()
+
+    c_center = pick_first_existing(df, ["Volume_filled", "Volume_pred", "Volume"])
+    c_low = pick_first_existing(df, ["Volume_pi_low", "volume_low", "Volume_low"])
+    c_high = pick_first_existing(df, ["Volume_pi_high", "volume_high", "Volume_high"])
+
+    if c_center is None:
+        raise ValueError(
+            "ML volume events file does not contain a usable volume column. "
+            "Tried Volume_filled, Volume_pred, Volume."
+        )
+
+    if "orig_row" in df.columns:
+        event_cols = ["orig_row"]
+    else:
+        event_candidates = [
+            "Date", "Year", "Treatment", "Irrigation", "Rep", "SampleID",
+            "InflowOutflow", "FF", "Composite", "Duplicate", "NoRunoff"
+        ]
+        event_cols = [c for c in event_candidates if c in df.columns]
+        if not event_cols:
+            event_cols = ["Year", "Treatment"]
+
+    cols = list(dict.fromkeys(event_cols + ["Year", "Treatment", c_center] + ([c_low] if c_low else []) + ([c_high] if c_high else [])))
+    tmp = df.loc[:, cols].copy()
+    tmp[c_center] = safe_numeric(tmp[c_center])
+    if c_low is not None:
+        tmp[c_low] = safe_numeric(tmp[c_low])
+    if c_high is not None:
+        tmp[c_high] = safe_numeric(tmp[c_high])
+
+    tmp = tmp.dropna(subset=["Year", "Treatment", c_center]).copy()
+    tmp = tmp.groupby(event_cols, dropna=False, as_index=False).first()
+
+    col_units = infer_volume_units_from_col(c_center, input_units)
+    center = volume_to_kL(safe_numeric(tmp[c_center]), col_units)
+    low = volume_to_kL(safe_numeric(tmp[c_low]), col_units) if c_low is not None else center.copy()
+    high = volume_to_kL(safe_numeric(tmp[c_high]), col_units) if c_high is not None else center.copy()
+
+    low = low.where(np.isfinite(low), center)
+    high = high.where(np.isfinite(high), center)
+
+    tmp2 = tmp.loc[:, ["Year", "Treatment"]].copy()
+    tmp2["center_mg"] = center
+    tmp2["low_mg"] = low
+    tmp2["high_mg"] = high
+
+    out = (
+        tmp2.groupby(["Year", "Treatment"], dropna=False)
+        .agg(center_mg=("center_mg", "sum"), low_mg=("low_mg", "sum"), high_mg=("high_mg", "sum"))
+        .reset_index()
+    )
+    out["Analyte"] = "Volume"
+    out["source"] = source_name
+    out["series"] = series_label
+    out["Year"] = safe_numeric(out["Year"]).astype(int)
+    return out.loc[:, ["Year", "Treatment", "Analyte", "source", "series", "center_mg", "low_mg", "high_mg"]]
+
+
 # ----------------------------
 # Annual faceted plots
 # ----------------------------
@@ -377,6 +601,113 @@ def plot_analyte_faceted(
         b = bayes[(bayes["Analyte"] == analyte) & (bayes["Treatment"] == trt)]
         m = ml[(ml["Analyte"] == analyte) & (ml["Treatment"] == trt)]
         o = obs[(obs["Analyte"] == analyte) & (obs["Treatment"] == trt)]
+
+        plot_observed(ax, o)
+        plot_modeled(ax, b, "Bayes modeled", linestyle="-", color=bayes_color)
+        plot_modeled(ax, m, "ML modeled", linestyle="--", color=ml_color)
+
+        ax.grid(True, axis="y", alpha=0.30)
+
+    handles, labels = [], []
+    for ax in axes:
+        h, l = ax.get_legend_handles_labels()
+        for hh, ll in zip(h, l):
+            if ll not in labels and ll != "_nolegend_":
+                handles.append(hh)
+                labels.append(ll)
+
+    fig.legend(handles, labels, loc="upper right", frameon=True)
+    fig.tight_layout(rect=[0, 0, 0.96, 0.93])
+    fig.savefig(out_jpg, dpi=220, format="jpg")
+    plt.close(fig)
+
+
+def plot_volume_faceted(
+    bayes: pd.DataFrame,
+    ml: pd.DataFrame,
+    obs: pd.DataFrame,
+    out_jpg: Path,
+    units: str = "kL",
+    treatments: List[str] = ["CT", "MT", "ST"],
+) -> None:
+    fig, axes = plt.subplots(nrows=1, ncols=len(treatments), figsize=(5.2 * len(treatments), 5.3), sharey=True)
+    if len(treatments) == 1:
+        axes = [axes]
+    fig.suptitle("Annual volume comparison (Observed vs Bayes vs ML; imputed-inclusive)")
+
+    bayes_color = "C0"
+    ml_color = "C1"
+
+    def add_band(ax, x, ylo, yhi, color, alpha):
+        if len(x) == 0:
+            return
+        ax.fill_between(x, ylo, yhi, color=color, alpha=alpha, linewidth=0, label="_nolegend_")
+
+    def plot_modeled(ax, d: pd.DataFrame, label: str, linestyle: str, color: str):
+        if d.empty:
+            return
+        d = d.sort_values("Year")
+        x = d["Year"].to_numpy()
+        y = kL_to_units(d["center_mg"], units).to_numpy()
+
+        if np.isfinite(d["low_mg"]).any() and np.isfinite(d["high_mg"]).any():
+            ylo = kL_to_units(d["low_mg"], units).to_numpy()
+            yhi = kL_to_units(d["high_mg"], units).to_numpy()
+            add_band(ax, x, ylo, yhi, color=color, alpha=0.18)
+
+        ax.plot(
+            x, y,
+            marker="o",
+            linewidth=2,
+            linestyle=linestyle,
+            color=color,
+            label=label,
+            zorder=6,
+        )
+
+    def plot_observed(ax, d: pd.DataFrame):
+        if d.empty:
+            return
+        d = d.sort_values("Year")
+        x = d["Year"].to_numpy()
+        y = kL_to_units(d["center_mg"], units).to_numpy()
+
+        if np.isfinite(d["low_mg"]).any() and np.isfinite(d["high_mg"]).any():
+            yerr_lower = y - kL_to_units(d["low_mg"], units).to_numpy()
+            yerr_upper = kL_to_units(d["high_mg"], units).to_numpy() - y
+            yerr = np.vstack([yerr_lower, yerr_upper])
+
+            ax.errorbar(
+                x, y,
+                yerr=yerr,
+                fmt="none",
+                ecolor="0.6",
+                elinewidth=2,
+                capsize=3,
+                zorder=6,
+                label="_nolegend_",
+            )
+
+        ax.scatter(
+            x, y,
+            facecolors="none",
+            edgecolors="0.25",
+            s=110,
+            linewidths=2,
+            label="Observed",
+            zorder=7,
+        )
+
+    for i, trt in enumerate(treatments):
+        ax = axes[i]
+        ax.set_title(trt)
+        ax.set_xlabel("Year")
+        if i == 0:
+            ax.set_ylabel(f"Annual volume ({units})")
+
+        b = bayes[bayes["Treatment"] == trt]
+        m = ml[ml["Treatment"] == trt]
+        o = obs[obs["Treatment"] == trt]
 
         plot_observed(ax, o)
         plot_modeled(ax, b, "Bayes modeled", linestyle="-", color=bayes_color)
@@ -800,10 +1131,16 @@ def main() -> None:
     ap.add_argument("--repo", type=str, default=None, help="Repo root (optional). Auto-detected if omitted.")
     ap.add_argument("--bayes", type=str, default=None, help="Bayes annual load summary CSV (contains observed+modeled).")
     ap.add_argument("--ml", type=str, default=None, help="ML annual load summary CSV (imputed-inclusive).")
+    ap.add_argument("--bayes_volume_observed", type=str, default=None, help="Bayes observed annual volume wide CSV.")
+    ap.add_argument("--bayes_volume_modeled", type=str, default=None, help="Bayes modeled annual volume wide CSV.")
+    ap.add_argument("--ml_volume_events", type=str, default=None, help="ML event-level imputed CSV for annual volume fallback.")
 
     ap.add_argument("--units", type=str, default="g", choices=["mg", "g", "kg"], help="Units for plotting.")
     ap.add_argument("--bayes_input_units", type=str, default="g", choices=["mg", "g", "kg"])
     ap.add_argument("--ml_input_units", type=str, default="mg", choices=["mg", "g", "kg"])
+    ap.add_argument("--volume_units", type=str, default="kL", choices=["L", "kL", "m3"], help="Units for volume plotting.")
+    ap.add_argument("--bayes_volume_input_units", type=str, default="kL", choices=["L", "kL", "m3"])
+    ap.add_argument("--ml_volume_input_units", type=str, default="L", choices=["L", "kL", "m3"])
 
     ap.add_argument("--bayes_draws_units", type=str, default="auto", choices=["auto", "mg", "g", "kg"])
     ap.add_argument("--ml_draws_units", type=str, default="auto", choices=["auto", "mg", "g", "kg"])
@@ -812,6 +1149,7 @@ def main() -> None:
     ap.add_argument("--shared_only", action="store_true", help="Only plot analytes present in BOTH Bayes and ML.")
     ap.add_argument("--skip_plots", action="store_true", help="Only compute metrics, do not render annual plots.")
     ap.add_argument("--skip_gof_plots", action="store_true", help="Skip GoF plots by analyte.")
+    ap.add_argument("--skip_volume", action="store_true", help="Skip annual volume comparison plot and metrics.")
 
     ap.add_argument("--tag", type=str, default=None, help="Optional label to version outputs (e.g., v1p7p5).")
 
@@ -834,6 +1172,23 @@ def main() -> None:
         bayes_path = cand if (cand is not None and cand.exists()) else (repo / "out" / "annual_load_summary_bayes_plus_observed_v1p6.csv")
 
     ml_path = Path(args.ml).resolve() if args.ml else (repo / "out" / "ml_catboost_conformal_loyo" / "annual_load_summary_imputed.csv")
+    if args.bayes_volume_observed:
+        bayes_volume_observed_path = Path(args.bayes_volume_observed).resolve()
+    else:
+        cand = repo / "out" / f"annual_volume_kL_wide_observed_{tag}.csv" if tag else None
+        bayes_volume_observed_path = cand if (cand is not None and cand.exists()) else None
+
+    if args.bayes_volume_modeled:
+        bayes_volume_modeled_path = Path(args.bayes_volume_modeled).resolve()
+    else:
+        cand = repo / "out" / f"annual_volume_kL_wide_modeled_{tag}.csv" if tag else None
+        bayes_volume_modeled_path = cand if (cand is not None and cand.exists()) else None
+
+    ml_volume_events_path = (
+        Path(args.ml_volume_events).resolve()
+        if args.ml_volume_events
+        else (repo / "out" / "ml_catboost_conformal_loyo" / "wq_cleaned_ml_imputed.csv")
+    )
 
     if not bayes_path.exists():
         raise FileNotFoundError(f"Bayes file not found: {bayes_path}")
@@ -856,6 +1211,10 @@ def main() -> None:
     print(f"[INFO] Repo        : {repo}")
     print(f"[INFO] Bayes       : {bayes_path}")
     print(f"[INFO] ML          : {ml_path}")
+    if not args.skip_volume:
+        print(f"[INFO] Bayes volume observed: {bayes_volume_observed_path if bayes_volume_observed_path else 'not found'}")
+        print(f"[INFO] Bayes volume modeled : {bayes_volume_modeled_path if bayes_volume_modeled_path else 'not found'}")
+        print(f"[INFO] ML volume events     : {ml_volume_events_path}")
     print(f"[INFO] Figs outdir  : {figs_outdir}")
     print(f"[INFO] GoF outdir   : {gof_outdir}")
     print(f"[INFO] Metrics dir  : {metrics_outdir}")
@@ -988,6 +1347,101 @@ def main() -> None:
     print(f"     - {metrics_outdir / 'metrics_by_analyte_treatment.csv'}")
     print(f"     - {metrics_outdir / 'metrics_by_analyte_overall.csv'}")
     print(f"     - {metrics_outdir / 'metrics_overall.csv'}")
+
+    # --- annual volume plot + metrics ---
+    if not args.skip_volume:
+        volume_ready = (
+            bayes_volume_observed_path is not None
+            and bayes_volume_modeled_path is not None
+            and bayes_volume_observed_path.exists()
+            and bayes_volume_modeled_path.exists()
+        )
+
+        if not volume_ready:
+            print("[WARN] Annual volume comparison skipped because Bayes volume CSV(s) were not found.")
+            if bayes_volume_observed_path is None or not (bayes_volume_observed_path and bayes_volume_observed_path.exists()):
+                print(f"       - missing observed volume: {bayes_volume_observed_path}")
+            if bayes_volume_modeled_path is None or not (bayes_volume_modeled_path and bayes_volume_modeled_path.exists()):
+                print(f"       - missing modeled volume : {bayes_volume_modeled_path}")
+        else:
+            volume_observed = standardize_volume_wide(
+                pd.read_csv(bayes_volume_observed_path),
+                source_name="Observed",
+                series_label="Observed",
+                source_tag="obs",
+                input_units=args.bayes_volume_input_units,
+                treatments=use_trts,
+            )
+            volume_bayes = standardize_volume_wide(
+                pd.read_csv(bayes_volume_modeled_path),
+                source_name="Bayes",
+                series_label="Bayes modeled",
+                source_tag="mod",
+                input_units=args.bayes_volume_input_units,
+                treatments=use_trts,
+            )
+            volume_ml = standardize_ml_volume_summary(
+                ml_raw,
+                source_name="ML",
+                series_label="ML modeled",
+                input_units=args.ml_volume_input_units,
+            )
+
+            if volume_ml.empty:
+                if ml_volume_events_path.exists():
+                    print("[INFO] ML annual summary has no volume_* fields; deriving volume from ML event-level imputed CSV.")
+                    volume_ml = standardize_ml_volume_from_events(
+                        pd.read_csv(ml_volume_events_path),
+                        source_name="ML",
+                        series_label="ML modeled",
+                        input_units=args.ml_volume_input_units,
+                    )
+                else:
+                    print("[WARN] Annual volume comparison skipped because ML volume data were not found.")
+                    print(f"       - missing ML volume events: {ml_volume_events_path}")
+
+            if not volume_ml.empty:
+                volume_metrics_bayes = compute_metrics_point_interval(
+                    observed=volume_observed,
+                    pred=volume_bayes,
+                    method_label="Bayes",
+                    interval_prob=bayes_interval_prob,
+                )
+                volume_metrics_ml = compute_metrics_point_interval(
+                    observed=volume_observed,
+                    pred=volume_ml,
+                    method_label="ML",
+                    interval_prob=ml_interval_prob,
+                )
+                volume_metrics_by_treatment = pd.concat([volume_metrics_bayes, volume_metrics_ml], ignore_index=True)
+                if volume_metrics_by_treatment.empty:
+                    print("[WARN] Annual volume metrics skipped because no observed/modelled years overlapped.")
+                else:
+                    volume_metrics_by_treatment = volume_metrics_by_treatment.sort_values(["Treatment", "method"])
+                    volume_metrics_overall_all = aggregate_overall(volume_metrics_by_treatment)
+                    volume_metrics_overall = volume_metrics_overall_all.loc[
+                        volume_metrics_overall_all["Analyte"].eq("Volume")
+                        & volume_metrics_overall_all["Treatment"].eq("ALL")
+                    ].copy()
+
+                    volume_metrics_by_treatment.to_csv(metrics_outdir / "volume_metrics_by_treatment.csv", index=False)
+                    volume_metrics_overall.to_csv(metrics_outdir / "volume_metrics_overall.csv", index=False)
+
+                    print("[OK] Volume metrics written:")
+                    print(f"     - {metrics_outdir / 'volume_metrics_by_treatment.csv'}")
+                    print(f"     - {metrics_outdir / 'volume_metrics_overall.csv'}")
+
+                    if not args.skip_plots:
+                        volume_out_jpg = figs_outdir / "annual_volume_bayes_vs_ml_faceted.jpg"
+                        plot_volume_faceted(
+                            volume_bayes,
+                            volume_ml,
+                            volume_observed,
+                            volume_out_jpg,
+                            units=args.volume_units,
+                            treatments=use_trts[:3] if len(use_trts) >= 3 else use_trts,
+                        )
+                        print(f"[OK] Volume JPG figure written: {volume_out_jpg}")
 
     # --- annual plots ---
     if not args.skip_plots:
