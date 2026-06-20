@@ -3545,6 +3545,365 @@ dev.off()
 draw_year_cov_plot()
 
 ```
+```{r MOGP covar by analyte}
+# ============================================================
+# MOGP year-distance covariance functions by analyte
+# v2p1 compatible
+#
+# Diagonal analyte-specific covariance:
+# Cov_a(d) = etasq_year * sigma_Agp[a]^2 * exp(-rhosq_year * d^2)
+#
+# This shows within-analyte year-effect covariance as a function
+# of distance between years.
+# ============================================================
+
+stopifnot(exists("post"))
+stopifnot(all(c("F_year", "etasq_year", "rhosq_year", "sigma_Agp") %in% names(post)))
+
+required_pkgs <- c("ggplot2", "dplyr", "tidyr", "purrr", "tibble")
+missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing_pkgs) > 0) {
+  stop("Missing required package(s): ", paste(missing_pkgs, collapse = ", "))
+}
+
+# ============================================================
+# Helpers
+# ============================================================
+
+cov_fun_mogp_diag <- function(etasq, rhosq, sigma_a, d) {
+  as.numeric(etasq) * as.numeric(sigma_a)^2 * exp(-as.numeric(rhosq) * as.numeric(d)^2)
+}
+
+col_alpha <- function(col, alpha = 1) {
+  grDevices::adjustcolor(col, alpha.f = alpha)
+}
+
+# ============================================================
+# Year support
+# ============================================================
+
+if (!exists("years_used")) {
+  if (exists("dat_used") && !is.null(dat_used$year)) {
+    years_used <- sort(unique(as.numeric(dat_used$year)))
+  } else if (exists("year_id") && exists("year_lookup")) {
+    years_used <- as.numeric(year_lookup[sort(unique(year_id))])
+    years_used <- sort(unique(years_used))
+  } else {
+    Y_n_local <- dim(post$F_year)[2]
+    years_used <- seq_len(Y_n_local)
+    warning("years_used was not found, using sequential indices 1:Y_n as fallback.")
+  }
+}
+
+years_used <- sort(unique(as.numeric(years_used)))
+years_used <- years_used[is.finite(years_used)]
+
+if (length(years_used) < 2) {
+  Y_n_local <- dim(post$F_year)[2]
+  years_used <- seq_len(Y_n_local)
+  warning("years_used had fewer than 2 finite values, using sequential indices 1:Y_n.")
+}
+
+d_max <- max(years_used) - min(years_used)
+
+if (!is.finite(d_max) || d_max <= 0) {
+  d_max <- max(1, length(years_used) - 1)
+  warning("Computed d_max was non-finite or <= 0, using index-based fallback.")
+}
+
+x_seq <- seq(0, d_max, length.out = 200)
+
+# Use "fixed" to compare covariance magnitude across analytes.
+# Use "free_y" if smaller analytes are too visually compressed.
+facet_scales <- "fixed"
+
+# ============================================================
+# Dimensions
+# ============================================================
+
+A_n <- dim(post$F_year)[3]
+n_draws_post <- length(post$etasq_year)
+
+if (is.null(dim(post$sigma_Agp)) || ncol(post$sigma_Agp) != A_n) {
+  stop("post$sigma_Agp should be a draws x analytes matrix.")
+}
+
+# ============================================================
+# Analyte labels
+# ============================================================
+
+if (exists("analyte_lookup") && all(c("A", "analyte_abbr") %in% names(analyte_lookup))) {
+  analyte_labs <- analyte_lookup %>%
+    dplyr::arrange(A) %>%
+    dplyr::pull(analyte_abbr) %>%
+    as.character()
+} else {
+  analyte_labs <- paste0("Analyte ", seq_len(A_n))
+}
+
+if (length(analyte_labs) != A_n) {
+  analyte_labs <- paste0("Analyte ", seq_len(A_n))
+}
+
+analyte_labs <- dplyr::recode(
+  analyte_labs,
+  "NH4" = "NH4-N",
+  "NO3" = "NO3-N",
+  "NO2" = "NO2-N",
+  "TKN" = "TKN-N",
+  "TN"  = "TN-N",
+  .default = analyte_labs
+)
+
+# ============================================================
+# Posterior draws
+# ============================================================
+
+etasq_all <- as.numeric(post$etasq_year)
+rhosq_all <- as.numeric(post$rhosq_year)
+
+ok_post <- is.finite(etasq_all) & is.finite(rhosq_all)
+
+etasq_all <- etasq_all[ok_post]
+rhosq_all <- rhosq_all[ok_post]
+sigma_Agp_all <- post$sigma_Agp[ok_post, , drop = FALSE]
+
+if (length(etasq_all) == 0 || length(rhosq_all) == 0) {
+  stop("No valid posterior MOGP hyperparameter draws found.")
+}
+
+n_post <- min(50, length(etasq_all))
+set.seed(2)
+idx_post <- sample(seq_along(etasq_all), size = n_post, replace = FALSE)
+
+# ============================================================
+# Prior draws
+# v2p1 Stan priors:
+# etasq_year ~ exponential(2)
+# rhosq_year ~ exponential(1)
+# sigma_Agp  ~ exponential(2)
+# ============================================================
+
+n_prior <- 50
+set.seed(1)
+
+prior_curve_pars <- tidyr::expand_grid(
+  curve_id = seq_len(n_prior),
+  A = seq_len(A_n)
+) %>%
+  dplyr::mutate(
+    analyte = analyte_labs[A],
+    etasq = rep(stats::rexp(n_prior, rate = 2), each = A_n),
+    rhosq = rep(stats::rexp(n_prior, rate = 1), each = A_n),
+    sigma_a = stats::rexp(dplyr::n(), rate = 2)
+  )
+
+prior_draws <- prior_curve_pars %>%
+  tidyr::crossing(distance_years = x_seq) %>%
+  dplyr::mutate(
+    covariance = cov_fun_mogp_diag(etasq, rhosq, sigma_a, distance_years),
+    source = "Prior draws"
+  )
+
+# Prior mean curve, simulated from the same priors
+n_prior_mean <- 1000
+set.seed(11)
+
+prior_mean_pars <- tidyr::expand_grid(
+  draw_id = seq_len(n_prior_mean),
+  A = seq_len(A_n)
+) %>%
+  dplyr::mutate(
+    analyte = analyte_labs[A],
+    etasq = rep(stats::rexp(n_prior_mean, rate = 2), each = A_n),
+    rhosq = rep(stats::rexp(n_prior_mean, rate = 1), each = A_n),
+    sigma_a = stats::rexp(dplyr::n(), rate = 2)
+  )
+
+prior_mean_df <- prior_mean_pars %>%
+  tidyr::crossing(distance_years = x_seq) %>%
+  dplyr::mutate(
+    covariance = cov_fun_mogp_diag(etasq, rhosq, sigma_a, distance_years)
+  ) %>%
+  dplyr::group_by(analyte, distance_years) %>%
+  dplyr::summarise(
+    covariance = mean(covariance, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  dplyr::mutate(source = "Prior mean")
+
+# ============================================================
+# Posterior draw cloud
+# ============================================================
+
+post_draws <- purrr::map_dfr(seq_along(idx_post), function(ii) {
+  s <- idx_post[ii]
+
+  tidyr::expand_grid(
+    A = seq_len(A_n),
+    distance_years = x_seq
+  ) %>%
+    dplyr::mutate(
+      curve_id = ii,
+      analyte = analyte_labs[A],
+      covariance = cov_fun_mogp_diag(
+        etasq = etasq_all[s],
+        rhosq = rhosq_all[s],
+        sigma_a = sigma_Agp_all[s, A],
+        d = distance_years
+      ),
+      source = "Posterior draws"
+    )
+})
+
+# ============================================================
+# Posterior mean curve
+# ============================================================
+
+post_mean_df <- purrr::map_dfr(seq_len(A_n), function(a) {
+  tibble::tibble(
+    A = a,
+    analyte = analyte_labs[a],
+    distance_years = x_seq,
+    covariance = vapply(
+      x_seq,
+      FUN = function(d) {
+        mean(
+          cov_fun_mogp_diag(
+            etasq = etasq_all,
+            rhosq = rhosq_all,
+            sigma_a = sigma_Agp_all[, a],
+            d = d
+          ),
+          na.rm = TRUE
+        )
+      },
+      FUN.VALUE = numeric(1)
+    ),
+    source = "Posterior mean"
+  )
+})
+
+# ============================================================
+# Plot data
+# ============================================================
+
+draw_df <- dplyr::bind_rows(prior_draws, post_draws)
+mean_df <- dplyr::bind_rows(prior_mean_df, post_mean_df)
+
+col_prior_draw <- col_alpha("grey10", 0.18)
+col_post_draw  <- col_alpha("firebrick", 0.25)
+col_prior_mean <- "black"
+col_post_mean  <- "red"
+
+# ============================================================
+# Plot window controls
+#
+# Leave as NULL to let ggplot choose automatically.
+# Set values to zoom without dropping data from the plotted objects.
+#
+# Useful examples:
+#
+# x_limits <- NULL
+# y_limits <- NULL
+#
+# x_limits <- c(0, d_max)
+# y_limits <- NULL
+#
+# x_limits <- c(0, 5)
+# y_limits <- NULL
+#
+x_limits <- c(0, 4)
+y_limits <- c(0, 2)
+#
+# x_limits <- c(0, d_max)
+# y_limits <- c(0, 3)
+
+# ============================================================
+# Plot
+# ============================================================
+
+p_year_cov_mogp <- ggplot2::ggplot() +
+  ggplot2::geom_line(
+    data = draw_df,
+    ggplot2::aes(
+      x = distance_years,
+      y = covariance,
+      group = interaction(source, curve_id, analyte),
+      color = source
+    ),
+    linewidth = 0.45,
+    show.legend = TRUE
+  ) +
+  ggplot2::geom_line(
+    data = mean_df,
+    ggplot2::aes(
+      x = distance_years,
+      y = covariance,
+      color = source,
+      linetype = source
+    ),
+    linewidth = 1.0,
+    show.legend = TRUE
+  ) +
+  ggplot2::facet_wrap(~ analyte, scales = facet_scales, ncol = 5) +
+  ggplot2::scale_color_manual(
+    values = c(
+      "Prior draws" = col_prior_draw,
+      "Posterior draws" = col_post_draw,
+      "Prior mean" = col_prior_mean,
+      "Posterior mean" = col_post_mean
+    ),
+    breaks = c("Prior draws", "Posterior draws", "Prior mean", "Posterior mean")
+  ) +
+  ggplot2::scale_linetype_manual(
+    values = c(
+      "Prior mean" = "dotted",
+      "Posterior mean" = "dashed"
+    ),
+    breaks = c("Prior mean", "Posterior mean")
+  ) +
+  ggplot2::coord_cartesian(
+    xlim = x_limits,
+    ylim = y_limits
+  ) +
+  ggplot2::labs(
+    x = "Distance form current year",
+    y = "MOGP covariance",
+    title = "Year MOGP covariance by analyte",
+    color = NULL,
+    linetype = NULL
+  ) +
+  ggplot2::theme_bw(base_size = 11) +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major = ggplot2::element_line(linewidth = 0.25, color = "grey88"),
+    strip.background = ggplot2::element_rect(fill = "grey95", color = "grey70"),
+    strip.text = ggplot2::element_text(face = "bold"),
+    legend.position = "bottom",
+    plot.title = ggplot2::element_text(face = "bold", hjust = 0.5)
+  )
+
+# ============================================================
+# Save figure
+# ============================================================
+
+dir.create("../figs", recursive = TRUE, showWarnings = FALSE)
+
+ggplot2::ggsave(
+  filename = "../figs/year_covariance_mogp_by_analyte_v2p1.jpg",
+  plot = p_year_cov_mogp,
+  width = 12,
+  height = 7.5,
+  dpi = 220
+)
+
+# ============================================================
+# Display inline
+# ============================================================
+
+p_year_cov_mogp
+```
 
 
 ```{r analyte persistence plot}
@@ -5278,87 +5637,6 @@ export_annual_draws <- function(
 }
 ```
 
-```{r study-period-load-table-kg}
-# ============================================================
-# Study-period total loads by treatment (Modeled) in kg
-# ============================================================
-
-stopifnot(exists("annual_pred_out"))
-stopifnot(all(c("analyte","treatment","load_mean","load_low","load_high") %in% names(annual_pred_out)))
-
-study_load_tbl <- annual_pred_out %>%
-  dplyr::filter(source == "Bayes_Modeled") %>%
-  dplyr::group_by(analyte, treatment) %>%
-  dplyr::summarise(
-    load_sum_mean_kg = sum(load_mean, na.rm = TRUE) / 1000,
-    load_sum_low_kg  = sum(load_low,  na.rm = TRUE) / 1000,
-    load_sum_high_kg = sum(load_high, na.rm = TRUE) / 1000,
-    .groups = "drop"
-  ) %>%
-  dplyr::mutate(
-    treatment = factor(as.character(treatment), levels = c("CT","MT","ST"))
-  ) %>%
-  dplyr::arrange(analyte, treatment)
-
-study_load_wide <- study_load_tbl %>%
-  dplyr::mutate(col = paste0(as.character(treatment), "_mod")) %>%
-  dplyr::select(analyte, col,
-                load_sum_mean_kg,
-                load_sum_low_kg,
-                load_sum_high_kg) %>%
-  tidyr::pivot_wider(
-    names_from  = col,
-    values_from = c(load_sum_mean_kg,
-                    load_sum_low_kg,
-                    load_sum_high_kg),
-    names_glue  = "{col}_{.value}"
-  ) %>%
-  dplyr::arrange(analyte)
-
-# ---- Save to /out ----
-out_file <- file.path("../out",
-                      paste0("study_period_total_loads_kg_", model_version, ".csv"))
-
-readr::write_csv(study_load_wide, out_file)
-message("[OK] Wrote: ", out_file)
-
-study_load_wide
-
-# ============================================================
-# Publication-ready summary (one column per treatment)
-# Cells: "mean (low, high)" in kg
-# ============================================================
-
-fmt_ci <- function(mean, low, high, digits = 2) {
-  ifelse(
-    is.finite(mean) & is.finite(low) & is.finite(high),
-    paste0(
-      formatC(mean, format = "f", digits = digits),
-      " (",
-      formatC(low,  format = "f", digits = digits),
-      ", ",
-      formatC(high, format = "f", digits = digits),
-      ")"
-    ),
-    NA_character_
-  )
-}
-
-study_load_pub <- study_load_wide %>%
-  dplyr::transmute(
-    analyte,
-    CT = fmt_ci(CT_mod_load_sum_mean_kg, CT_mod_load_sum_low_kg, CT_mod_load_sum_high_kg, digits = 2),
-    MT = fmt_ci(MT_mod_load_sum_mean_kg, MT_mod_load_sum_low_kg, MT_mod_load_sum_high_kg, digits = 2),
-    ST = fmt_ci(ST_mod_load_sum_mean_kg, ST_mod_load_sum_low_kg, ST_mod_load_sum_high_kg, digits = 2)
-  )
-
-pub_file <- file.path("../out", paste0("study_period_total_loads_kg_pub_", model_version, ".csv"))
-readr::write_csv(study_load_pub, pub_file)
-message("[OK] Wrote: ", pub_file)
-
-study_load_pub
-```
-
 
 ```{r export-bayes-annual-draws}
 # Uncomment to write per-draw table (can be big):
@@ -5392,6 +5670,185 @@ readr::write_csv(annual_draws, draws_file)
 message("[OK] Wrote: ", draws_file)
 
 ```
+```{r study-period-load-table-kg}
+# ============================================================
+# Study-period total loads and % reductions from CT
+# using existing posterior draws object: annual_draws
+# ============================================================
+
+stopifnot(exists("annual_draws"))
+stopifnot(all(c("draw", "draw_id", "analyte", "treatment", "load_g") %in% names(annual_draws)))
+
+prob_ci <- 0.95
+alpha_ci <- 1 - prob_ci
+
+# ---- Formatting helpers ----
+fmt_ci <- function(mean, low, high, digits = 2) {
+  ifelse(
+    is.finite(mean) & is.finite(low) & is.finite(high),
+    paste0(
+      formatC(mean, format = "f", digits = digits),
+      " (",
+      formatC(low,  format = "f", digits = digits),
+      ", ",
+      formatC(high, format = "f", digits = digits),
+      ")"
+    ),
+    NA_character_
+  )
+}
+
+fmt_pct_ci <- function(mean, low, high, digits = 1) {
+  ifelse(
+    is.finite(mean) & is.finite(low) & is.finite(high),
+    paste0(
+      formatC(mean, format = "f", digits = digits),
+      "% (",
+      formatC(low,  format = "f", digits = digits),
+      "%, ",
+      formatC(high, format = "f", digits = digits),
+      "%)"
+    ),
+    NA_character_
+  )
+}
+
+# ---- 1) Study-period total load by posterior draw ----
+study_load_draws <- annual_draws %>%
+  dplyr::mutate(
+    treatment = factor(as.character(treatment), levels = c("CT", "MT", "ST"))
+  ) %>%
+  dplyr::group_by(draw, draw_id, analyte, treatment) %>%
+  dplyr::summarise(
+    load_sum_kg = sum(load_g, na.rm = TRUE) / 1000,
+    .groups = "drop"
+  )
+
+# ---- 2) Wide by treatment within each posterior draw ----
+study_load_draws_wide <- study_load_draws %>%
+  tidyr::pivot_wider(
+    names_from = treatment,
+    values_from = load_sum_kg
+  ) %>%
+  dplyr::filter(
+    is.finite(CT),
+    CT > 0,
+    is.finite(MT),
+    is.finite(ST)
+  ) %>%
+  dplyr::mutate(
+    MT_pct_reduction_from_CT = 100 * (1 - MT / CT),
+    ST_pct_reduction_from_CT = 100 * (1 - ST / CT)
+  )
+
+# ---- 3) Summarize study-period total loads from posterior draws ----
+study_load_summary_draws <- study_load_draws %>%
+  dplyr::group_by(analyte, treatment) %>%
+  dplyr::summarise(
+    load_sum_mean_kg = mean(load_sum_kg, na.rm = TRUE),
+    load_sum_low_kg  = stats::quantile(load_sum_kg, probs = alpha_ci / 2, na.rm = TRUE),
+    load_sum_high_kg = stats::quantile(load_sum_kg, probs = 1 - alpha_ci / 2, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  dplyr::mutate(
+    treatment = factor(as.character(treatment), levels = c("CT", "MT", "ST"))
+  ) %>%
+  dplyr::arrange(analyte, treatment)
+
+# ---- 4) Make numeric wide load table ----
+study_load_wide <- study_load_summary_draws %>%
+  dplyr::mutate(col = paste0(as.character(treatment), "_mod")) %>%
+  dplyr::select(
+    analyte, col,
+    load_sum_mean_kg,
+    load_sum_low_kg,
+    load_sum_high_kg
+  ) %>%
+  tidyr::pivot_wider(
+    names_from = col,
+    values_from = c(
+      load_sum_mean_kg,
+      load_sum_low_kg,
+      load_sum_high_kg
+    ),
+    names_glue = "{col}_{.value}"
+  ) %>%
+  dplyr::arrange(analyte)
+
+# ---- 5) Summarize draw-wise percent reductions from CT ----
+pct_reduction_summary_draws <- study_load_draws_wide %>%
+  dplyr::group_by(analyte) %>%
+  dplyr::summarise(
+    MT_pct_red_mean = mean(MT_pct_reduction_from_CT, na.rm = TRUE),
+    MT_pct_red_low  = stats::quantile(MT_pct_reduction_from_CT, probs = alpha_ci / 2, na.rm = TRUE),
+    MT_pct_red_high = stats::quantile(MT_pct_reduction_from_CT, probs = 1 - alpha_ci / 2, na.rm = TRUE),
+
+    ST_pct_red_mean = mean(ST_pct_reduction_from_CT, na.rm = TRUE),
+    ST_pct_red_low  = stats::quantile(ST_pct_reduction_from_CT, probs = alpha_ci / 2, na.rm = TRUE),
+    ST_pct_red_high = stats::quantile(ST_pct_reduction_from_CT, probs = 1 - alpha_ci / 2, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# ---- 6) Join numeric load summaries and percent-reduction summaries ----
+study_load_wide <- study_load_wide %>%
+  dplyr::left_join(pct_reduction_summary_draws, by = "analyte")
+
+# ---- 7) Publication-ready table ----
+study_load_pub <- study_load_wide %>%
+  dplyr::transmute(
+    analyte,
+    CT = fmt_ci(
+      CT_mod_load_sum_mean_kg,
+      CT_mod_load_sum_low_kg,
+      CT_mod_load_sum_high_kg,
+      digits = 2
+    ),
+    MT = fmt_ci(
+      MT_mod_load_sum_mean_kg,
+      MT_mod_load_sum_low_kg,
+      MT_mod_load_sum_high_kg,
+      digits = 2
+    ),
+    ST = fmt_ci(
+      ST_mod_load_sum_mean_kg,
+      ST_mod_load_sum_low_kg,
+      ST_mod_load_sum_high_kg,
+      digits = 2
+    ),
+    `MT reduction from CT` = fmt_pct_ci(
+      MT_pct_red_mean,
+      MT_pct_red_low,
+      MT_pct_red_high,
+      digits = 1
+    ),
+    `ST reduction from CT` = fmt_pct_ci(
+      ST_pct_red_mean,
+      ST_pct_red_low,
+      ST_pct_red_high,
+      digits = 1
+    )
+  )
+
+# ---- 8) Save numeric and publication-ready versions ----
+numeric_file <- file.path(
+  "../out",
+  paste0("study_period_total_loads_kg_with_pct_reductions_", model_version, ".csv")
+)
+
+pub_file <- file.path(
+  "../out",
+  paste0("study_period_total_loads_kg_pub_", model_version, ".csv")
+)
+
+readr::write_csv(study_load_wide, numeric_file)
+readr::write_csv(study_load_pub, pub_file)
+
+message("[OK] Wrote: ", numeric_file)
+message("[OK] Wrote: ", pub_file)
+
+study_load_pub
+```
+
 ```{r}
 library(dplyr)
 library(posterior)
