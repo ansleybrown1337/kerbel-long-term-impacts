@@ -466,7 +466,12 @@ def standardize_ml_volume_from_events(
             "Tried Volume_filled, Volume_pred, Volume."
         )
 
-    if "orig_row" in df.columns:
+    # v2 event-level ML outputs provide the exact physical volume-event key.
+    # Prefer it over the legacy approximate key so mapped analyte rows do not
+    # re-weight an event during annual volume aggregation.
+    if "EventVolumeID" in df.columns:
+        event_cols = ["EventVolumeID"]
+    elif "orig_row" in df.columns:
         event_cols = ["orig_row"]
     else:
         event_candidates = [

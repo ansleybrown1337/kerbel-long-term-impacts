@@ -1,0 +1,17 @@
+metric,value,details
+mode,reconstruction,conditional reconstruction unless strict_prediction
+event_key,Date + Year + Irrigation + Rep + Treatment + SampleID + MeasureMethod,actual key used; missing values retained
+original_analyte_rows,15366,all input rows
+rows_with_nonmissing_volume,9767,analyte-level rows before collapse
+unique_event_volume_groups,1018,all event groups including missing targets
+unique_event_volume_groups_with_nonmissing_volume,644,volume training targets
+duplicated_volume_rows_removed,9123,nonmissing analyte rows minus observed events
+maximum_rows_per_event_volume_group,42,analyte rows
+conflicting_volume_groups,0,groups with >1 nonmissing Volume
+missing_SampleID_rows_retained,2674,dropna=False semantics
+missing_SampleID_event_groups_retained,155,event rows
+predictors_used_logC,Year;Irrigation;Rep;Treatment;Analyte;Volume;Inflow_Result_mg_L;Inflow_Volume;Flag;Inflow_Flag;FlumeMethod;MeasureMethod;IrrMethod;TSSMethod;Lab;SeasonYear;Crop;previous_crop;CumAll_STIR_toDate;Season_STIR_toDate;DaysSincePlant;DaysUntilHarvest;DayOfYear;SampleMethod;FF;Composite;Duplicate;RLMDL_Method;RLMDL_Source;RLMDL_Assumed;MDL_mg_L;RL_mg_L;Result_lod_mg_L;residue_prop;Residue_DryMass_kg_m2,n=35
+predictors_used_logV,Year;Irrigation;Rep;Treatment;Crop;SeasonYear;previous_crop;CumAll_STIR_toDate;Season_STIR_toDate;Inflow_Volume;MeasureMethod;FlumeMethod;IrrMethod;DayOfYear;DaysSincePlant;DaysUntilHarvest;residue_prop;Residue_DryMass_kg_m2;event_mean_logC_all;event_max_logC_all;event_n_conc_obs;event_logC_ICP;event_logC_NH4;event_logC_NO2;event_logC_NO3;event_logC_NOx;event_logC_NPOC;event_logC_OP;event_logC_Se;event_logC_TDS;event_logC_TKN;event_logC_TN;event_logC_TP;event_logC_TSP;event_logC_TSS,n=35
+residue_column_used,residue_prop,missing_fraction=0.263894
+previous_crop_used,True,missing_fraction=0.000000; levels=barley | dry beans | grain corn | silage corn | winter wheat
+irrigation_infrastructure_source,IrrMethod,IrrMethod primary; year fallback <=2022/>=2023

@@ -1,13 +1,15 @@
 {
   "target": "logC",
+  "unit_of_analysis": "analyte_row",
   "alpha": 0.05,
-  "q_conformal": 0.8338876931233097,
+  "q_conformal": 0.6982530088043551,
   "feature_cols": [
     "Year",
     "Irrigation",
     "Rep",
     "Treatment",
     "Analyte",
+    "Volume",
     "Inflow_Result_mg_L",
     "Inflow_Volume",
     "Flag",
@@ -19,13 +21,24 @@
     "Lab",
     "SeasonYear",
     "Crop",
-    "Residue_PercentCover",
-    "Residue_DryMass_kg_m2",
+    "previous_crop",
     "CumAll_STIR_toDate",
     "Season_STIR_toDate",
     "DaysSincePlant",
     "DaysUntilHarvest",
-    "DayOfYear"
+    "DayOfYear",
+    "SampleMethod",
+    "FF",
+    "Composite",
+    "Duplicate",
+    "RLMDL_Method",
+    "RLMDL_Source",
+    "RLMDL_Assumed",
+    "MDL_mg_L",
+    "RL_mg_L",
+    "Result_lod_mg_L",
+    "residue_prop",
+    "Residue_DryMass_kg_m2"
   ],
   "cat_cols": [
     "Treatment",
@@ -37,7 +50,15 @@
     "IrrMethod",
     "TSSMethod",
     "Lab",
-    "Crop"
+    "Crop",
+    "previous_crop",
+    "SampleMethod",
+    "FF",
+    "Composite",
+    "Duplicate",
+    "RLMDL_Method",
+    "RLMDL_Source",
+    "RLMDL_Assumed"
   ],
   "cb_params": {
     "loss_function": "RMSE",
@@ -49,7 +70,12 @@
     "colsample_bylevel": 0.8,
     "eval_metric": "RMSE",
     "thread_count": -1,
-    "verbose": false
+    "verbose": false,
+    "allow_writing_files": false
   },
-  "saved_utc": "2026-01-27T23:02:26Z"
+  "mode": "reconstruction",
+  "calibration": "random",
+  "event_key": [],
+  "saved_utc": "2026-06-27T04:23:49+00:00",
+  "workflow": "ml_catboost_conformal_loyo_v2_eventlevel.py"
 }
