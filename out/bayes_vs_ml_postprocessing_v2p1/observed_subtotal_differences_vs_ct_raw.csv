@@ -1,0 +1,21 @@
+analyte,comparison_treatment,reference_treatment,observed_subtotal_absolute_difference_kg,observed_subtotal_percent_difference_relative_to_ct,valid_ct_denominator,interpretation_warning
+NH4,MT,CT,0.030607941660000002,73.10355226285566,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+NH4,ST,CT,0.029066263850000003,69.42143192925921,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+NO3,MT,CT,9.65346686852001,26.010005681799058,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+NO3,ST,CT,5.18759124195001,13.977287073722254,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+NO2,MT,CT,0.12793297189999997,7.805123830474184,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+NO2,ST,CT,-0.32857566048999964,-20.046229519383903,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+OP,MT,CT,0.2809936010099999,23.28169296445768,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+OP,ST,CT,-0.1607987499000001,-13.322962198371178,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+Se,MT,CT,0.0006649864029999999,49.22430010531943,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+Se,ST,CT,-0.001500163986,-111.04666489557717,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TDS,MT,CT,-536.0518262599994,-13.844839596112354,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TDS,ST,CT,-837.7596339799989,-21.637176079548002,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TKN,MT,CT,5.105853003209999,36.876077202745876,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TKN,ST,CT,4.396891652670002,31.75573521878362,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TN,MT,CT,7.14210666458,78.2058856651482,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TN,ST,CT,5.93290401137,64.96514747904381,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TP,MT,CT,2.374002245189999,28.572871216996994,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TP,ST,CT,-2.7394508563400013,-32.97131528922816,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TSS,MT,CT,6076.305986645858,45.50633527032586,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.
+TSS,ST,CT,-192.6008897216161,-1.4424159481594816,True,Descriptive difference among incomplete observed subtotals; not a full-record treatment comparison.

@@ -1,0 +1,9 @@
+metric,value,interpretation
+saved_ml_imputed_rows,15366,Analyte-row records in accepted saved imputed input.
+saved_ml_event_volume_ids,1018,Upstream event IDs include SampleID and MeasureMethod.
+year_treatment_analyte_event_groups_with_multiple_rows,1134,These rows are summed separately by the saved imputed annual routine.
+rows_in_year_treatment_analyte_event_groups_with_multiple_rows,2408,Potential repeated concentration/laboratory records.
+base_plot_event_groups,535,Date + Year + Irrigation + Rep + Treatment groups.
+base_plot_event_groups_with_multiple_event_ids,229,Often distinct first-flush/outflow/duplicate SampleIDs for one plot event.
+base_analyte_groups_with_multiple_event_ids,3186,Cannot establish from current documentation that each is an independent physical runoff load.
+rows_flagged_duplicate,3248,Rows marked Duplicate in the saved ML imputed table.

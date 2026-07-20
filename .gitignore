@@ -56,3 +56,21 @@ out/ml_catboost_conformal_loyo/imputed_row_draws.csv
 /code/out_cmdstanr
 .venv/
 .DS_Store
+
+# Local model/runtime artifacts
+catboost_info/
+**/out_cmdstanr/
+**/__pycache__/
+*.py[cod]
+code/**/*.exe
+code/**/*.dll
+code/**/*.so
+code/**/*.dylib
+
+# Temporary validation and scratch outputs (not scientific release products)
+out/*codex*_check/
+figs/*codex*_check/
+out/**/scratch/
+figs/**/scratch/
+*.tmp
+*.inspect.ndjson

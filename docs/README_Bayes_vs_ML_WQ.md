@@ -35,7 +35,9 @@ This script:
 
 - reads annual Bayesian load summaries and posterior (or draw-based) uncertainty,
 - reads ML-derived annual load estimates,
-- computes evaluation metrics (RMSE, NRMSE, coverage, CRPS),
+- computes evaluation metrics (RMSE, NRMSE, coverage, CRPS), including volume
+  in the main NRMSE tables and normalized-RMSE comparison chart when volume
+  inputs are available,
 - generates faceted annual-load comparison figures.
 
 ### Important: versioned outputs
@@ -159,4 +161,3 @@ Comparing tagged outputs is intended to support scientific judgment about:
 - sensitivity to latent-state modeling assumptions.
 
 No single version is assumed to be “correct” a priori.
-

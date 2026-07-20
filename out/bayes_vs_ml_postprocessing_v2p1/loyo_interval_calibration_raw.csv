@@ -1,0 +1,26 @@
+response,unit,Year,n,empirical_coverage,mean_interval_width,median_interval_width,nominal_coverage,coverage_minus_nominal,calibration_scope
+Concentration,mg/L,2011,126,0.8174603174603174,181.48788989726728,7.030816539733231,0.95,-0.1325396825396825,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2012,174,0.764367816091954,220.13083194726988,15.161013816591137,0.95,-0.18563218390804592,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2013,90,0.8222222222222222,212.66618431278218,6.371674518042761,0.95,-0.12777777777777777,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2014,222,0.7657657657657657,76.84992626782125,5.985910466026956,0.95,-0.18423423423423424,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2015,397,0.8664987405541562,92.96211027533103,3.823402683389761,0.95,-0.08350125944584375,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2016,216,0.875,28.582804002797587,2.7454516860636384,0.95,-0.07499999999999996,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2017,324,0.7592592592592593,132.4118619296072,4.0848863249973135,0.95,-0.19074074074074066,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2020,246,0.8861788617886179,45.04583302585433,2.6033862459428034,0.95,-0.06382113821138202,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2021,539,0.7773654916512059,67.72345966358364,1.754167742003371,0.95,-0.172634508348794,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2022,577,0.7850953206239168,127.16426249222019,3.1829621247322457,0.95,-0.1649046793760831,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2023,928,0.7306034482758621,200.6014417123188,3.6105280226991594,0.95,-0.21939655172413786,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2024,646,0.7786377708978328,247.42842676405203,4.029772972326517,0.95,-0.17136222910216714,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Concentration,mg/L,2025,1003,0.7018943170488534,273.48095889198333,3.4679529483451117,0.95,-0.24810568295114654,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2011,27,0.2962962962962963,12609.736936856854,9270.681844185101,0.95,-0.6537037037037037,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2012,49,0.673469387755102,43701.45972793865,44285.18531459889,0.95,-0.27653061224489794,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2013,32,0.90625,49728.17463776772,52063.55720717576,0.95,-0.043749999999999956,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2014,41,0.7804878048780488,42553.710502275295,38064.50364803982,0.95,-0.16951219512195115,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2015,36,0.9444444444444444,74852.12107729905,66385.51212123822,0.95,-0.005555555555555536,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2016,12,1.0,65566.19973416909,60271.46493445835,0.95,0.050000000000000044,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2017,82,0.6707317073170732,28760.663371810268,26708.36456763614,0.95,-0.27926829268292674,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2020,14,0.42857142857142855,22915.97013363557,17928.522647812097,0.95,-0.5214285714285714,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2021,35,0.7428571428571429,130121.30486220385,139928.4282701736,0.95,-0.20714285714285707,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2023,128,0.90625,83673.84484130738,89659.42721413414,0.95,-0.043749999999999956,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2024,54,0.37037037037037035,46220.54227404698,30929.701713142604,0.95,-0.5796296296296296,Existing LOYO predictions and conformal intervals; no recalibration performed.
+Volume,L,2025,134,0.9850746268656716,110680.76714161494,110671.82055972875,0.95,0.03507462686567164,Existing LOYO predictions and conformal intervals; no recalibration performed.

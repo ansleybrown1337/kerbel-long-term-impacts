@@ -14,7 +14,8 @@ New in this drop-in (v1p7p5 request):
   - Adds NRMSE_sd = RMSE / SD(Observed).
   - Writes 3 GoF figures by analyte (Treatment aggregated to ALL):
       1) Paired bars: CRPS_norm_mean by analyte (Bayes vs ML)
-      2) Paired bars: NRMSE_mean by analyte (Bayes vs ML), ranked by Bayes (best→worst)
+      2) Paired bars: NRMSE_mean by analyte plus Volume (Bayes vs ML),
+         ranked by Bayes (best→worst)
       3) Scatter: Coverage vs MeanWidth by analyte (Bayes vs ML), with nominal coverage line.
   - Saves GoF figures to: figs/annual_bayes_vs_ml_gof_jpg_<tag> (or without tag)
   - Saves metrics to: out/bayes_vs_ml_metrics_<tag> (or without tag)
@@ -39,6 +40,7 @@ from typing import Dict, Tuple, List, Optional
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import spearmanr
 
 
 # ----------------------------
@@ -204,6 +206,13 @@ ANALYTE_CANON: Dict[str, str] = {
     "npoc": "NPOC",
     "icp": "ICP",
 }
+
+SPEARMAN_ANALYTE_ORDER = ["NH4", "NO3", "NO2", "OP", "Se", "TDS", "TKN", "TN", "TP", "TSS"]
+SPEARMAN_TREATMENT_ORDER = ["CT", "MT", "ST"]
+SPEARMAN_FOOTNOTE = (
+    "Values are Spearman rank correlation coefficients (rho), with the number of paired annual estimates in "
+    "parentheses. * Nominal two-sided P < 0.05. P values are unadjusted for multiple comparisons."
+)
 
 
 def canonicalize_analytes(df: pd.DataFrame) -> pd.DataFrame:
@@ -817,6 +826,141 @@ def compute_metrics_point_interval(
     return pd.DataFrame(out_rows)
 
 
+def compute_spearman_by_analyte_treatment(
+    bayes_modeled: pd.DataFrame,
+    ml_modeled: pd.DataFrame,
+) -> Tuple[pd.DataFrame, List[str]]:
+    """Compare Bayes and ML interannual rank ordering for the publication analytes."""
+    keys = ["Year", "Analyte", "Treatment"]
+    b = bayes_modeled.loc[:, keys + ["center_mg"]].rename(columns={"center_mg": "bayes_center_mg"})
+    m = ml_modeled.loc[:, keys + ["center_mg"]].rename(columns={"center_mg": "ml_center_mg"})
+
+    b = b[
+        b["Analyte"].isin(SPEARMAN_ANALYTE_ORDER)
+        & b["Treatment"].isin(SPEARMAN_TREATMENT_ORDER)
+    ].copy()
+    m = m[
+        m["Analyte"].isin(SPEARMAN_ANALYTE_ORDER)
+        & m["Treatment"].isin(SPEARMAN_TREATMENT_ORDER)
+    ].copy()
+
+    duplicate_b = b.duplicated(keys, keep=False)
+    duplicate_m = m.duplicated(keys, keep=False)
+    if duplicate_b.any() or duplicate_m.any():
+        details = []
+        if duplicate_b.any():
+            details.append(f"Bayes duplicates={int(duplicate_b.sum())}")
+        if duplicate_m.any():
+            details.append(f"ML duplicates={int(duplicate_m.sum())}")
+        raise ValueError(
+            "Spearman pairing requires one annual central estimate per Year x Analyte x Treatment; "
+            + ", ".join(details)
+        )
+
+    b = b[np.isfinite(b["bayes_center_mg"].to_numpy(dtype=float))].copy()
+    m = m[np.isfinite(m["ml_center_mg"].to_numpy(dtype=float))].copy()
+    paired = b.merge(m, on=keys, how="inner", validate="one_to_one")
+
+    reference_years = set(b["Year"].astype(int)).union(set(m["Year"].astype(int)))
+    rows = []
+    incomplete_groups = []
+    for analyte in SPEARMAN_ANALYTE_ORDER:
+        for treatment in SPEARMAN_TREATMENT_ORDER:
+            bg = b[(b["Analyte"] == analyte) & (b["Treatment"] == treatment)]
+            mg = m[(m["Analyte"] == analyte) & (m["Treatment"] == treatment)]
+            g = paired[(paired["Analyte"] == analyte) & (paired["Treatment"] == treatment)].sort_values("Year")
+
+            bayes_years = set(bg["Year"].astype(int))
+            ml_years = set(mg["Year"].astype(int))
+            paired_years = set(g["Year"].astype(int))
+            group_name = f"{analyte}-{treatment}"
+            if bayes_years != ml_years or paired_years != reference_years:
+                incomplete_groups.append(group_name)
+
+            n_years = int(g.shape[0])
+            year_min = int(g["Year"].min()) if n_years else np.nan
+            year_max = int(g["Year"].max()) if n_years else np.nan
+            if n_years < 3:
+                rho = np.nan
+                p_value = np.nan
+                print(
+                    f"[WARN] Spearman correlation unavailable for {group_name}: "
+                    f"only {n_years} finite paired year(s)."
+                )
+            else:
+                # Spearman rho asks whether Bayes and ML identify similar relatively high- and
+                # low-load years. It does not assess magnitude agreement; NRMSE and the annual
+                # comparison figures serve that purpose. scipy uses average ranks for ties.
+                result = spearmanr(
+                    g["bayes_center_mg"].to_numpy(dtype=float),
+                    g["ml_center_mg"].to_numpy(dtype=float),
+                    alternative="two-sided",
+                )
+                rho = float(result.statistic)
+                p_value = float(result.pvalue)
+
+            significant = bool(np.isfinite(p_value) and p_value < 0.05)
+            rows.append({
+                "Analyte": analyte,
+                "Treatment": treatment,
+                "n_years": n_years,
+                "year_min": year_min,
+                "year_max": year_max,
+                "spearman_rho": rho,
+                "p_value": p_value,
+                "significant_0_05": significant,
+                "significance_marker": "*" if significant else "",
+            })
+
+    columns = [
+        "Analyte", "Treatment", "n_years", "year_min", "year_max", "spearman_rho", "p_value",
+        "significant_0_05", "significance_marker",
+    ]
+    return pd.DataFrame(rows, columns=columns), incomplete_groups
+
+
+def format_spearman_publication_table(spearman: pd.DataFrame) -> pd.DataFrame:
+    """Create the requested analyte-by-treatment display table."""
+    display = spearman.copy()
+    display["formatted"] = display.apply(
+        lambda r: (
+            f"{r['spearman_rho']:.3f}{r['significance_marker']} ({int(r['n_years'])})"
+            if np.isfinite(r["spearman_rho"])
+            else f"NaN ({int(r['n_years'])})"
+        ),
+        axis=1,
+    )
+    wide = display.pivot(index="Analyte", columns="Treatment", values="formatted")
+    wide = wide.reindex(index=SPEARMAN_ANALYTE_ORDER, columns=SPEARMAN_TREATMENT_ORDER)
+    return wide.reset_index().loc[:, ["Analyte"] + SPEARMAN_TREATMENT_ORDER]
+
+
+def print_spearman_validation_summary(spearman: pd.DataFrame, incomplete_groups: List[str]) -> None:
+    """Print concise correlation coverage and nominal-significance checks."""
+    rho = spearman["spearman_rho"].to_numpy(dtype=float)
+    finite_rho = rho[np.isfinite(rho)]
+    significant = spearman["significant_0_05"].astype(bool)
+    finite_p = np.isfinite(spearman["p_value"].to_numpy(dtype=float))
+    nonsignificant = spearman.loc[finite_p & ~significant, ["Analyte", "Treatment"]]
+    nonsignificant_names = [f"{r.Analyte}-{r.Treatment}" for r in nonsignificant.itertuples(index=False)]
+
+    rho_summary = (
+        f"{np.min(finite_rho):.3f}, {np.median(finite_rho):.3f}, {np.max(finite_rho):.3f}"
+        if finite_rho.size
+        else "NaN, NaN, NaN"
+    )
+    print("[VALIDATION] Spearman summary:")
+    print(f"     - analyte-treatment combinations: {len(spearman)}")
+    print(f"     - n_years min/max: {int(spearman['n_years'].min())}/{int(spearman['n_years'].max())}")
+    print(f"     - rho min/median/max: {rho_summary}")
+    print(
+        f"     - nominal alpha=0.05: {int(significant.sum())} significant, "
+        f"{int((finite_p & ~significant).sum())} nonsignificant"
+    )
+    print(f"     - missing or incomplete annual pairs: {', '.join(incomplete_groups) if incomplete_groups else 'none'}")
+    print(f"     - nonsignificant combinations: {', '.join(nonsignificant_names) if nonsignificant_names else 'none'}")
+
+
 # ----------------------------
 # CRPS (from draws)
 # ----------------------------
@@ -1034,7 +1178,14 @@ def _prep_by_analyte_all(metrics_by_analyte_overall: pd.DataFrame) -> pd.DataFra
     return d.sort_values(["Analyte", "method"])
 
 
-def plot_paired_bars_by_analyte(d_all: pd.DataFrame, metric: str, outpath: Path, title: str, ylabel: str) -> None:
+def plot_paired_bars_by_analyte(
+    d_all: pd.DataFrame,
+    metric: str,
+    outpath: Path,
+    title: str,
+    ylabel: str,
+    xlabel: str = "Analyte (ranked by Bayes, best → worst)",
+) -> None:
     """Paired bar chart (Bayes vs ML) by analyte.
 
     Rules:
@@ -1079,7 +1230,7 @@ def plot_paired_bars_by_analyte(d_all: pd.DataFrame, metric: str, outpath: Path,
 
     ax.set_title(title)
     ax.set_ylabel(ylabel)
-    ax.set_xlabel("Analyte (ranked by Bayes, best → worst)")
+    ax.set_xlabel(xlabel)
     ax.set_xticks(x)
     ax.set_xticklabels(analytes, rotation=45, ha="right")
     ax.grid(True, axis="y", alpha=0.30)
@@ -1244,6 +1395,18 @@ def main() -> None:
     observed = canonicalize_analytes(observed)
     ml_std = canonicalize_analytes(ml_std)
 
+    spearman, incomplete_spearman_groups = compute_spearman_by_analyte_treatment(bayes_modeled, ml_std)
+    spearman_pub = format_spearman_publication_table(spearman)
+    spearman_raw_path = metrics_outdir / "spearman_by_analyte_treatment.csv"
+    spearman_pub_path = metrics_outdir / "spearman_by_analyte_pub.csv"
+    spearman.to_csv(spearman_raw_path, index=False)
+    spearman_pub.to_csv(spearman_pub_path, index=False)
+    print("[OK] Spearman tables written:")
+    print(f"     - {spearman_raw_path}")
+    print(f"     - {spearman_pub_path}")
+    print(SPEARMAN_FOOTNOTE)
+    print_spearman_validation_summary(spearman, incomplete_spearman_groups)
+
     bayes_an = set(bayes_modeled["Analyte"].unique())
     ml_an = set(ml_std["Analyte"].unique())
     shared = sorted(bayes_an.intersection(ml_an))
@@ -1344,6 +1507,12 @@ def main() -> None:
     metrics_overall = metrics_by_analyte_overall.loc[metrics_by_analyte_overall["Analyte"].eq("ALL")].copy()
     metrics_by_analyte_overall = metrics_by_analyte_overall.loc[~metrics_by_analyte_overall["Analyte"].eq("ALL")].copy()
 
+    # This is expanded with the comparable, dimensionless Volume NRMSE rows
+    # below when annual volume inputs are available. Other GoF plots remain
+    # concentration/load-only because normalized CRPS is not computed for volume.
+    concentration_metrics_overall = metrics_by_analyte_overall.copy()
+    nrmse_metrics_overall = metrics_by_analyte_overall.copy()
+
     metrics_by_group.to_csv(metrics_outdir / "metrics_by_analyte_treatment.csv", index=False)
     metrics_by_analyte_overall.to_csv(metrics_outdir / "metrics_by_analyte_overall.csv", index=False)
     metrics_overall.to_csv(metrics_outdir / "metrics_overall.csv", index=False)
@@ -1432,6 +1601,22 @@ def main() -> None:
                     volume_metrics_by_treatment.to_csv(metrics_outdir / "volume_metrics_by_treatment.csv", index=False)
                     volume_metrics_overall.to_csv(metrics_outdir / "volume_metrics_overall.csv", index=False)
 
+                    # Include Volume in the main tabular NRMSE exports for a
+                    # single convenient Bayes-vs-ML comparison. Keep the
+                    # dedicated volume files above for backward compatibility.
+                    metrics_by_group = pd.concat(
+                        [metrics_by_group, volume_metrics_by_treatment],
+                        ignore_index=True,
+                    ).sort_values(["Analyte", "Treatment", "method"])
+                    metrics_by_analyte_overall = pd.concat(
+                        [metrics_by_analyte_overall, volume_metrics_overall],
+                        ignore_index=True,
+                    ).sort_values(["Analyte", "method"])
+                    nrmse_metrics_overall = metrics_by_analyte_overall.copy()
+
+                    metrics_by_group.to_csv(metrics_outdir / "metrics_by_analyte_treatment.csv", index=False)
+                    metrics_by_analyte_overall.to_csv(metrics_outdir / "metrics_by_analyte_overall.csv", index=False)
+
                     print("[OK] Volume metrics written:")
                     print(f"     - {metrics_outdir / 'volume_metrics_by_treatment.csv'}")
                     print(f"     - {metrics_outdir / 'volume_metrics_overall.csv'}")
@@ -1466,14 +1651,16 @@ def main() -> None:
 
     # --- GoF plots ---
     if not args.skip_gof_plots:
-        d_all = _prep_by_analyte_all(metrics_by_analyte_overall)
+        d_all = _prep_by_analyte_all(concentration_metrics_overall)
+        d_nrmse = _prep_by_analyte_all(nrmse_metrics_overall)
 
         plot_paired_bars_by_analyte(
-            d_all=d_all,
+            d_all=d_nrmse,
             metric="NRMSE_mean",
             outpath=gof_outdir / "gof_nrmse_mean_by_analyte.jpg",
-            title="NRMSE (normalized by mean |Observed|) by analyte",
+            title="NRMSE (normalized by mean |Observed|) by analyte and volume",
             ylabel="RMSE / mean(|Observed|)",
+            xlabel="Analyte or volume (ranked by Bayes, best → worst)",
         )
 
         plot_paired_bars_by_analyte(

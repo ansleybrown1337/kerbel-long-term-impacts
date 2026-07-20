@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "Please cite the archived Zenodo release and the associated article. Replace the metadata placeholders before release."
+title: "Kerbel long-term impacts on edge-of-field water quality"
+type: software
+authors:
+  - family-names: Brown
+    given-names: AJ
+    affiliation: "Colorado State University Agricultural Water Quality Program"
+    # orcid: "REPLACE_WITH_ORCID"
+version: "REPLACE_WITH_RELEASE_VERSION"
+# date-released: "REPLACE_WITH_YYYY-MM-DD"
+# doi: "REPLACE_WITH_ZENODO_DOI"
+# repository-code: "REPLACE_WITH_REPOSITORY_URL"
+license: GPL-2.0-only
+keywords:
+  - edge-of-field water quality
+  - Bayesian modeling
+  - CatBoost
+  - conformal prediction
+  - agricultural runoff

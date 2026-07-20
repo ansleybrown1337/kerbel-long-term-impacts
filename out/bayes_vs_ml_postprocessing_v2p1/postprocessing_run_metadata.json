@@ -1,0 +1,13 @@
+{
+  "command": "python code/bayes_ml_postprocessing_v2p1.py --repo . --rebuild-current-run",
+  "runtime_seconds": 11.347277900000336,
+  "python": "3.12.7 | packaged by Anaconda, Inc. | (main, Oct  4 2024, 13:17:27) [MSC v.1929 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "pandas": "2.2.2",
+  "numpy": "1.26.4",
+  "scipy": "1.13.1",
+  "matplotlib": "3.9.2",
+  "random_operations": "None; all draws read from saved files.",
+  "output_directory": "C:\\Users\\ansle\\OneDrive\\Documents\\GitHub\\kerbel-long-term-impacts\\out\\bayes_vs_ml_postprocessing_v2p1",
+  "figure_directory": "C:\\Users\\ansle\\OneDrive\\Documents\\GitHub\\kerbel-long-term-impacts\\figs\\bayes_vs_ml_postprocessing_v2p1"
+}
