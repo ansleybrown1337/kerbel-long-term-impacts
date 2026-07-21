@@ -30,6 +30,9 @@ from shared.physical_event import (  # noqa: E402
 STUDY_YEARS = list(range(2011, 2026))
 TREATMENTS = ["CT", "MT", "ST"]
 PUBLICATION_ANALYTES = ["NH4", "NO3", "NO2", "OP", "Se", "TDS", "TKN", "TN", "TP", "TSS"]
+BAYES_POSTERIOR_FIT = "posterior_predictive_fit"
+ML_FULL_RECORD_RECONSTRUCTION = "full_record_physical_event_reconstruction"
+ML_OUTER_LOYO_VALIDATION = "outer_loyo_physical_event_validation"
 
 
 def require_columns(frame: pd.DataFrame, columns: Sequence[str], label: str) -> None:
@@ -418,7 +421,12 @@ def spearman_tables(annual: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return raw, publication
 
 
-def performance_table(frame: pd.DataFrame, method: str, target: str) -> pd.DataFrame:
+def performance_table(
+    frame: pd.DataFrame,
+    method: str,
+    target: str,
+    evaluation: str,
+) -> pd.DataFrame:
     if method == "ML":
         subset = frame.loc[frame["Target"].eq(target)].copy()
         observed, predicted, low, high = "y_true", "y_pred", "pi_low", "pi_high"
@@ -456,7 +464,8 @@ def performance_table(frame: pd.DataFrame, method: str, target: str) -> pd.DataF
         denominator = pd.to_numeric(valid[observed], errors="coerce").mean()
         interval_valid = group.dropna(subset=[observed, low, high])
         records.append({
-            "Method": method, "Target": target, "Grouping": grouping,
+            "Method": method, "Evaluation": evaluation,
+            "Target": target, "Grouping": grouping,
             "Analyte": analyte, "Treatment": treatment,
             "n": len(valid),
             "RMSE_original_units": rmse,
@@ -464,6 +473,288 @@ def performance_table(frame: pd.DataFrame, method: str, target: str) -> pd.DataF
             "IntervalCoverage": float(interval_valid["covered"].mean()) if len(interval_valid) else np.nan,
         })
     return pd.DataFrame(records)
+
+
+def assert_constant_within_keys(
+    frame: pd.DataFrame,
+    keys: Sequence[str],
+    columns: Sequence[str],
+    label: str,
+) -> None:
+    """Reject physical-event identifiers that map to conflicting metadata."""
+
+    for column in columns:
+        counts = frame.groupby(list(keys), dropna=False)[column].nunique(dropna=False)
+        if counts.gt(1).any():
+            examples = counts.loc[counts.gt(1)].head(5).index.tolist()
+            raise ValueError(
+                f"{label} has conflicting {column} values within {list(keys)}; "
+                f"examples: {examples}."
+            )
+
+
+def resolve_ml_loyo_physical_event_diagnostics(frame: pd.DataFrame) -> pd.DataFrame:
+    """Resolve LOYO predictions to the physical-event units used for load points."""
+
+    require_columns(
+        frame,
+        [
+            "Target", "PhysicalEventID", "Year", "Treatment", "Analyte",
+            "y_true", "y_pred", "pi_low", "pi_high",
+        ],
+        "ML LOYO diagnostics",
+    )
+    records = []
+    for target in ["Result_mg_L", "Volume_L"]:
+        subset = frame.loc[frame["Target"].eq(target)].copy()
+        if target == "Result_mg_L":
+            subset = subset.loc[
+                subset["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
+            ].copy()
+            keys = ["PhysicalEventID", "Analyte"]
+            unit = "PhysicalEventID x Analyte"
+        else:
+            keys = ["PhysicalEventID"]
+            unit = "PhysicalEventID"
+        assert_constant_within_keys(
+            subset, keys, ["Year", "Treatment"], f"ML LOYO {target} diagnostics"
+        )
+        for column in ["y_true", "y_pred", "pi_low", "pi_high"]:
+            subset[column] = pd.to_numeric(subset[column], errors="coerce")
+        aggregations = {
+            "Year": ("Year", "first"),
+            "Treatment": ("Treatment", "first"),
+            "y_true": ("y_true", "median"),
+            "y_pred": ("y_pred", "median"),
+            "pi_low": ("pi_low", "median"),
+            "pi_high": ("pi_high", "median"),
+            "n_source_observations": ("PhysicalEventID", "size"),
+        }
+        resolved = subset.groupby(keys, as_index=False, dropna=False).agg(**aggregations)
+        if target == "Volume_L":
+            resolved["Analyte"] = "all"
+        resolved["Target"] = target
+        resolved["UnitOfAnalysis"] = unit
+        records.append(resolved)
+    output = pd.concat(records, ignore_index=True, sort=False)
+    if output.duplicated(["Target", "PhysicalEventID", "Analyte"]).any():
+        raise ValueError("Resolved ML LOYO diagnostics are not unique by physical-event unit.")
+    return output
+
+
+def ml_full_record_point_diagnostics(ml_dir: Path) -> pd.DataFrame:
+    """Match full-record ML point predictions to observed physical-event units.
+
+    These are in-sample reconstruction diagnostics for the deterministic point
+    predictions that underlie the annual comparison sums. They are intentionally
+    distinct from outer-LOYO validation diagnostics.
+    """
+
+    points = normalize_point_ledger(
+        read_required(
+            ml_dir / "event_analyte_point_ledger_full_record_model_only.csv",
+            "ML full-record model-only point ledger",
+        ),
+        "ML",
+        "full_record_model_only",
+    )
+    points, _ = restrict_publication_analytes(
+        points, "ML full-record point ledger for diagnostics", require_all=True
+    )
+
+    concentration = read_required(
+        ml_dir / "concentration_observation_training_table_v3p0.csv",
+        "ML concentration observation training table",
+    )
+    if "analyte_abbr" in concentration:
+        concentration["Analyte"] = concentration["analyte_abbr"].astype(str)
+    require_columns(
+        concentration,
+        ["PhysicalEventID", "Analyte", "Year", "Treatment", "Result_mg_L"],
+        "ML concentration observation training table",
+    )
+    concentration = concentration.loc[
+        concentration["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
+    ].copy()
+    concentration["Result_mg_L"] = pd.to_numeric(
+        concentration["Result_mg_L"], errors="coerce"
+    )
+    concentration = concentration.dropna(subset=["Result_mg_L"])
+    concentration_keys = ["PhysicalEventID", "Analyte"]
+    assert_constant_within_keys(
+        concentration,
+        concentration_keys,
+        ["Year", "Treatment"],
+        "ML concentration observations",
+    )
+    concentration_observed = (
+        concentration.groupby(concentration_keys, as_index=False, dropna=False)
+        .agg(
+            Year=("Year", "first"),
+            Treatment=("Treatment", "first"),
+            y_true=("Result_mg_L", "median"),
+            n_source_observations=("Result_mg_L", "size"),
+        )
+    )
+    concentration_predicted = points[[
+        "PhysicalEventID", "Analyte", "Year", "Treatment", "Concentration_mg_L"
+    ]].rename(
+        columns={
+            "Year": "Year_predicted",
+            "Treatment": "Treatment_predicted",
+            "Concentration_mg_L": "y_pred",
+        }
+    )
+    concentration_diagnostics = concentration_observed.merge(
+        concentration_predicted,
+        on=concentration_keys,
+        how="inner",
+        validate="one_to_one",
+    )
+    if not concentration_diagnostics["Year"].eq(
+        concentration_diagnostics["Year_predicted"]
+    ).all() or not concentration_diagnostics["Treatment"].astype(str).eq(
+        concentration_diagnostics["Treatment_predicted"].astype(str)
+    ).all():
+        raise ValueError("ML concentration observations and point predictions disagree on event metadata.")
+    concentration_diagnostics = concentration_diagnostics.drop(
+        columns=["Year_predicted", "Treatment_predicted"]
+    )
+    concentration_diagnostics["Target"] = "Result_mg_L"
+    concentration_diagnostics["UnitOfAnalysis"] = "PhysicalEventID x Analyte"
+
+    volume = read_required(
+        ml_dir / "volume_observation_training_table_v3p0.csv",
+        "ML volume observation training table",
+    )
+    require_columns(
+        volume,
+        ["PhysicalEventID", "Year", "Treatment", "Volume"],
+        "ML volume observation training table",
+    )
+    volume["Volume"] = pd.to_numeric(volume["Volume"], errors="coerce")
+    volume = volume.dropna(subset=["Volume"])
+    assert_constant_within_keys(
+        volume, ["PhysicalEventID"], ["Year", "Treatment"], "ML volume observations"
+    )
+    volume_observed = (
+        volume.groupby("PhysicalEventID", as_index=False, dropna=False)
+        .agg(
+            Year=("Year", "first"),
+            Treatment=("Treatment", "first"),
+            y_true=("Volume", "median"),
+            n_source_observations=("Volume", "size"),
+        )
+    )
+    assert_constant_within_keys(
+        points,
+        ["PhysicalEventID"],
+        ["Year", "Treatment", "Volume_L"],
+        "ML full-record point-volume predictions",
+    )
+    volume_predicted = (
+        points.groupby("PhysicalEventID", as_index=False, dropna=False)
+        .agg(
+            Year_predicted=("Year", "first"),
+            Treatment_predicted=("Treatment", "first"),
+            y_pred=("Volume_L", "first"),
+        )
+    )
+    volume_diagnostics = volume_observed.merge(
+        volume_predicted,
+        on="PhysicalEventID",
+        how="inner",
+        validate="one_to_one",
+    )
+    if not volume_diagnostics["Year"].eq(
+        volume_diagnostics["Year_predicted"]
+    ).all() or not volume_diagnostics["Treatment"].astype(str).eq(
+        volume_diagnostics["Treatment_predicted"].astype(str)
+    ).all():
+        raise ValueError("ML volume observations and point predictions disagree on event metadata.")
+    volume_diagnostics = volume_diagnostics.drop(
+        columns=["Year_predicted", "Treatment_predicted"]
+    )
+    volume_diagnostics["Analyte"] = "all"
+    volume_diagnostics["Target"] = "Volume_L"
+    volume_diagnostics["UnitOfAnalysis"] = "PhysicalEventID"
+
+    output = pd.concat(
+        [concentration_diagnostics, volume_diagnostics], ignore_index=True, sort=False
+    )
+    output["pi_low"] = np.nan
+    output["pi_high"] = np.nan
+    if output.duplicated(["Target", "PhysicalEventID", "Analyte"]).any():
+        raise ValueError("ML full-record point diagnostics are not unique by physical-event unit.")
+    return output
+
+
+def build_performance_products(
+    bayes_dir: Path,
+    ml_dir: Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Build primary Bayes-vs-ML and separate ML validation metric products."""
+
+    bayes_rows = read_required(
+        bayes_dir / "row_prediction_diagnostics_bayes_v3p0_physical_event.csv",
+        "Bayesian row predictions",
+    )
+    bayes_volume = read_required(
+        bayes_dir / "volume_prediction_diagnostics_bayes_v3p0_physical_event.csv",
+        "Bayesian volume predictions",
+    )
+    ml_rows = read_required(
+        ml_dir / "row_level_residual_diagnostics.csv", "ML row diagnostics"
+    )
+    require_columns(ml_rows, ["Target", "Analyte"], "ML row diagnostics")
+    ml_rows = ml_rows.loc[
+        ml_rows["Target"].eq("Volume_L")
+        | ml_rows["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
+    ].copy()
+    ml_loyo_resolved = resolve_ml_loyo_physical_event_diagnostics(ml_rows)
+    ml_reconstruction = ml_full_record_point_diagnostics(ml_dir)
+
+    bayes_performance = pd.concat([
+        performance_table(
+            bayes_rows, "Bayes", "Result_mg_L", BAYES_POSTERIOR_FIT
+        ),
+        performance_table(bayes_volume, "Bayes", "Volume_L", BAYES_POSTERIOR_FIT),
+    ], ignore_index=True)
+    ml_reconstruction_performance = pd.concat([
+        performance_table(
+            ml_reconstruction,
+            "ML",
+            "Result_mg_L",
+            ML_FULL_RECORD_RECONSTRUCTION,
+        ),
+        performance_table(
+            ml_reconstruction,
+            "ML",
+            "Volume_L",
+            ML_FULL_RECORD_RECONSTRUCTION,
+        ),
+    ], ignore_index=True)
+    ml_loyo_performance = pd.concat([
+        performance_table(
+            ml_loyo_resolved,
+            "ML",
+            "Result_mg_L",
+            ML_OUTER_LOYO_VALIDATION,
+        ),
+        performance_table(
+            ml_loyo_resolved,
+            "ML",
+            "Volume_L",
+            ML_OUTER_LOYO_VALIDATION,
+        ),
+    ], ignore_index=True)
+    primary = pd.concat(
+        [bayes_performance, ml_reconstruction_performance], ignore_index=True
+    )
+    ml_evaluation_tracks = pd.concat(
+        [ml_reconstruction_performance, ml_loyo_performance], ignore_index=True
+    )
+    return primary, ml_evaluation_tracks, bayes_rows, bayes_volume, ml_rows
 
 
 def coverage_by_year_target(frame: pd.DataFrame, method: str) -> pd.DataFrame:
@@ -508,7 +799,7 @@ def publication_performance_table(frame: pd.DataFrame) -> pd.DataFrame:
         lambda value: "NA" if pd.isna(value) else f"{100 * value:.1f}%"
     )
     return output[[
-        "Method", "Target", "Grouping", "Analyte", "Treatment",
+        "Method", "Evaluation", "Target", "Grouping", "Analyte", "Treatment",
         "n", "RMSE", "NRMSE", "Coverage",
     ]]
 
@@ -540,13 +831,120 @@ def publication_overall_nrmse_table(frame: pd.DataFrame) -> pd.DataFrame:
     )
     output["diagnostic_basis"] = np.where(
         output["Method"].eq("ML"),
-        "LOYO held-out predictions",
+        np.where(
+            output["Evaluation"].eq(ML_FULL_RECORD_RECONSTRUCTION),
+            "Full-record physical-event reconstruction points",
+            "Outer-LOYO physical-event validation predictions",
+        ),
         "Bayesian posterior-predictive diagnostics",
     )
     return output[[
-        "DisplayTarget", "Method", "n", "NRMSE_percent",
+        "DisplayTarget", "Method", "Evaluation", "n", "NRMSE_percent",
         "IntervalCoverage", "diagnostic_basis",
     ]]
+
+
+def publication_ml_evaluation_table(frame: pd.DataFrame) -> pd.DataFrame:
+    """Format paired ML reconstruction and LOYO RMSE/NRMSE metrics."""
+
+    output = frame.copy()
+    output["RMSE"] = output["RMSE_original_units"].map(
+        lambda value: "NA" if pd.isna(value) else f"{value:.4g}"
+    )
+    output["RMSE_units"] = np.where(
+        output["Target"].eq("Volume_L"), "L", "mg/L"
+    )
+    output["NRMSE_percent"] = output["NRMSE_mean_observed"].map(
+        lambda value: "NA" if pd.isna(value) else f"{100 * value:.1f}%"
+    )
+    output["Coverage"] = output["IntervalCoverage"].map(
+        lambda value: "NA" if pd.isna(value) else f"{100 * value:.1f}%"
+    )
+    return output[[
+        "DisplayTarget", "Evaluation", "n", "RMSE", "RMSE_units",
+        "NRMSE_percent", "Coverage",
+    ]]
+
+
+def write_performance_products(
+    output_dir: Path,
+    primary: pd.DataFrame,
+    ml_evaluation_tracks: pd.DataFrame,
+) -> None:
+    """Write primary comparison and explicitly separated ML evaluation tracks."""
+
+    primary.to_csv(output_dir / "performance_and_calibration_raw.csv", index=False)
+    publication_performance_table(primary).to_csv(
+        output_dir / "performance_and_calibration_publication.csv", index=False
+    )
+    primary_overall = overall_nrmse_table(primary)
+    primary_overall.to_csv(
+        output_dir / "nrmse_overall_analytes_and_volume_raw.csv", index=False
+    )
+    publication_overall_nrmse_table(primary_overall).to_csv(
+        output_dir / "nrmse_overall_analytes_and_volume_publication.csv", index=False
+    )
+
+    ml_evaluation_tracks.to_csv(
+        output_dir / "ml_rmse_nrmse_reconstruction_and_loyo_raw.csv", index=False
+    )
+    publication_performance_table(ml_evaluation_tracks).to_csv(
+        output_dir / "ml_rmse_nrmse_reconstruction_and_loyo_publication.csv",
+        index=False,
+    )
+    ml_overall = overall_nrmse_table(ml_evaluation_tracks)
+    ml_overall.to_csv(
+        output_dir / "ml_rmse_nrmse_overall_reconstruction_and_loyo_raw.csv",
+        index=False,
+    )
+    publication_ml_evaluation_table(ml_overall).to_csv(
+        output_dir / "ml_rmse_nrmse_overall_reconstruction_and_loyo_publication.csv",
+        index=False,
+    )
+    (output_dir / "rmse_nrmse_evaluation_definitions.md").write_text(
+        "# RMSE and NRMSE evaluation tracks\n\n"
+        "- Bayesian RMSE and NRMSE are unchanged posterior-predictive fit diagnostics. "
+        "No Bayesian LOYO calculation is introduced.\n"
+        "- The primary Bayes-versus-ML table uses ML full-record physical-event "
+        "reconstruction points: the deterministic concentration and volume predictions "
+        "that underlie the annual point-load sums, matched only where observations exist.\n"
+        "- ML outer-LOYO RMSE and NRMSE are retained in separate validation tables and "
+        "figures. They quantify held-out-year prediction performance and are not used as "
+        "the ML center in the annual reconstruction figures.\n"
+        "- To prevent measurement-method or sampler-method copies from being counted as "
+        "separate load-producing events, ML concentration diagnostics are resolved by "
+        "PhysicalEventID x Analyte and volume diagnostics by PhysicalEventID using the "
+        "same median resolution as the point-load workflow. Legitimate source rows remain "
+        "unchanged in the model inputs.\n"
+        "- RMSE is reported in mg/L for concentration and L for event volume. NRMSE is "
+        "RMSE divided by the mean observed value within the displayed group. Metrics are "
+        "not calculated against partial observed annual subtotals.\n",
+        encoding="utf-8",
+    )
+
+
+def metric_manifest_fields() -> dict[str, object]:
+    return {
+        "primary_rmse_nrmse_bayes_evaluation": BAYES_POSTERIOR_FIT,
+        "primary_rmse_nrmse_ml_evaluation": ML_FULL_RECORD_RECONSTRUCTION,
+        "separate_ml_validation_evaluation": ML_OUTER_LOYO_VALIDATION,
+        "bayesian_loyo_metrics_introduced": False,
+        "ml_concentration_metric_unit": "PhysicalEventID x Analyte; median resolution",
+        "ml_volume_metric_unit": "PhysicalEventID; median resolution",
+        "nrmse_definition": "RMSE divided by mean observed value within group",
+        "rmse_nrmse_against_partial_observed_annual_subtotals": False,
+    }
+
+
+def update_saved_comparison_manifest(output_dir: Path) -> None:
+    """Add metric provenance when --figures-only refreshes saved products."""
+
+    path = output_dir / "run_manifest_comparison_v3p0_physical_event.json"
+    if not path.is_file():
+        return
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest.update(metric_manifest_fields())
+    path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 def publication_coverage_table(frame: pd.DataFrame) -> pd.DataFrame:
@@ -708,6 +1106,119 @@ def read_observed_annual_summary(bayes_dir: Path) -> pd.DataFrame:
     return observed[key + ["center_kg", "lower_95_kg", "upper_95_kg"]]
 
 
+def annual_volume_comparison(bayes_dir: Path, ml_dir: Path) -> pd.DataFrame:
+    """Combine corrected Bayes, ML, and observed annual runoff volumes in kL."""
+
+    records: list[dict[str, object]] = []
+    bayes_sources = [
+        (
+            "Bayes",
+            "model_only",
+            read_required(
+                bayes_dir / "annual_volume_kL_wide_modeled_v3p0_physical_event.csv",
+                "Bayesian modeled annual-volume summary",
+            ),
+            "mod",
+            "posterior_mean",
+            "95% posterior credible interval",
+        ),
+        (
+            "Observed",
+            "observed_reference",
+            read_required(
+                bayes_dir / "annual_volume_kL_wide_observed_v3p0_physical_event.csv",
+                "observed annual-volume summary",
+            ),
+            "obs",
+            "event_bootstrap_mean",
+            "event-bootstrap 95% confidence interval",
+        ),
+    ]
+    for method, scenario, wide, source_tag, center_type, interval_type in bayes_sources:
+        require_columns(wide, ["Year"], f"{method} annual-volume summary")
+        years = pd.to_numeric(wide["Year"], errors="coerce")
+        for treatment in TREATMENTS:
+            center_column = f"{treatment}_{source_tag}_volume_kL_mean"
+            lower_column = f"{treatment}_{source_tag}_volume_kL_low"
+            upper_column = f"{treatment}_{source_tag}_volume_kL_high"
+            require_columns(
+                wide,
+                [center_column, lower_column, upper_column],
+                f"{method} annual-volume summary",
+            )
+            for position in np.flatnonzero(years.notna().to_numpy()):
+                center = pd.to_numeric(
+                    pd.Series([wide.iloc[position][center_column]]), errors="coerce"
+                ).iloc[0]
+                if not np.isfinite(center):
+                    continue
+                records.append({
+                    "Method": method,
+                    "Scenario": scenario,
+                    "Year": int(years.iloc[position]),
+                    "Treatment": treatment,
+                    "center_kL": float(center),
+                    "lower_95_kL": float(wide.iloc[position][lower_column]),
+                    "upper_95_kL": float(wide.iloc[position][upper_column]),
+                    "central_estimate_type": center_type,
+                    "interval_type": interval_type,
+                })
+
+    ml_points = read_required(
+        ml_dir / "event_analyte_point_ledger_full_record_model_only.csv",
+        "ML full-record model-only point ledger for annual volume",
+    )
+    require_columns(
+        ml_points,
+        ["PhysicalEventID", "Year", "Treatment", "Volume_L"],
+        "ML point ledger for annual volume",
+    )
+    event_columns = ["Year", "Treatment", "Volume_L"]
+    conflicts = ml_points.groupby("PhysicalEventID", dropna=False)[event_columns].nunique(
+        dropna=False
+    ).gt(1).any(axis=1)
+    if conflicts.any():
+        raise ValueError(
+            "ML point ledger has conflicting Year, Treatment, or Volume_L values within "
+            "PhysicalEventID."
+        )
+    ml_events = ml_points.drop_duplicates("PhysicalEventID").copy()
+    ml_events["Year"] = pd.to_numeric(ml_events["Year"], errors="raise").astype(int)
+    ml_events["Volume_L"] = pd.to_numeric(ml_events["Volume_L"], errors="raise")
+    ml_annual = (
+        ml_events.groupby(["Year", "Treatment"], as_index=False)
+        .agg(center_kL=("Volume_L", lambda values: float(values.sum()) / 1000.0))
+    )
+    for row in ml_annual.itertuples(index=False):
+        records.append({
+            "Method": "ML",
+            "Scenario": "full_record_model_only",
+            "Year": int(row.Year),
+            "Treatment": str(row.Treatment),
+            "center_kL": float(row.center_kL),
+            "lower_95_kL": np.nan,
+            "upper_95_kL": np.nan,
+            "central_estimate_type": "sum_of_physical_event_point_volumes",
+            "interval_type": "not shown in primary comparison figure",
+        })
+
+    output = pd.DataFrame.from_records(records)
+    key = ["Method", "Year", "Treatment"]
+    if output.duplicated(key).any():
+        raise ValueError("Annual volume comparison is not unique by Method x Year x Treatment.")
+    for method in ["Bayes", "ML"]:
+        expected = pd.MultiIndex.from_product(
+            [STUDY_YEARS, TREATMENTS], names=["Year", "Treatment"]
+        )
+        found = pd.MultiIndex.from_frame(
+            output.loc[output["Method"].eq(method), ["Year", "Treatment"]]
+        )
+        missing = expected.difference(found)
+        if len(missing):
+            raise ValueError(f"{method} annual volume summary is missing {list(missing)}.")
+    return output.sort_values(["Method", "Treatment", "Year"]).reset_index(drop=True)
+
+
 def plot_annual_comparison(
     annual: pd.DataFrame,
     observed: pd.DataFrame,
@@ -726,7 +1237,7 @@ def plot_annual_comparison(
         ),
         Line2D(
             [0], [0], color=colors["ML"], marker="o", linestyle="--", linewidth=2,
-            label="ML physical-event point total + 95% calibration-residual PI",
+            label="ML physical-event point total",
         ),
         Line2D(
             [0], [0], color="black", marker="o", markerfacecolor="none",
@@ -748,11 +1259,19 @@ def plot_annual_comparison(
                 center = pd.to_numeric(
                     method_rows[center_column], errors="raise"
                 ).to_numpy(dtype=float)
-                lower = np.maximum(
-                    pd.to_numeric(method_rows["lower_95"], errors="raise").to_numpy(dtype=float), 0.0
-                )
-                upper = pd.to_numeric(method_rows["upper_95"], errors="raise").to_numpy(dtype=float)
-                axis.fill_between(years, lower, upper, color=colors[method], alpha=0.17, linewidth=0)
+                if method == "Bayes":
+                    lower = np.maximum(
+                        pd.to_numeric(
+                            method_rows["lower_95"], errors="raise"
+                        ).to_numpy(dtype=float),
+                        0.0,
+                    )
+                    upper = pd.to_numeric(
+                        method_rows["upper_95"], errors="raise"
+                    ).to_numpy(dtype=float)
+                    axis.fill_between(
+                        years, lower, upper, color=colors[method], alpha=0.17, linewidth=0
+                    )
                 axis.plot(
                     years, center, color=colors[method], linestyle=line_styles[method],
                     marker="o", markersize=4.5, linewidth=2,
@@ -789,6 +1308,205 @@ def plot_annual_comparison(
             figure_dir / f"annual_load_{analyte}",
             figure_dir / "annual_obs_vs_modeled" / f"annual_load_{safe}_obs_vs_modeled_v3p0",
             layout_top=0.88,
+        )
+
+
+def plot_annual_volume_comparison(volume: pd.DataFrame, figure_dir: Path) -> None:
+    colors = {"Bayes": "#1f77b4", "ML": "#ff7f0e"}
+    legend_handles = [
+        Line2D(
+            [0], [0], color=colors["Bayes"], marker="o", linewidth=2,
+            label="Bayes posterior mean + 95% credible interval",
+        ),
+        Line2D(
+            [0], [0], color=colors["ML"], marker="o", linestyle="--", linewidth=2,
+            label="ML physical-event point-volume total",
+        ),
+        Line2D(
+            [0], [0], color="black", marker="o", markerfacecolor="none",
+            linestyle="none", markersize=8, label="Observed (event-bootstrap 95% CI)",
+        ),
+    ]
+    figure, axes = plt.subplots(1, 3, figsize=(16, 5.2), sharey=True)
+    for axis, treatment in zip(axes, TREATMENTS):
+        for method in ["Bayes", "ML"]:
+            rows = volume.loc[
+                volume["Method"].eq(method) & volume["Treatment"].eq(treatment)
+            ].sort_values("Year")
+            years = rows["Year"].to_numpy(dtype=float)
+            center = rows["center_kL"].to_numpy(dtype=float)
+            if method == "Bayes":
+                lower = np.maximum(rows["lower_95_kL"].to_numpy(dtype=float), 0.0)
+                upper = rows["upper_95_kL"].to_numpy(dtype=float)
+                axis.fill_between(
+                    years, lower, upper, color=colors[method], alpha=0.17, linewidth=0
+                )
+            axis.plot(
+                years, center, color=colors[method],
+                linestyle="-" if method == "Bayes" else "--",
+                marker="o", markersize=4.5, linewidth=2,
+            )
+        observed_rows = volume.loc[
+            volume["Method"].eq("Observed")
+            & volume["Treatment"].eq(treatment)
+        ].sort_values("Year")
+        if not observed_rows.empty:
+            center = observed_rows["center_kL"].to_numpy(dtype=float)
+            lower = observed_rows["lower_95_kL"].to_numpy(dtype=float)
+            upper = observed_rows["upper_95_kL"].to_numpy(dtype=float)
+            axis.errorbar(
+                observed_rows["Year"].to_numpy(dtype=float), center,
+                yerr=np.vstack([
+                    np.maximum(center - lower, 0),
+                    np.maximum(upper - center, 0),
+                ]),
+                fmt="o", markerfacecolor="none", markeredgecolor="black",
+                markeredgewidth=1.5, color="black", ecolor="black",
+                elinewidth=1.25, capsize=3, markersize=7, zorder=10,
+            )
+        axis.set_title(treatment)
+        axis.set_xticks(STUDY_YEARS[::2])
+        axis.set_ylim(bottom=0)
+        axis.grid(True, alpha=0.22)
+    axes[0].set_ylabel("Annual runoff volume (kL)")
+    axes[1].set_xlabel("Year")
+    figure.suptitle(
+        "Observed vs Bayes vs ML annual runoff volume (corrected physical-event)",
+        fontsize=14,
+    )
+    figure.legend(
+        handles=legend_handles, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 0.94)
+    )
+    save_figure(
+        figure,
+        figure_dir / "annual_runoff_volume_bayes_vs_ml_v3p0",
+        figure_dir / "annual_obs_vs_modeled" / "annual_runoff_volume_obs_vs_modeled_v3p0",
+        layout_top=0.88,
+    )
+
+
+def plot_annual_uncertainty_supplement(
+    annual: pd.DataFrame,
+    observed: pd.DataFrame,
+    figure_dir: Path,
+) -> None:
+    """Retain complete model intervals with readable, method-specific y scales."""
+
+    primary = annual.loc[
+        ((annual["Method"] == "Bayes") & (annual["Scenario"] == "model_only"))
+        | ((annual["Method"] == "ML") & (annual["Scenario"] == "full_record_model_only"))
+    ].copy()
+    colors = {"Bayes": "#1f77b4", "ML": "#ff7f0e"}
+    line_styles = {"Bayes": "-", "ML": "--"}
+    method_labels = {
+        "Bayes": "Bayes posterior median + 95% credible interval",
+        "ML": "ML physical-event point total + 95% calibration-residual PI",
+    }
+    legend_handles = [
+        Line2D(
+            [0], [0], color=colors["Bayes"], marker="o", linewidth=2,
+            label=method_labels["Bayes"],
+        ),
+        Line2D(
+            [0], [0], color=colors["ML"], marker="o", linestyle="--", linewidth=2,
+            label=method_labels["ML"],
+        ),
+        Line2D(
+            [0], [0], color="black", marker="o", markerfacecolor="none",
+            linestyle="none", markersize=8, label="Observed (event-bootstrap 95% CI)",
+        ),
+    ]
+    supplemental_dir = figure_dir / "supplemental_uncertainty"
+    for analyte, group in primary.groupby("Analyte", sort=False):
+        figure, axes = plt.subplots(2, 3, figsize=(16, 9), sharex=True)
+        observed_analyte = observed.loc[
+            observed["Analyte"].astype(str).eq(str(analyte))
+        ].copy()
+        for row_index, method in enumerate(["Bayes", "ML"]):
+            method_group = group.loc[group["Method"].eq(method)]
+            method_upper = pd.to_numeric(
+                method_group["upper_95"], errors="coerce"
+            ).to_numpy(dtype=float)
+            observed_upper = pd.to_numeric(
+                observed_analyte["upper_95_kg"], errors="coerce"
+            ).to_numpy(dtype=float)
+            finite_upper = np.concatenate([
+                method_upper[np.isfinite(method_upper)],
+                observed_upper[np.isfinite(observed_upper)],
+            ])
+            row_upper = float(np.max(finite_upper)) * 1.05 if len(finite_upper) else 1.0
+            row_upper = max(row_upper, np.finfo(float).eps)
+            for column_index, treatment in enumerate(TREATMENTS):
+                axis = axes[row_index, column_index]
+                method_rows = method_group.loc[
+                    method_group["Treatment"].eq(treatment)
+                ].sort_values("Year")
+                if not method_rows.empty:
+                    years = pd.to_numeric(
+                        method_rows["Year"], errors="raise"
+                    ).to_numpy(dtype=float)
+                    center_column = (
+                        "primary_center" if "primary_center" in method_rows else "median"
+                    )
+                    center = pd.to_numeric(
+                        method_rows[center_column], errors="raise"
+                    ).to_numpy(dtype=float)
+                    lower = np.maximum(
+                        pd.to_numeric(
+                            method_rows["lower_95"], errors="raise"
+                        ).to_numpy(dtype=float),
+                        0.0,
+                    )
+                    upper = pd.to_numeric(
+                        method_rows["upper_95"], errors="raise"
+                    ).to_numpy(dtype=float)
+                    axis.fill_between(
+                        years, lower, upper, color=colors[method], alpha=0.17, linewidth=0
+                    )
+                    axis.plot(
+                        years, center, color=colors[method],
+                        linestyle=line_styles[method], marker="o",
+                        markersize=4.5, linewidth=2,
+                    )
+                observed_rows = observed_analyte.loc[
+                    observed_analyte["Treatment"].astype(str).eq(treatment)
+                ].sort_values("Year")
+                if not observed_rows.empty:
+                    center = observed_rows["center_kg"].to_numpy(dtype=float)
+                    lower = observed_rows["lower_95_kg"].to_numpy(dtype=float)
+                    upper = observed_rows["upper_95_kg"].to_numpy(dtype=float)
+                    axis.errorbar(
+                        observed_rows["Year"].to_numpy(dtype=float), center,
+                        yerr=np.vstack([
+                            np.maximum(center - lower, 0),
+                            np.maximum(upper - center, 0),
+                        ]),
+                        fmt="o", markerfacecolor="none", markeredgecolor="black",
+                        markeredgewidth=1.5, color="black", ecolor="black",
+                        elinewidth=1.25, capsize=3, markersize=7, zorder=10,
+                    )
+                if row_index == 0:
+                    axis.set_title(treatment)
+                axis.set_xticks(STUDY_YEARS[::2])
+                axis.set_ylim(0, row_upper)
+                axis.grid(True, alpha=0.22)
+            axes[row_index, 0].set_ylabel(
+                f"{method} annual load (kg)\n(method-specific scale)"
+            )
+        axes[1, 1].set_xlabel("Year")
+        figure.suptitle(
+            f"{analyte}: full model uncertainty by method (corrected physical-event)",
+            fontsize=14,
+        )
+        figure.legend(
+            handles=legend_handles, loc="upper center", ncol=3,
+            bbox_to_anchor=(0.5, 0.95),
+        )
+        safe = figure_slug(analyte)
+        save_figure(
+            figure,
+            supplemental_dir / f"annual_load_{safe}_full_uncertainty_v3p0",
+            layout_top=0.89,
         )
 
 
@@ -898,7 +1616,7 @@ def plot_performance_comparison(performance: pd.DataFrame, figure_dir: Path) -> 
             axis.grid(True, axis="y", alpha=0.22)
         figure.suptitle(
             f"Concentration-model {ylabel} by analyte and treatment\n"
-            "Bayes posterior-predictive diagnostics; ML LOYO diagnostics",
+            "Bayes posterior-predictive fit; ML full-record physical-event reconstruction",
             fontsize=15,
         )
         axes.flat[0].legend(loc="best")
@@ -931,7 +1649,8 @@ def plot_performance_comparison(performance: pd.DataFrame, figure_dir: Path) -> 
     axis.set_ylabel("Mean-normalized RMSE (%)")
     axis.set_title(
         "Overall normalized RMSE by analyte and event volume\n"
-        "Pooled across treatments; Bayes posterior-predictive diagnostics; ML LOYO diagnostics"
+        "Pooled across treatments; Bayes posterior-predictive fit; "
+        "ML full-record reconstruction"
     )
     axis.grid(True, axis="y", alpha=0.22)
     axis.legend(loc="best")
@@ -939,6 +1658,148 @@ def plot_performance_comparison(performance: pd.DataFrame, figure_dir: Path) -> 
         figure,
         figure_dir / "gof_nrmse_mean_by_analyte",
         figure_dir / "postprocessing" / "nrmse_mean_overall_analytes_and_volume",
+        layout_top=0.90,
+    )
+
+    volume = performance.loc[
+        performance["Target"].eq("Volume_L")
+        & performance["Grouping"].eq("overall")
+    ].copy()
+    figure, axis = plt.subplots(figsize=(7.5, 5.5))
+    methods = ["Bayes", "ML"]
+    values = [
+        pd.to_numeric(
+            volume.loc[volume["Method"].eq(method), "RMSE_original_units"],
+            errors="coerce",
+        ).iloc[0]
+        for method in methods
+    ]
+    axis.bar(methods, values, color=[colors[method] for method in methods], alpha=0.85)
+    axis.set_ylabel("RMSE (L)")
+    axis.set_title(
+        "Event-volume RMSE\n"
+        "Bayes posterior-predictive fit; ML full-record physical-event reconstruction"
+    )
+    axis.grid(True, axis="y", alpha=0.22)
+    save_figure(
+        figure,
+        figure_dir / "postprocessing" / "volume_rmse_original_units",
+        layout_top=0.90,
+    )
+
+
+def plot_ml_reconstruction_vs_loyo(
+    performance: pd.DataFrame,
+    figure_dir: Path,
+) -> None:
+    """Keep full-record reconstruction and held-out LOYO diagnostics distinct."""
+
+    labels = {
+        ML_FULL_RECORD_RECONSTRUCTION: "Full-record reconstruction",
+        ML_OUTER_LOYO_VALIDATION: "Outer LOYO validation",
+    }
+    colors = {
+        ML_FULL_RECORD_RECONSTRUCTION: "#ff7f0e",
+        ML_OUTER_LOYO_VALIDATION: "#6b7280",
+    }
+    offsets = {
+        ML_FULL_RECORD_RECONSTRUCTION: -0.18,
+        ML_OUTER_LOYO_VALIDATION: 0.18,
+    }
+    evaluations = [ML_FULL_RECORD_RECONSTRUCTION, ML_OUTER_LOYO_VALIDATION]
+    overall = overall_nrmse_table(performance)
+    display_order = [*PUBLICATION_ANALYTES, "Volume"]
+
+    figure, axis = plt.subplots(figsize=(15, 6.5))
+    positions = np.arange(len(display_order), dtype=float)
+    for evaluation in evaluations:
+        rows = (
+            overall.loc[overall["Evaluation"].eq(evaluation)]
+            .set_index("DisplayTarget")
+            .reindex(display_order)
+        )
+        values = (
+            pd.to_numeric(rows["NRMSE_mean_observed"], errors="coerce")
+            .to_numpy(dtype=float)
+            * 100.0
+        )
+        axis.bar(
+            positions + offsets[evaluation],
+            values,
+            width=0.34,
+            color=colors[evaluation],
+            alpha=0.88,
+            label=labels[evaluation],
+        )
+    axis.set_xticks(positions, display_order, rotation=35, ha="right")
+    axis.set_ylabel("Mean-normalized RMSE (%)")
+    axis.set_title(
+        "ML normalized RMSE: reconstruction points versus held-out validation\n"
+        "Resolved to PhysicalEventID x Analyte (concentration) and PhysicalEventID (volume)"
+    )
+    axis.grid(True, axis="y", alpha=0.22)
+    axis.legend(loc="best")
+    save_figure(
+        figure,
+        figure_dir / "postprocessing" / "ml_reconstruction_vs_loyo_nrmse",
+        layout_top=0.90,
+    )
+
+    concentration = overall.loc[overall["Target"].eq("Result_mg_L")].copy()
+    figure, axis = plt.subplots(figsize=(14, 6.5))
+    positions = np.arange(len(PUBLICATION_ANALYTES), dtype=float)
+    for evaluation in evaluations:
+        rows = (
+            concentration.loc[concentration["Evaluation"].eq(evaluation)]
+            .set_index("DisplayTarget")
+            .reindex(PUBLICATION_ANALYTES)
+        )
+        values = pd.to_numeric(
+            rows["RMSE_original_units"], errors="coerce"
+        ).to_numpy(dtype=float)
+        axis.bar(
+            positions + offsets[evaluation],
+            values,
+            width=0.34,
+            color=colors[evaluation],
+            alpha=0.88,
+            label=labels[evaluation],
+        )
+    axis.set_xticks(positions, PUBLICATION_ANALYTES, rotation=35, ha="right")
+    axis.set_ylabel("RMSE (mg/L)")
+    axis.set_title(
+        "ML concentration RMSE: reconstruction points versus held-out validation\n"
+        "Pooled across treatments at PhysicalEventID x Analyte resolution"
+    )
+    axis.grid(True, axis="y", alpha=0.22)
+    axis.legend(loc="best")
+    save_figure(
+        figure,
+        figure_dir / "postprocessing" / "ml_reconstruction_vs_loyo_concentration_rmse",
+        layout_top=0.90,
+    )
+
+    volume = overall.loc[overall["Target"].eq("Volume_L")].copy()
+    volume_values = [
+        pd.to_numeric(
+            volume.loc[volume["Evaluation"].eq(evaluation), "RMSE_original_units"],
+            errors="coerce",
+        ).iloc[0]
+        for evaluation in evaluations
+    ]
+    figure, axis = plt.subplots(figsize=(8.5, 5.5))
+    axis.bar(
+        [labels[evaluation] for evaluation in evaluations],
+        volume_values,
+        color=[colors[evaluation] for evaluation in evaluations],
+        alpha=0.88,
+    )
+    axis.set_ylabel("RMSE (L)")
+    axis.set_title("ML event-volume RMSE: reconstruction versus outer LOYO validation")
+    axis.grid(True, axis="y", alpha=0.22)
+    save_figure(
+        figure,
+        figure_dir / "postprocessing" / "ml_reconstruction_vs_loyo_volume_rmse",
         layout_top=0.90,
     )
 
@@ -1003,17 +1864,22 @@ def make_figures(
     cumulative: pd.DataFrame,
     ct_summary: pd.DataFrame,
     performance: pd.DataFrame,
+    ml_evaluation_tracks: pd.DataFrame,
     loyo_coverage: pd.DataFrame,
     bayes_coverage: pd.DataFrame,
     feature_importance: pd.DataFrame,
     observed_annual: pd.DataFrame,
+    annual_volume: pd.DataFrame,
     figure_dir: Path,
 ) -> None:
     figure_dir.mkdir(parents=True, exist_ok=True)
     plot_annual_comparison(annual, observed_annual, figure_dir)
+    plot_annual_volume_comparison(annual_volume, figure_dir)
+    plot_annual_uncertainty_supplement(annual, observed_annual, figure_dir)
     plot_cumulative_comparison(cumulative, figure_dir)
     plot_ct_relative(ct_summary, figure_dir)
     plot_performance_comparison(performance, figure_dir)
+    plot_ml_reconstruction_vs_loyo(ml_evaluation_tracks, figure_dir)
     plot_coverage_comparison(loyo_coverage, bayes_coverage, figure_dir)
     plot_feature_importance_comparison(feature_importance, figure_dir)
 
@@ -1052,6 +1918,18 @@ def main() -> None:
         ml_dir / "run_manifest_ml_v3p0_physical_event.json",
     ]
     validate_corrected_artifact_metadata(manifests, expected_years=STUDY_YEARS)
+    annual_volume = annual_volume_comparison(bayes_dir, ml_dir)
+    annual_volume.to_csv(
+        output_dir / "annual_runoff_volume_summary_raw.csv", index=False
+    )
+    (
+        performance,
+        ml_evaluation_tracks,
+        bayes_rows,
+        bayes_volume,
+        ml_rows,
+    ) = build_performance_products(bayes_dir, ml_dir)
+    write_performance_products(output_dir, performance, ml_evaluation_tracks)
 
     if args.figures_only:
         make_figures(
@@ -1061,10 +1939,8 @@ def main() -> None:
                 "saved cumulative-load summary",
             ),
             read_required(output_dir / "ct_relative_summary_raw.csv", "saved CT-relative summary"),
-            read_required(
-                output_dir / "performance_and_calibration_raw.csv",
-                "saved performance and calibration table",
-            ),
+            performance,
+            ml_evaluation_tracks,
             read_required(
                 output_dir / "loyo_interval_coverage_by_year_target_raw.csv",
                 "saved ML coverage table",
@@ -1078,8 +1954,10 @@ def main() -> None:
                 "saved feature-importance table",
             ),
             read_observed_annual_summary(bayes_dir),
+            annual_volume,
             figure_dir,
         )
+        update_saved_comparison_manifest(output_dir)
         print(f"[DONE] Corrected comparison figures regenerated from saved tables in {figure_dir}")
         return
 
@@ -1189,26 +2067,6 @@ def main() -> None:
     )
     spearman_raw, spearman_publication = spearman_tables(annual_summary)
 
-    bayes_rows = read_required(
-        bayes_dir / "row_prediction_diagnostics_bayes_v3p0_physical_event.csv",
-        "Bayesian row predictions",
-    )
-    bayes_volume = read_required(
-        bayes_dir / "volume_prediction_diagnostics_bayes_v3p0_physical_event.csv",
-        "Bayesian volume predictions",
-    )
-    ml_rows = read_required(ml_dir / "row_level_residual_diagnostics.csv", "ML row diagnostics")
-    require_columns(ml_rows, ["Target", "Analyte"], "ML row diagnostics")
-    ml_rows = ml_rows.loc[
-        ml_rows["Target"].eq("Volume_L")
-        | ml_rows["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
-    ].copy()
-    performance = pd.concat([
-        performance_table(bayes_rows, "Bayes", "Result_mg_L"),
-        performance_table(bayes_volume, "Bayes", "Volume_L"),
-        performance_table(ml_rows, "ML", "Result_mg_L"),
-        performance_table(ml_rows, "ML", "Volume_L"),
-    ], ignore_index=True)
     loyo_coverage = coverage_by_year_target(ml_rows, "ML")
     bayes_coverage = pd.concat([
         coverage_by_year_target(bayes_rows, "Bayes"),
@@ -1296,17 +2154,6 @@ def main() -> None:
         "p < 0.05; these exploratory tests are not multiplicity-adjusted.\n",
         encoding="utf-8",
     )
-    performance.to_csv(output_dir / "performance_and_calibration_raw.csv", index=False)
-    publication_performance_table(performance).to_csv(
-        output_dir / "performance_and_calibration_publication.csv", index=False
-    )
-    nrmse_overall = overall_nrmse_table(performance)
-    nrmse_overall.to_csv(
-        output_dir / "nrmse_overall_analytes_and_volume_raw.csv", index=False
-    )
-    publication_overall_nrmse_table(nrmse_overall).to_csv(
-        output_dir / "nrmse_overall_analytes_and_volume_publication.csv", index=False
-    )
     loyo_coverage.to_csv(output_dir / "loyo_interval_coverage_by_year_target_raw.csv", index=False)
     publication_coverage_table(loyo_coverage).to_csv(
         output_dir / "loyo_interval_coverage_by_year_target_publication.csv", index=False
@@ -1359,6 +2206,23 @@ def main() -> None:
         "- Observed markers: corrected physical-event observed annual summaries, "
         "kept separate from both model-only products; error bars are the existing "
         "event-bootstrap 95% intervals.\n\n"
+        "- Annual runoff-volume figure: Bayesian posterior mean with 95% credible "
+        "interval, deterministic ML sum of physical-event point volumes without an ML "
+        "ribbon, and observed event-bootstrap mean with 95% confidence interval; all "
+        "volumes are shown in kL.\n\n"
+        "The primary annual comparison figures retain the Bayesian 95% credible-interval "
+        "ribbon and observed bootstrap intervals, while omitting the ML prediction ribbon "
+        "so that Bayes and ML centers remain readable on a common linear scale. Full model "
+        "intervals are retained in the "
+        "supplemental_uncertainty figure folder, using separate Bayes and ML rows with "
+        "method-specific linear y-axis scales.\n\n"
+        "RMSE/NRMSE evaluation is deliberately split into two ML tracks. The primary "
+        "Bayes-versus-ML performance figures retain the unchanged Bayesian posterior-"
+        "predictive fit metrics and use ML full-record physical-event reconstruction "
+        "points. Separate tables and figures retain ML outer-LOYO held-out validation "
+        "metrics. ML concentration metrics are resolved by PhysicalEventID x Analyte; "
+        "volume metrics are resolved by PhysicalEventID. Both use median resolution, "
+        "and neither is calculated against partial observed annual subtotals.\n\n"
         "A prediction interval quantifies uncertainty for predicted outcomes. It is "
         "not a confidence interval for a fitted parameter. The event-level split-"
         "conformal coverage guarantee does not automatically become a 95% frequentist "
@@ -1373,10 +2237,12 @@ def main() -> None:
             cumulative_summary,
             ct_summary,
             performance,
+            ml_evaluation_tracks,
             loyo_coverage,
             bayes_coverage,
             feature_importance,
             read_observed_annual_summary(bayes_dir),
+            annual_volume,
             figure_dir,
         )
 
@@ -1395,6 +2261,17 @@ def main() -> None:
         "ml_interval_evaluation": "outer leave-one-year-out",
         "ml_monte_carlo_propagation": "weighted_resampling_of_signed_log_scale_split_conformal_calibration_residuals",
         "ml_interval_is_parameter_confidence_interval": False,
+        "primary_annual_figure_bayes_credible_ribbon_shown": True,
+        "primary_annual_figure_ml_prediction_ribbon_shown": False,
+        "primary_annual_figure_observed_bootstrap_intervals_shown": True,
+        "supplemental_annual_uncertainty_figures": True,
+        "supplemental_uncertainty_y_scales": "method-specific linear scales",
+        "annual_runoff_volume_comparison_figure": True,
+        "annual_runoff_volume_units": "kL",
+        "annual_runoff_volume_bayes_center": "posterior_mean",
+        "annual_runoff_volume_ml_center": "sum_of_physical_event_point_volumes",
+        "annual_runoff_volume_observed_center": "event_bootstrap_mean",
+        **metric_manifest_fields(),
         "loyo_ledger_role": "diagnostics_only_because_years_without_observed_volume_are_absent",
         "loyo_ledger_years_present": sorted(ml_loyo["Year"].unique().astype(int).tolist()),
         "publication_analytes": PUBLICATION_ANALYTES,

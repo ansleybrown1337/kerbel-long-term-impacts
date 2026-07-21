@@ -1,0 +1,126 @@
+Method,Scenario,Year,Treatment,center_kL,lower_95_kL,upper_95_kL,central_estimate_type,interval_type
+Bayes,model_only,2011,CT,352.79085618430724,270.3631764248838,440.6265736922422,posterior_mean,95% posterior credible interval
+Bayes,model_only,2012,CT,504.34519084634985,387.60406091360966,629.5364271999217,posterior_mean,95% posterior credible interval
+Bayes,model_only,2013,CT,493.3535121820952,368.5531107758552,601.0757613793212,posterior_mean,95% posterior credible interval
+Bayes,model_only,2014,CT,321.9269012133817,256.3041736098114,383.9464919307831,posterior_mean,95% posterior credible interval
+Bayes,model_only,2015,CT,351.7401724858319,277.0912979952551,431.950632166791,posterior_mean,95% posterior credible interval
+Bayes,model_only,2016,CT,110.9495202143741,52.67848994500354,161.04566324834886,posterior_mean,95% posterior credible interval
+Bayes,model_only,2017,CT,391.1982861895797,303.6114390643582,484.8464948981677,posterior_mean,95% posterior credible interval
+Bayes,model_only,2018,CT,360.3776678150171,231.99191652738543,531.2621731826976,posterior_mean,95% posterior credible interval
+Bayes,model_only,2019,CT,91.86292289303154,71.35013437859767,111.99796674557108,posterior_mean,95% posterior credible interval
+Bayes,model_only,2020,CT,532.5494528822959,410.0650373092636,644.5129328715595,posterior_mean,95% posterior credible interval
+Bayes,model_only,2021,CT,348.8749491231202,267.5098773954284,435.3312882658038,posterior_mean,95% posterior credible interval
+Bayes,model_only,2022,CT,535.088586159077,439.27033756962686,626.4968490440016,posterior_mean,95% posterior credible interval
+Bayes,model_only,2023,CT,512.4123755678575,433.17135715348974,586.2725068842077,posterior_mean,95% posterior credible interval
+Bayes,model_only,2024,CT,367.8397941578604,285.137214058203,449.3979705504523,posterior_mean,95% posterior credible interval
+Bayes,model_only,2025,CT,511.9019710124941,413.3036998607099,605.541220829104,posterior_mean,95% posterior credible interval
+Bayes,model_only,2011,MT,397.6045578198605,308.3023846450701,479.5108477080484,posterior_mean,95% posterior credible interval
+Bayes,model_only,2012,MT,593.4269858669577,451.3805271170325,720.8006532334908,posterior_mean,95% posterior credible interval
+Bayes,model_only,2013,MT,496.6449638072392,368.38442952981416,603.9168231497042,posterior_mean,95% posterior credible interval
+Bayes,model_only,2014,MT,291.06369717630724,224.69482686666663,351.8187253007278,posterior_mean,95% posterior credible interval
+Bayes,model_only,2015,MT,339.79823205062945,292.29053174445846,389.5673638673195,posterior_mean,95% posterior credible interval
+Bayes,model_only,2016,MT,98.66025433557476,43.82404439324969,147.41303087654885,posterior_mean,95% posterior credible interval
+Bayes,model_only,2017,MT,339.7928288908003,283.00365553178,399.2017705671095,posterior_mean,95% posterior credible interval
+Bayes,model_only,2018,MT,363.8841737112433,238.77070353412597,517.1548489956804,posterior_mean,95% posterior credible interval
+Bayes,model_only,2019,MT,91.86292289303154,71.35013437859767,111.99796674557108,posterior_mean,95% posterior credible interval
+Bayes,model_only,2020,MT,396.26826116921,343.00841271780416,451.43683841041263,posterior_mean,95% posterior credible interval
+Bayes,model_only,2021,MT,270.36040381314217,216.66257220296788,338.1757084691778,posterior_mean,95% posterior credible interval
+Bayes,model_only,2022,MT,480.94178524082537,423.9617655586016,538.298194430004,posterior_mean,95% posterior credible interval
+Bayes,model_only,2023,MT,490.6912232756754,430.2629192494732,553.5799033245764,posterior_mean,95% posterior credible interval
+Bayes,model_only,2024,MT,367.8397941578604,285.137214058203,449.3979705504523,posterior_mean,95% posterior credible interval
+Bayes,model_only,2025,MT,413.4630382760616,365.8028379902241,459.4832405444207,posterior_mean,95% posterior credible interval
+Bayes,model_only,2011,ST,400.2494743043511,307.8289594363703,484.494755645348,posterior_mean,95% posterior credible interval
+Bayes,model_only,2012,ST,540.6405402944214,426.3471284832641,643.272591350686,posterior_mean,95% posterior credible interval
+Bayes,model_only,2013,ST,496.6449638072392,368.38442952981416,603.9168231497042,posterior_mean,95% posterior credible interval
+Bayes,model_only,2014,ST,330.46777736121606,254.51980203807227,399.8773838084785,posterior_mean,95% posterior credible interval
+Bayes,model_only,2015,ST,327.40963828576025,280.5937021716008,374.4314237473132,posterior_mean,95% posterior credible interval
+Bayes,model_only,2016,ST,97.739245905463,43.47535115508419,146.1554676546321,posterior_mean,95% posterior credible interval
+Bayes,model_only,2017,ST,329.07314149766063,270.92108707329504,389.6359736187423,posterior_mean,95% posterior credible interval
+Bayes,model_only,2018,ST,362.0592070012191,237.4139755521437,515.7855877643583,posterior_mean,95% posterior credible interval
+Bayes,model_only,2019,ST,91.86292289303154,71.35013437859767,111.99796674557108,posterior_mean,95% posterior credible interval
+Bayes,model_only,2020,ST,403.54877872109824,345.38441184995094,462.8980685117001,posterior_mean,95% posterior credible interval
+Bayes,model_only,2021,ST,283.92860295486827,237.20511355397304,339.83429015874185,posterior_mean,95% posterior credible interval
+Bayes,model_only,2022,ST,490.82919930668936,429.1148251384684,552.022630891618,posterior_mean,95% posterior credible interval
+Bayes,model_only,2023,ST,479.1312835230993,424.3193817502888,535.2642268668347,posterior_mean,95% posterior credible interval
+Bayes,model_only,2024,ST,367.8397941578604,285.137214058203,449.3979705504523,posterior_mean,95% posterior credible interval
+Bayes,model_only,2025,ST,428.1848935601685,379.0681552328381,477.7894810758095,posterior_mean,95% posterior credible interval
+ML,full_record_model_only,2011,CT,162.10424540425512,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2012,CT,164.45274009368555,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2013,CT,220.59576121824796,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2014,CT,177.36973232787156,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2015,CT,247.59964552883804,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2016,CT,107.65262810439589,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2017,CT,373.16246752213175,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2018,CT,163.73746235350842,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2019,CT,39.072173491381825,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2020,CT,306.07623248111776,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2021,CT,215.44979510676887,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2022,CT,274.17394441785746,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2023,CT,448.76589266962907,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2024,CT,268.5087426089875,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2025,CT,649.7709569536382,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2011,MT,212.32393671384742,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2012,MT,229.6420969981874,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2013,MT,291.88634366663905,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2014,MT,129.72158901036875,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2015,MT,104.8035934769563,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2016,MT,33.544303731133375,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2017,MT,148.95383615677937,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2018,MT,146.78957409008922,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2019,MT,30.203995470102893,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2020,MT,203.41042507383412,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2021,MT,115.35304736556512,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2022,MT,254.38246452934902,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2023,MT,507.0817066220035,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2024,MT,395.83627755582035,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2025,MT,676.8877625067965,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2011,ST,253.3978335935974,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2012,ST,190.29640971425496,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2013,ST,221.5282090411921,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2014,ST,145.0635007956322,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2015,ST,126.52364834120145,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2016,ST,84.24336391679972,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2017,ST,134.8334355698125,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2018,ST,142.32182877413143,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2019,ST,31.37854638004244,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2020,ST,258.4854012704278,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2021,ST,133.66426526722327,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2022,ST,270.4832419419223,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2023,ST,422.44939990193336,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2024,ST,386.4015863220702,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+ML,full_record_model_only,2025,ST,711.1886775184013,,,sum_of_physical_event_point_volumes,not shown in primary comparison figure
+Observed,observed_reference,2011,CT,96.87930333333334,60.33735195833334,139.71091191666667,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2012,CT,105.28233333333333,65.86413333333333,146.23775833333332,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2013,CT,84.14,48.661955,122.375,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2014,CT,255.79143,163.26326110714288,353.3053404285714,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2015,CT,229.2092225,179.02138315625,273.724334875,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2016,CT,153.22589,117.8529111111111,204.96065888888887,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2017,CT,595.055,408.46116445,813.2927442999999,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2020,CT,41.50876,41.50876,41.50876,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2021,CT,70.70313,49.012800000000006,93.47979275,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2023,CT,412.13534,296.8113547857143,533.6016741428571,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2024,CT,225.719725,161.293475625,278.7369459821428,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2025,CT,551.085505,496.38078125,610.6587143749999,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2011,MT,101.62622333333331,74.98022166666667,125.34195908333336,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2012,MT,152.82133333333334,111.16562500000002,202.0887958333333,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2013,MT,100.647,91.0744,111.8592,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2014,MT,6.58817,2.823501428571429,14.117507142857145,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2015,MT,105.33368875,67.00306693750001,149.32624118749996,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2016,MT,20.6415,11.12841888888889,33.34319555555555,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2017,MT,192.42943,103.65603490000002,289.58048734999994,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2021,MT,62.78479,30.29868316666667,105.02602408333333,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2023,MT,461.21205,362.2496393214286,558.1908288214285,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2024,MT,394.081515,259.2035630178572,551.8368384642857,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2025,MT,672.65724,601.8485378214285,740.8097249464286,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2011,ST,149.45602,76.34611270833332,224.0441792916666,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2012,ST,101.4395,62.75496250000001,139.64178333333334,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2013,ST,109.085,63.016275,160.74173,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2014,ST,108.69461,57.74765092857143,160.78325385714282,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2015,ST,90.3864775,59.64446621875,124.4441696875,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2016,ST,78.19962,34.939962500000014,121.16322874999996,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2017,ST,149.21987,87.62328005000002,223.67525825,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2020,ST,160.77781666666664,75.67772195833335,259.0256300416666,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2021,ST,92.60923,29.980608958333345,167.86516054166668,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2023,ST,370.5715,288.8366549285714,454.5656921071428,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2024,ST,383.07076,322.5429992857143,443.0729496785714,event_bootstrap_mean,event-bootstrap 95% confidence interval
+Observed,observed_reference,2025,ST,667.135665,583.9758612678572,755.3078718035715,event_bootstrap_mean,event-bootstrap 95% confidence interval
