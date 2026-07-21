@@ -1,63 +1,60 @@
 # Kerbel long-term impacts on edge-of-field water quality
 
-This repository supports analysis of the 2011–2025 Kerbel agricultural monitoring record in Colorado. It contains a shared data pipeline, a hierarchical Bayesian workflow, a CatBoost/LOYO/conformal workflow, and a post-processing workflow that compares their saved outputs.
+This repository supports analysis of the 2011–2025 Kerbel agricultural monitoring record in Colorado. The active scientific workflows are versioned `v3p0_physical_event` and share one hydrologic unit: `Date + Year + Irrigation + Rep + Treatment`.
 
-The four workflows are deliberately separate. Comparison code reads deposited Bayesian draws and ML predictions; it does not refit either model.
+## Workflow map
 
-## Reader routes
+| Stage | Active entry point | Reads | Writes |
+|---|---|---|---|
+| Data pipeline | `code/pipeline/run_pipeline.py` | `data/` | `out/wq_cleaned.csv` and pipeline intermediates |
+| Physical-event preflight | `code/shared/audit_physical_events.py` | `out/wq_cleaned.csv` | `validation/preflight/physical_event_v3p0/` |
+| Bayesian v3p0 | `code/bayes/stir-bayes-load_v3p0_physical_event.R` and `code/bayes/m_stir_mogp_v3p0_physical_event.stan` | cleaned data plus passing preflight | `results/bayes/v3p0_physical_event/`, `figures/bayes/v3p0_physical_event/` |
+| ML v3p0 | `code/ml/ml_catboost_conformal_loyo_v3p0_physical_event.py` | cleaned data plus passing preflight | `results/ml/v3p0_physical_event/`, `figures/ml/v3p0_physical_event/` |
+| Comparison v3p0 | `code/comparison/bayes_ml_comparison_v3p0_physical_event.py` | completed v3p0 manifests and ledgers only | `results/comparison/v3p0_physical_event/`, `figures/comparison/v3p0_physical_event/` |
 
-1. **Prepare the data** — see [the pipeline workflow](docs/workflows/pipeline.md) and [data documentation](data/README.md).
-2. **Reproduce or inspect the Bayesian analysis** — see [the Bayesian workflow](docs/workflows/bayes.md). The accepted model/output version is v2p1.
-3. **Reproduce or inspect the ML analysis** — see [the ML workflow](docs/workflows/ml.md). The accepted output is the event-level CatBoost reconstruction with LOYO and conformal diagnostics.
-4. **Run the Bayesian-versus-ML post-processing** — see [the comparison workflow](docs/workflows/comparison.md). This is the short, deterministic route from saved model outputs to cumulative-load, CT-relative, sensitivity, performance, calibration, and publication tables.
+Legacy artifacts formerly stored in `figs/`, model-output directories under
+`out/`, and `code/out_cmdstanr/` have been migrated into versioned subfolders
+under `figures/` and `results/`. The active `out/` directory is now reserved for
+pipeline/model-input data products.
 
-## Current validated comparison products
+The comparison stage does not fit either model and has no fallback to legacy results. It rejects wrong versions, missing artifacts, incomplete years, and duplicated `PhysicalEventID × Analyte × Draw` ledger rows.
 
-The current post-processing products are in:
+## Scientific data units
 
-- `out/bayes_vs_ml_postprocessing_v2p1/`
-- `figs/bayes_vs_ml_postprocessing_v2p1/`
+- `PhysicalEventID` identifies one plot runoff event and therefore one latent/event-resolved runoff volume.
+- `VolumeObservationID` identifies one genuine recorded volume measurement. Exact copied values across analyte, sample, and duplicate rows do not become new measurements.
+- `ConcentrationObservationID` identifies one analyte result row. Legitimate rows remain separate through model fitting and prediction.
+- Final physical load has one row per `PhysicalEventID × Analyte × Draw`, after within-draw prediction resolution (median by default; mean and an explicitly configured method priority are sensitivity options).
 
-Start with:
+See the [data-unit dictionary](docs/methods/data_unit_dictionary_v3p0.md) for the complete contract.
 
-- `postprocessing_validation_report.md`
-- `master_cumulative_loads_raw_bound_floor_pub.csv`
-- `master_cumulative_loads_annual_truncation_pub.csv`
-- `bayes_nonnegative_sensitivity_pub.csv`
-- `postprocessing_data_dictionary.csv`
+## Current status
 
-These cumulative and CT-relative products are marked **provisional**. A read-only audit found that the accepted upstream event keys include `SampleID` and `MeasureMethod`, while first-flush, outflow, and duplicate sample IDs can occur for the same date/irrigation/replicate/treatment. The present repository does not yet demonstrate whether every such record is an independent physical load-bearing runoff event. No upstream model was changed in response.
+The code refactor and physical-event preflight are complete. The corrected
+pipeline preserves the source storm-event labels (`S1`/`S2`), and two confirmed
+duplicate-sample volume transcription errors are documented in
+`data/source_corrections_v3p0.csv`. The current audit has zero blocking rows and
+is ready for model execution. No v3p0 Bayesian model, CatBoost model, full-record
+reconstruction, or comparison has been run.
 
-## Reproduction levels
+Start with [READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md](docs/reproducibility/READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md). Do not proceed to model execution until `preflight_metadata.json` reports `"ready_for_model_execution": true`.
 
-Two reproduction levels should not be conflated:
+## Documentation
 
-- **Saved-output reproduction** reruns tables and figures from deposited Bayesian draws and ML predictions. It is fast and does not require Stan compilation or CatBoost fitting.
-- **Full model reproduction** reruns the data pipeline and then the accepted Bayesian or ML model. It is computationally much more demanding and may depend on platform-specific CmdStan/CatBoost environments.
-
-To reproduce the validated comparison from saved outputs in a clean checkout:
-
-```powershell
-python code/bayes_ml_postprocessing_v2p1.py --repo . --rebuild-current-run
-python -m unittest discover -s tests -p "test_bayes_ml_postprocessing_v2p1.py" -v
-```
-
-The recorded run took approximately 12 seconds with Python 3.12.4, pandas 2.2.2, NumPy 1.26.4, SciPy 1.13.1, and Matplotlib 3.9.2. Exact versions are in `out/bayes_vs_ml_postprocessing_v2p1/postprocessing_run_metadata.json`.
-
-## Repository and release documentation
-
-- [Repository cleanup plan](docs/repository_cleanup_plan.md)
-- [Output manifest](docs/output_manifest.csv)
-- [Zenodo release manifest](docs/zenodo_release_manifest.csv)
-- [Manuscript crosswalk](docs/manuscript_crosswalk.md)
+- [Pipeline workflow](docs/workflows/pipeline_v3p0.md)
+- [Bayesian v3p0 workflow](docs/workflows/bayes_v3p0_physical_event.md)
+- [ML v3p0 workflow](docs/workflows/ml_v3p0_physical_event.md)
+- [Comparison v3p0 workflow](docs/workflows/comparison_v3p0_physical_event.md)
+- [Methods change note](docs/methods/physical_event_methods_change_v3p0.md)
+- [Repository cleanup plan](docs/reproducibility/repository_cleanup_plan.md)
+- [GitHub release checklist](docs/reproducibility/github_release_checklist.md)
 - [Environment notes](environment/README.md)
 - [Citation metadata](CITATION.cff)
-- [Change log](CHANGELOG.md)
 
-Active files have not been mass-moved in the current working tree. The manifests provide an exact proposed release path for a later clean `zenodo-release` branch or separate release repository.
+The intended archive is the tagged GitHub release snapshot through the Zenodo–GitHub integration. There is no separate deposit bundle, Zenodo include manifest, checksum catalog, or `.zenodo.json`.
 
-## Authorship, citation, and license
+## Authorship and license
 
 Principal investigator: AJ Brown, Colorado State University Agricultural Water Quality Program.
 
-Release DOI, funding, ORCID, and final repository URL remain explicit metadata placeholders pending author confirmation. The code is licensed under the [GNU General Public License version 2](LICENSE).
+The code is licensed under the [GNU General Public License version 2](LICENSE). Confirm the final author list, ORCIDs, funding, repository URL, article DOI, and release date before creating the GitHub release.

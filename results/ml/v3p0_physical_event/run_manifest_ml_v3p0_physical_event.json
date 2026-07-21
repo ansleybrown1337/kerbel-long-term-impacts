@@ -1,0 +1,35 @@
+{
+  "workflow_version": "v3p0_physical_event",
+  "event_unit": "PhysicalEventID",
+  "physical_event_key": [
+    "Date",
+    "Year",
+    "Irrigation",
+    "Rep",
+    "Treatment"
+  ],
+  "comparison_analyte_field": "analyte_abbr",
+  "years": [
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "concentration_resolution": "median",
+  "volume_resolution": "median",
+  "method_priority": [],
+  "event_balanced_training_weights": true,
+  "heldout_year_excluded": true,
+  "calibration_split_unit": "PhysicalEventID"
+}

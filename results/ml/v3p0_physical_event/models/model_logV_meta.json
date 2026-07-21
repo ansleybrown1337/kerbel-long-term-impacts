@@ -1,0 +1,61 @@
+{
+  "target": "logV",
+  "unit_of_analysis": "event_volume",
+  "alpha": 0.05,
+  "q_conformal": 4.985049261716259,
+  "feature_cols": [
+    "Year",
+    "Irrigation",
+    "Rep",
+    "Treatment",
+    "Crop",
+    "SeasonYear",
+    "previous_crop",
+    "CumAll_STIR_toDate",
+    "Season_STIR_toDate",
+    "Inflow_Volume",
+    "MeasureMethod",
+    "FlumeMethod",
+    "IrrMethod",
+    "DayOfYear",
+    "DaysSincePlant",
+    "DaysUntilHarvest",
+    "residue_prop",
+    "Residue_DryMass_kg_m2"
+  ],
+  "cat_cols": [
+    "Irrigation",
+    "Treatment",
+    "Crop",
+    "previous_crop",
+    "MeasureMethod",
+    "FlumeMethod",
+    "IrrMethod"
+  ],
+  "cb_params": {
+    "loss_function": "RMSE",
+    "iterations": 3000,
+    "learning_rate": 0.05,
+    "depth": 8,
+    "l2_leaf_reg": 6.0,
+    "subsample": 0.8,
+    "colsample_bylevel": 0.8,
+    "eval_metric": "RMSE",
+    "thread_count": -1,
+    "verbose": false,
+    "allow_writing_files": false
+  },
+  "mode": "reconstruction",
+  "calibration": "physical-event",
+  "event_key": [
+    "Date",
+    "Year",
+    "Irrigation",
+    "Rep",
+    "Treatment"
+  ],
+  "workflow_version": "v3p0_physical_event",
+  "event_unit": "PhysicalEventID",
+  "saved_utc": "2026-07-20T20:43:08+00:00",
+  "workflow": "ml_catboost_conformal_loyo_v3p0_physical_event.py"
+}

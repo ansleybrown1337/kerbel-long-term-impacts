@@ -1,0 +1,12 @@
+{
+  "workflow_version": "v3p0_physical_event",
+  "event_unit": "PhysicalEventID",
+  "physical_event_key": ["Date", "Year", "Irrigation", "Rep", "Treatment"],
+  "concentration_resolution": "median",
+  "volume_resolution": "single_latent_volume_per_event",
+  "method_priority": [],
+  "load_draw_policy": "raw_gaussian_event_draws; nonnegative alternatives are downstream sensitivities",
+  "years": [2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+  "event_analyte_draw_ledger": "event_analyte_draw_ledger_bayes_v3p0_physical_event.csv",
+  "annual_draws": "annual_load_draws_bayes_v3p0_physical_event.csv"
+}

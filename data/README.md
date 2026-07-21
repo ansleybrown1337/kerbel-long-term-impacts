@@ -18,4 +18,8 @@ See `docs/output_manifest.csv` for exact current-to-release paths and `data/data
 
 The accepted upstream event key includes `Date + Year + Irrigation + Rep + Treatment + SampleID + MeasureMethod`. Before definitive release interpretation, document whether first-flush, outflow, and duplicate SampleIDs are separate physical load-bearing events or repeated measurements within one plot runoff event.
 
-Do not edit raw source measurements in place. Record cleaning, alias mapping, censoring, unit conversion, and aggregation rules in the processed-data dictionary and workflow documentation.
+Do not edit raw source measurements in place unless a provenance-supported
+transcription correction has been explicitly confirmed. Record confirmed source
+corrections in `source_corrections_v3p0.csv`; record cleaning, alias mapping,
+censoring, unit conversion, and aggregation rules in the processed-data
+dictionary and workflow documentation.

@@ -1,0 +1,36 @@
+{
+  "workflow_version": "v3p0_physical_event",
+  "event_unit": "PhysicalEventID",
+  "audit_only": true,
+  "input": "C:\\Users\\ansle\\OneDrive\\Documents\\GitHub\\kerbel-long-term-impacts\\out\\wq_cleaned.csv",
+  "physical_event_key": [
+    "Date",
+    "Year",
+    "Irrigation",
+    "Rep",
+    "Treatment"
+  ],
+  "volume_provenance_columns_available": [
+    "MeasureMethod",
+    "FlumeMethod"
+  ],
+  "ready_for_model_execution": true,
+  "blocking_rows": 0,
+  "years": [
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ]
+}

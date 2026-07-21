@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "Please cite the archived Zenodo release and the associated article. Replace the metadata placeholders before release."
+message: "Please cite the archived GitHub/Zenodo release and the associated article."
 title: "Kerbel long-term impacts on edge-of-field water quality"
 type: software
 authors:
@@ -7,7 +7,7 @@ authors:
     given-names: AJ
     affiliation: "Colorado State University Agricultural Water Quality Program"
     # orcid: "REPLACE_WITH_ORCID"
-version: "REPLACE_WITH_RELEASE_VERSION"
+version: "3.0.0"
 # date-released: "REPLACE_WITH_YYYY-MM-DD"
 # doi: "REPLACE_WITH_ZENODO_DOI"
 # repository-code: "REPLACE_WITH_REPOSITORY_URL"

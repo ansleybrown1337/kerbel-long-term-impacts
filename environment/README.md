@@ -1,28 +1,40 @@
 # Environment and reproducibility
 
-## Saved-output comparison
+## Python environments verified during the v3p0 refactor
 
-The comparison post-processing requires Python with pandas, NumPy, SciPy, and Matplotlib. The validated run used:
+The ML workflow requires the repository's `wq_ml` Conda environment documented
+by `environment_wq_ml.yml`. The installed environment inspected on 2026-07-19
+contains:
 
-- Python 3.12.4
-- pandas 2.2.2
-- NumPy 1.26.4
-- SciPy 1.13.1
-- Matplotlib 3.9.2
+- Python 3.10.19
+- pandas 2.3.3
+- NumPy 2.2.5
+- SciPy 1.15.3
+- Matplotlib 3.10.7
+- scikit-learn 1.7.2
+- CatBoost 1.2.8
 
-Run from the repository root:
+Run ML with:
 
 ```powershell
-python code/bayes_ml_postprocessing_v2p1.py --repo . --rebuild-current-run
-python -m unittest discover -s tests -p "test_bayes_ml_postprocessing_v2p1.py" -v
+C:\Users\ansle\anaconda3\envs\wq_ml\python.exe code\ml\ml_catboost_conformal_loyo_v3p0_physical_event.py --repo .
 ```
 
-No randomness is introduced by the post-processing. It reads deposited draws directly. A completed versioned output directory is protected from accidental overwrite; reproduce in a clean checkout or use a new versioned output name for a new release.
+The base Anaconda Python inspected during the refactor is Python 3.12.7 with
+pandas 2.2.2, NumPy 1.26.4, SciPy 1.13.1, Matplotlib 3.9.2, and scikit-learn
+1.5.1. It does not contain CatBoost. It is suitable for the preflight, focused
+tests, and comparison workflow, but not the ML fit.
 
-## Full workflows
+## R and Bayesian workflow
 
-- `environment_wq_ml.yml` documents the established ML environment.
-- `requirements_mac.txt` is a platform-specific historical dependency snapshot and should be reviewed before release.
-- The Bayesian workflow additionally requires R, CmdStanR, CmdStan, and the R packages named by the R Markdown driver.
+R 4.4.2 was used for the parse-only validation. Full Bayesian execution also
+requires CmdStanR, CmdStan, and the packages loaded by
+`code/bayes/stir-bayes-load_v3p0_physical_event.Rmd`.
 
-Exact full-model runtimes and minimum hardware requirements have not been confirmed in this task. Record them here before the final archive release. Platform-specific compiled Stan executables and local CmdStan output directories should not be deposited.
+## Reproducibility boundary
+
+`requirements_mac.txt` is a platform-specific historical snapshot and should
+not replace the Windows environments above. Exact model runtimes and minimum
+hardware requirements have not yet been measured for v3p0; record them after
+the manual runs. Do not deposit platform-specific compiled Stan executables,
+local CmdStan output directories, Python caches, or `catboost_info/`.

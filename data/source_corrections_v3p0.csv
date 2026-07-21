@@ -1,0 +1,3 @@
+correction_date,source_file,event_date,year,irrigation,rep,treatment,sample_id,field,old_value,new_value,reason,confirmation
+2026-07-19,Master_WaterQuality_Kerbel_LastUpdated_10272025.csv,2021-07-29,2021,3,1,MT,MT1-03-OT-GB-D,Volume,1389.06,1388.06,Duplicate-sample transcription typo; volume must equal the primary physical-event sample,Confirmed by AJ Brown
+2026-07-19,Master_WaterQuality_Kerbel_LastUpdated_10272025.csv,2021-07-29,2021,3,1,ST,ST1-03-OT-GB-D,Volume,7674.99,7673.99,Duplicate-sample transcription typo; volume must equal the primary physical-event sample,Confirmed by AJ Brown
