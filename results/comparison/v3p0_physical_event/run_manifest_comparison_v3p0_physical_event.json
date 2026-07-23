@@ -83,5 +83,16 @@
   "ml_concentration_metric_unit": "PhysicalEventID x Analyte; median resolution",
   "ml_volume_metric_unit": "PhysicalEventID; median resolution",
   "nrmse_definition": "RMSE divided by mean observed value within group",
-  "rmse_nrmse_against_partial_observed_annual_subtotals": false
+  "rmse_nrmse_against_partial_observed_annual_subtotals": false,
+  "three_track_rmse_nrmse_figures": true,
+  "three_track_metric_series": [
+    "Bayes posterior-predictive fit",
+    "ML full-record reconstruction",
+    "ML outer-LOYO validation"
+  ],
+  "ml_loyo_rmse_nrmse_interpretation": "held-out prediction error, not interval uncertainty",
+  "three_track_nrmse_primary_layout": "single panel with shared linear y-axis capped at 500 percent",
+  "three_track_nrmse_faceted_supplement": true,
+  "three_track_nrmse_axis_cap_percent": 500,
+  "three_track_nrmse_capped_bars": "hatched and labeled with actual values"
 }

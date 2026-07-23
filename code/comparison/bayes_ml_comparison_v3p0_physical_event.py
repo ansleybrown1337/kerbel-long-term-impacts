@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 from scipy.stats import spearmanr
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -866,6 +867,38 @@ def publication_ml_evaluation_table(frame: pd.DataFrame) -> pd.DataFrame:
     ]]
 
 
+def three_track_performance_table(
+    primary: pd.DataFrame,
+    ml_evaluation_tracks: pd.DataFrame,
+) -> pd.DataFrame:
+    """Combine Bayes fit, ML reconstruction, and ML LOYO without duplicates."""
+
+    bayes = primary.loc[
+        primary["Method"].eq("Bayes")
+        & primary["Evaluation"].eq(BAYES_POSTERIOR_FIT)
+    ].copy()
+    ml = ml_evaluation_tracks.loc[
+        ml_evaluation_tracks["Evaluation"].isin([
+            ML_FULL_RECORD_RECONSTRUCTION,
+            ML_OUTER_LOYO_VALIDATION,
+        ])
+    ].copy()
+    output = pd.concat([bayes, ml], ignore_index=True)
+    output["ComparisonSeries"] = output["Evaluation"].map({
+        BAYES_POSTERIOR_FIT: "Bayes posterior-predictive fit",
+        ML_FULL_RECORD_RECONSTRUCTION: "ML full-record reconstruction",
+        ML_OUTER_LOYO_VALIDATION: "ML outer-LOYO validation",
+    })
+    keys = [
+        "ComparisonSeries", "Target", "Grouping", "Analyte", "Treatment"
+    ]
+    if output["ComparisonSeries"].isna().any():
+        raise ValueError("Three-track performance table contains an unknown evaluation.")
+    if output.duplicated(keys).any():
+        raise ValueError("Three-track performance table contains duplicate metric rows.")
+    return output
+
+
 def write_performance_products(
     output_dir: Path,
     primary: pd.DataFrame,
@@ -901,6 +934,15 @@ def write_performance_products(
         output_dir / "ml_rmse_nrmse_overall_reconstruction_and_loyo_publication.csv",
         index=False,
     )
+    three_track = three_track_performance_table(primary, ml_evaluation_tracks)
+    three_track.to_csv(
+        output_dir / "rmse_nrmse_bayes_ml_reconstruction_loyo_raw.csv",
+        index=False,
+    )
+    publication_performance_table(three_track).to_csv(
+        output_dir / "rmse_nrmse_bayes_ml_reconstruction_loyo_publication.csv",
+        index=False,
+    )
     (output_dir / "rmse_nrmse_evaluation_definitions.md").write_text(
         "# RMSE and NRMSE evaluation tracks\n\n"
         "- Bayesian RMSE and NRMSE are unchanged posterior-predictive fit diagnostics. "
@@ -911,6 +953,9 @@ def write_performance_products(
         "- ML outer-LOYO RMSE and NRMSE are retained in separate validation tables and "
         "figures. They quantify held-out-year prediction performance and are not used as "
         "the ML center in the annual reconstruction figures.\n"
+        "- Additive three-track figures place the unchanged Bayesian fit diagnostic, ML "
+        "full-record reconstruction diagnostic, and ML outer-LOYO validation diagnostic "
+        "side by side. LOYO is held-out prediction error, not an uncertainty interval.\n"
         "- To prevent measurement-method or sampler-method copies from being counted as "
         "separate load-producing events, ML concentration diagnostics are resolved by "
         "PhysicalEventID x Analyte and volume diagnostics by PhysicalEventID using the "
@@ -933,6 +978,17 @@ def metric_manifest_fields() -> dict[str, object]:
         "ml_volume_metric_unit": "PhysicalEventID; median resolution",
         "nrmse_definition": "RMSE divided by mean observed value within group",
         "rmse_nrmse_against_partial_observed_annual_subtotals": False,
+        "three_track_rmse_nrmse_figures": True,
+        "three_track_metric_series": [
+            "Bayes posterior-predictive fit",
+            "ML full-record reconstruction",
+            "ML outer-LOYO validation",
+        ],
+        "three_track_nrmse_primary_layout": "single panel with shared linear y-axis capped at 500 percent",
+        "three_track_nrmse_axis_cap_percent": 500,
+        "three_track_nrmse_capped_bars": "hatched and labeled with actual values",
+        "three_track_nrmse_faceted_supplement": True,
+        "ml_loyo_rmse_nrmse_interpretation": "held-out prediction error, not interval uncertainty",
     }
 
 
@@ -1804,6 +1860,261 @@ def plot_ml_reconstruction_vs_loyo(
     )
 
 
+def plot_three_track_performance_comparison(
+    primary: pd.DataFrame,
+    ml_evaluation_tracks: pd.DataFrame,
+    figure_dir: Path,
+) -> None:
+    """Plot Bayes fit, ML reconstruction, and ML LOYO as distinct diagnostics."""
+
+    performance = three_track_performance_table(primary, ml_evaluation_tracks)
+    series_order = [
+        "Bayes posterior-predictive fit",
+        "ML full-record reconstruction",
+        "ML outer-LOYO validation",
+    ]
+    short_labels = ["Bayes", "ML\nrecon.", "ML\nLOYO"]
+    short_series_labels = {
+        "Bayes posterior-predictive fit": "Bayes",
+        "ML full-record reconstruction": "ML reconstruction",
+        "ML outer-LOYO validation": "ML LOYO",
+    }
+    colors = {
+        "Bayes posterior-predictive fit": "#1f77b4",
+        "ML full-record reconstruction": "#ff7f0e",
+        "ML outer-LOYO validation": "#6b7280",
+    }
+    offsets = {
+        "Bayes posterior-predictive fit": -0.24,
+        "ML full-record reconstruction": 0.0,
+        "ML outer-LOYO validation": 0.24,
+    }
+    legend_handles = [
+        Patch(facecolor=colors[series], alpha=0.88, label=series)
+        for series in series_order
+    ]
+
+    concentration = performance.loc[
+        performance["Target"].eq("Result_mg_L")
+        & performance["Grouping"].eq("analyte_treatment")
+    ].copy()
+    for column, ylabel, stem, multiplier in [
+        (
+            "RMSE_original_units",
+            "RMSE (mg/L)",
+            "concentration_rmse_bayes_ml_reconstruction_loyo_by_treatment",
+            1.0,
+        ),
+        (
+            "NRMSE_mean_observed",
+            "Mean-normalized RMSE (%)",
+            "nrmse_bayes_ml_reconstruction_loyo_by_treatment",
+            100.0,
+        ),
+    ]:
+        figure, axes = plt.subplots(5, 2, figsize=(14, 23))
+        for axis, analyte in zip(axes.flat, PUBLICATION_ANALYTES):
+            group = concentration.loc[concentration["Analyte"].eq(analyte)]
+            for series in series_order:
+                rows = (
+                    group.loc[group["ComparisonSeries"].eq(series)]
+                    .set_index("Treatment")
+                    .reindex(TREATMENTS)
+                )
+                values = (
+                    pd.to_numeric(rows[column], errors="coerce").to_numpy(dtype=float)
+                    * multiplier
+                )
+                axis.bar(
+                    np.arange(len(TREATMENTS), dtype=float) + offsets[series],
+                    values,
+                    width=0.22,
+                    color=colors[series],
+                    alpha=0.88,
+                )
+            axis.set_title(analyte)
+            axis.set_xticks(np.arange(len(TREATMENTS)), TREATMENTS)
+            axis.set_ylabel(ylabel)
+            axis.grid(True, axis="y", alpha=0.22)
+        figure.suptitle(
+            f"Concentration {ylabel} by analyte and treatment\n"
+            "Bayes fit and ML reconstruction are full-record diagnostics; "
+            "ML LOYO is held-out validation",
+            fontsize=15,
+        )
+        figure.legend(
+            handles=legend_handles,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.965),
+            ncol=3,
+        )
+        save_figure(
+            figure,
+            figure_dir / "postprocessing" / stem,
+            layout_top=0.935,
+        )
+
+    overall = overall_nrmse_table(performance)
+    display_order = [*PUBLICATION_ANALYTES, "Volume"]
+    for column, ylabel, stem, multiplier in [
+        (
+            "RMSE_original_units",
+            "RMSE",
+            "rmse_bayes_ml_reconstruction_loyo_overall",
+            1.0,
+        ),
+        (
+            "NRMSE_mean_observed",
+            "Mean-normalized RMSE (%)",
+            "nrmse_bayes_ml_reconstruction_loyo_overall",
+            100.0,
+        ),
+    ]:
+        figure, axes = plt.subplots(4, 3, figsize=(14, 16))
+        for axis, target in zip(axes.flat, display_order):
+            group = overall.loc[overall["DisplayTarget"].eq(target)]
+            values = []
+            for series in series_order:
+                value = pd.to_numeric(
+                    group.loc[group["ComparisonSeries"].eq(series), column],
+                    errors="coerce",
+                )
+                values.append(float(value.iloc[0]) * multiplier)
+            bars = axis.bar(
+                np.arange(len(series_order)),
+                values,
+                color=[colors[series] for series in series_order],
+                alpha=0.88,
+                width=0.72,
+            )
+            if column == "NRMSE_mean_observed":
+                labels = [
+                    f"{value:.0f}%" if abs(value) >= 10 else f"{value:.1f}%"
+                    for value in values
+                ]
+                panel_unit = "%"
+            else:
+                labels = [f"{value:.3g}" for value in values]
+                panel_unit = "L" if target == "Volume" else "mg/L"
+            axis.bar_label(bars, labels=labels, padding=3, fontsize=8)
+            axis.set_title(
+                target if column == "NRMSE_mean_observed" else f"{target} ({panel_unit})"
+            )
+            axis.set_xticks(np.arange(len(series_order)), short_labels, fontsize=8)
+            axis.set_ylabel(ylabel if column == "NRMSE_mean_observed" else f"RMSE ({panel_unit})")
+            finite_values = [value for value in values if np.isfinite(value)]
+            upper = max(finite_values) * 1.25 if finite_values else 1.0
+            axis.set_ylim(0, upper if upper > 0 else 1.0)
+            axis.grid(True, axis="y", alpha=0.22)
+        for axis in axes.flat[len(display_order):]:
+            axis.set_visible(False)
+        metric_title = (
+            "Mean-normalized RMSE (NRMSE)"
+            if column == "NRMSE_mean_observed"
+            else "RMSE"
+        )
+        figure.suptitle(
+            f"Overall {metric_title}: three-track comparison\n"
+            "Bayes fit, ML reconstruction, and ML outer-LOYO; target-specific axes; "
+            "LOYO measures held-out prediction error, "
+            "not interval uncertainty",
+            fontsize=15,
+        )
+        figure.legend(
+            handles=legend_handles,
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.915),
+            ncol=3,
+        )
+        if column == "NRMSE_mean_observed":
+            save_figure(
+                figure,
+                figure_dir / "postprocessing" / f"{stem}_faceted",
+                layout_top=0.875,
+            )
+        else:
+            save_figure(
+                figure,
+                figure_dir / f"gof_{stem}",
+                figure_dir / "postprocessing" / stem,
+                layout_top=0.875,
+            )
+
+    figure, axis = plt.subplots(figsize=(16, 7))
+    positions = np.arange(len(display_order), dtype=float)
+    nrmse_axis_cap = 500.0
+    capped_bars = []
+    for series in series_order:
+        rows = (
+            overall.loc[overall["ComparisonSeries"].eq(series)]
+            .set_index("DisplayTarget")
+            .reindex(display_order)
+        )
+        values = (
+            pd.to_numeric(rows["NRMSE_mean_observed"], errors="coerce")
+            .to_numpy(dtype=float)
+            * 100.0
+        )
+        display_values = np.minimum(values, nrmse_axis_cap)
+        bar_positions = positions + offsets[series]
+        bars = axis.bar(
+            bar_positions,
+            display_values,
+            width=0.22,
+            color=colors[series],
+            alpha=0.88,
+            label=series,
+        )
+        for bar, x_position, target, actual_value in zip(
+            bars, bar_positions, display_order, values
+        ):
+            if np.isfinite(actual_value) and actual_value > nrmse_axis_cap:
+                bar.set_hatch("///")
+                bar.set_edgecolor("0.25")
+                capped_bars.append((x_position, target, series, actual_value))
+    axis.set_xticks(
+        positions, display_order, rotation=35, ha="right", fontsize=13
+    )
+    axis.tick_params(axis="y", labelsize=12)
+    axis.set_ylabel("Mean-normalized RMSE (%)", fontsize=14)
+    axis.set_title(
+        "Overall NRMSE by analyte and event volume: three-track comparison\n"
+        "Shared linear scale capped at 500%; hatched bars are labeled with actual values",
+        fontsize=17,
+    )
+    axis.set_ylim(0, nrmse_axis_cap)
+    axis.grid(True, axis="y", alpha=0.22)
+    axis.legend(loc="upper right", ncol=3, fontsize=12)
+    for x_position, target, series, actual_value in capped_bars:
+        axis.annotate(
+            f"{target} {short_series_labels[series]} = {actual_value:,.0f}%\n"
+            "(axis capped)",
+            xy=(x_position, nrmse_axis_cap),
+            xytext=(25, -55),
+            textcoords="offset points",
+            ha="left",
+            va="top",
+            fontsize=12,
+            arrowprops={
+                "arrowstyle": "->",
+                "color": "0.30",
+                "linewidth": 1.0,
+            },
+            bbox={
+                "boxstyle": "round,pad=0.25",
+                "facecolor": "white",
+                "edgecolor": "0.45",
+                "alpha": 0.95,
+            },
+        )
+    save_figure(
+        figure,
+        figure_dir / "gof_nrmse_bayes_ml_reconstruction_loyo_overall",
+        figure_dir / "postprocessing" / "nrmse_bayes_ml_reconstruction_loyo_overall",
+        layout_top=0.89,
+    )
+
+
 def plot_coverage_comparison(
     loyo_coverage: pd.DataFrame,
     bayes_coverage: pd.DataFrame,
@@ -1880,6 +2191,9 @@ def make_figures(
     plot_ct_relative(ct_summary, figure_dir)
     plot_performance_comparison(performance, figure_dir)
     plot_ml_reconstruction_vs_loyo(ml_evaluation_tracks, figure_dir)
+    plot_three_track_performance_comparison(
+        performance, ml_evaluation_tracks, figure_dir
+    )
     plot_coverage_comparison(loyo_coverage, bayes_coverage, figure_dir)
     plot_feature_importance_comparison(feature_importance, figure_dir)
 
