@@ -24,7 +24,14 @@
   "event_analyte_point_uniqueness_asserted": true,
   "primary_bayes_central_estimate": "posterior_median",
   "primary_ml_central_estimate": "physical_event_point_total",
-  "primary_observed_role": "separate_reference_markers_only",
+  "primary_observed_role": "complete_annual_reference_markers_only",
+  "observed_annual_load_completeness_unit": "Year x Analyte x Treatment",
+  "observed_annual_volume_completeness_unit": "Year x Treatment",
+  "partial_observed_annual_subtotals_plotted": false,
+  "observed_annual_load_complete_groups": 40,
+  "observed_annual_load_total_groups": 450,
+  "observed_annual_volume_complete_groups": 9,
+  "observed_annual_volume_total_groups": 45,
   "ml_interval_type": "95% Monte Carlo empirical calibration-residual prediction interval",
   "ml_interval_evaluation": "outer leave-one-year-out",
   "ml_monte_carlo_propagation": "weighted_resampling_of_signed_log_scale_split_conformal_calibration_residuals",
@@ -39,6 +46,25 @@
   "annual_runoff_volume_bayes_center": "posterior_mean",
   "annual_runoff_volume_ml_center": "sum_of_physical_event_point_volumes",
   "annual_runoff_volume_observed_center": "event_bootstrap_mean",
+  "primary_rmse_nrmse_bayes_evaluation": "posterior_predictive_fit",
+  "primary_rmse_nrmse_ml_evaluation": "full_record_physical_event_reconstruction",
+  "separate_ml_validation_evaluation": "outer_loyo_physical_event_validation",
+  "bayesian_loyo_metrics_introduced": false,
+  "ml_concentration_metric_unit": "PhysicalEventID x Analyte; median resolution",
+  "ml_volume_metric_unit": "PhysicalEventID; median resolution",
+  "nrmse_definition": "RMSE divided by mean observed value within group",
+  "rmse_nrmse_against_partial_observed_annual_subtotals": false,
+  "three_track_rmse_nrmse_figures": true,
+  "three_track_metric_series": [
+    "Bayes posterior-predictive fit",
+    "ML full-record reconstruction",
+    "ML outer-LOYO validation"
+  ],
+  "three_track_nrmse_primary_layout": "single panel with shared linear y-axis capped at 500 percent",
+  "three_track_nrmse_axis_cap_percent": 500,
+  "three_track_nrmse_capped_bars": "hatched and labeled with actual values",
+  "three_track_nrmse_faceted_supplement": true,
+  "ml_loyo_rmse_nrmse_interpretation": "held-out prediction error, not interval uncertainty",
   "loyo_ledger_role": "diagnostics_only_because_years_without_observed_volume_are_absent",
   "loyo_ledger_years_present": [
     2011,
@@ -75,24 +101,5 @@
   "inputs": [
     "C:\\Users\\ansle\\OneDrive\\Documents\\GitHub\\kerbel-long-term-impacts\\results\\bayes\\v3p0_physical_event\\run_manifest_bayes_v3p0_physical_event.json",
     "C:\\Users\\ansle\\OneDrive\\Documents\\GitHub\\kerbel-long-term-impacts\\results\\ml\\v3p0_physical_event\\run_manifest_ml_v3p0_physical_event.json"
-  ],
-  "primary_rmse_nrmse_bayes_evaluation": "posterior_predictive_fit",
-  "primary_rmse_nrmse_ml_evaluation": "full_record_physical_event_reconstruction",
-  "separate_ml_validation_evaluation": "outer_loyo_physical_event_validation",
-  "bayesian_loyo_metrics_introduced": false,
-  "ml_concentration_metric_unit": "PhysicalEventID x Analyte; median resolution",
-  "ml_volume_metric_unit": "PhysicalEventID; median resolution",
-  "nrmse_definition": "RMSE divided by mean observed value within group",
-  "rmse_nrmse_against_partial_observed_annual_subtotals": false,
-  "three_track_rmse_nrmse_figures": true,
-  "three_track_metric_series": [
-    "Bayes posterior-predictive fit",
-    "ML full-record reconstruction",
-    "ML outer-LOYO validation"
-  ],
-  "ml_loyo_rmse_nrmse_interpretation": "held-out prediction error, not interval uncertainty",
-  "three_track_nrmse_primary_layout": "single panel with shared linear y-axis capped at 500 percent",
-  "three_track_nrmse_faceted_supplement": true,
-  "three_track_nrmse_axis_cap_percent": 500,
-  "three_track_nrmse_capped_bars": "hatched and labeled with actual values"
+  ]
 }

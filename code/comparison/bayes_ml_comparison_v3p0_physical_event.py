@@ -1131,8 +1131,22 @@ def save_figure(
     figure.tight_layout(rect=(0, 0, 1, layout_top))
     for stem in stems:
         stem.parent.mkdir(parents=True, exist_ok=True)
-        figure.savefig(stem.with_suffix(".png"), dpi=dpi, bbox_inches="tight")
-        figure.savefig(stem.with_suffix(".jpg"), dpi=dpi, bbox_inches="tight")
+        for suffix in (".png", ".jpg"):
+            target = stem.with_suffix(suffix)
+            temporary = target.with_name(
+                f".{target.stem}.comparison-write{target.suffix}"
+            )
+            try:
+                figure.savefig(
+                    temporary,
+                    dpi=dpi,
+                    bbox_inches="tight",
+                )
+                if target.exists():
+                    target.unlink()
+                temporary.replace(target)
+            finally:
+                temporary.unlink(missing_ok=True)
     plt.close(figure)
 
 
@@ -1160,6 +1174,368 @@ def read_observed_annual_summary(bayes_dir: Path) -> pd.DataFrame:
     if observed.duplicated(key).any():
         raise ValueError("Observed annual summary is not unique by Year x Analyte x Treatment.")
     return observed[key + ["center_kg", "lower_95_kg", "upper_95_kg"]]
+
+
+def observed_annual_load_completeness(
+    expected_event_analytes: pd.DataFrame,
+    observed_event_analytes: pd.DataFrame,
+    observed_annual_summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Identify annual load groups with a complete observed physical-event record."""
+
+    key = ["Year", "Analyte", "Treatment"]
+    event_key = key + ["PhysicalEventID"]
+    require_columns(
+        expected_event_analytes,
+        event_key,
+        "expected event-analyte provenance",
+    )
+    require_columns(
+        observed_event_analytes,
+        event_key + ["Load_kg"],
+        "observed event-analyte ledger",
+    )
+    require_columns(
+        observed_annual_summary,
+        key + ["center_kg", "lower_95_kg", "upper_95_kg"],
+        "observed annual summary",
+    )
+
+    expected = expected_event_analytes.loc[
+        expected_event_analytes["Analyte"].astype(str).isin(PUBLICATION_ANALYTES),
+        event_key,
+    ].drop_duplicates()
+    observed = observed_event_analytes.loc[
+        observed_event_analytes["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
+        & pd.to_numeric(
+            observed_event_analytes["Load_kg"],
+            errors="coerce",
+        ).notna(),
+        event_key,
+    ].drop_duplicates()
+    for frame in [expected, observed]:
+        frame["Year"] = pd.to_numeric(frame["Year"], errors="raise").astype(int)
+
+    unexpected_observed = observed.merge(
+        expected,
+        on=event_key,
+        how="left",
+        indicator=True,
+    )
+    unexpected_observed = unexpected_observed.loc[
+        unexpected_observed["_merge"].eq("left_only")
+    ]
+    if not unexpected_observed.empty:
+        raise ValueError(
+            "Observed event-analyte ledger contains rows outside the expected "
+            "physical-event provenance."
+        )
+
+    expected_counts = (
+        expected.groupby(key, as_index=False)
+        .agg(n_expected_physical_events=("PhysicalEventID", "nunique"))
+    )
+    observed_counts = (
+        observed.groupby(key, as_index=False)
+        .agg(n_observed_event_loads=("PhysicalEventID", "nunique"))
+    )
+    audit = expected_counts.merge(observed_counts, on=key, how="left")
+    audit["n_observed_event_loads"] = (
+        audit["n_observed_event_loads"].fillna(0).astype(int)
+    )
+    audit["observed_event_fraction"] = (
+        audit["n_observed_event_loads"] / audit["n_expected_physical_events"]
+    )
+    audit["ObservedAnnualLoadComplete"] = audit["n_observed_event_loads"].eq(
+        audit["n_expected_physical_events"]
+    )
+
+    observed_summary = observed_annual_summary.rename(
+        columns={
+            "center_kg": "ObservedSubtotal_kg",
+            "lower_95_kg": "ObservedSubtotalLower95_kg",
+            "upper_95_kg": "ObservedSubtotalUpper95_kg",
+        }
+    )
+    audit = audit.merge(
+        observed_summary,
+        on=key,
+        how="left",
+        validate="one_to_one",
+    )
+    complete_missing_summary = audit["ObservedAnnualLoadComplete"] & audit[
+        "ObservedSubtotal_kg"
+    ].isna()
+    if complete_missing_summary.any():
+        raise ValueError(
+            "At least one complete observed annual-load group has no observed "
+            "annual summary."
+        )
+    audit["ObservedAnnualLoad_kg"] = audit["ObservedSubtotal_kg"].where(
+        audit["ObservedAnnualLoadComplete"]
+    )
+    audit["ObservedAnnualLoadLower95_kg"] = audit[
+        "ObservedSubtotalLower95_kg"
+    ].where(audit["ObservedAnnualLoadComplete"])
+    audit["ObservedAnnualLoadUpper95_kg"] = audit[
+        "ObservedSubtotalUpper95_kg"
+    ].where(audit["ObservedAnnualLoadComplete"])
+    return audit.sort_values(key).reset_index(drop=True)
+
+
+def observed_annual_volume_completeness(
+    expected_events: pd.DataFrame,
+    volume_event_rows: pd.DataFrame,
+    annual_volume: pd.DataFrame,
+) -> pd.DataFrame:
+    """Identify annual runoff-volume groups with all physical events observed."""
+
+    key = ["Year", "Treatment"]
+    event_key = key + ["PhysicalEventID"]
+    require_columns(expected_events, event_key, "expected physical events")
+    require_columns(
+        volume_event_rows,
+        event_key + ["Volume"],
+        "volume observation and event-prediction table",
+    )
+    require_columns(
+        annual_volume,
+        ["Method", "Year", "Treatment", "center_kL", "lower_95_kL", "upper_95_kL"],
+        "annual runoff-volume comparison",
+    )
+
+    expected = expected_events[event_key].drop_duplicates().copy()
+    observed = volume_event_rows.loc[
+        pd.to_numeric(volume_event_rows["Volume"], errors="coerce").notna(),
+        event_key,
+    ].drop_duplicates()
+    for frame in [expected, observed]:
+        frame["Year"] = pd.to_numeric(frame["Year"], errors="raise").astype(int)
+
+    unexpected_observed = observed.merge(
+        expected,
+        on=event_key,
+        how="left",
+        indicator=True,
+    )
+    if unexpected_observed["_merge"].eq("left_only").any():
+        raise ValueError(
+            "Observed volume table contains physical events outside the expected "
+            "comparison event universe."
+        )
+
+    expected_counts = (
+        expected.groupby(key, as_index=False)
+        .agg(n_expected_physical_events=("PhysicalEventID", "nunique"))
+    )
+    observed_counts = (
+        observed.groupby(key, as_index=False)
+        .agg(n_observed_event_volumes=("PhysicalEventID", "nunique"))
+    )
+    audit = expected_counts.merge(observed_counts, on=key, how="left")
+    audit["n_observed_event_volumes"] = (
+        audit["n_observed_event_volumes"].fillna(0).astype(int)
+    )
+    audit["observed_event_fraction"] = (
+        audit["n_observed_event_volumes"] / audit["n_expected_physical_events"]
+    )
+    audit["ObservedAnnualVolumeComplete"] = audit[
+        "n_observed_event_volumes"
+    ].eq(audit["n_expected_physical_events"])
+
+    observed_summary = annual_volume.loc[
+        annual_volume["Method"].eq("Observed"),
+        key + ["center_kL", "lower_95_kL", "upper_95_kL"],
+    ].rename(
+        columns={
+            "center_kL": "ObservedSubtotal_kL",
+            "lower_95_kL": "ObservedSubtotalLower95_kL",
+            "upper_95_kL": "ObservedSubtotalUpper95_kL",
+        }
+    )
+    audit = audit.merge(observed_summary, on=key, how="left")
+    complete_missing_summary = audit["ObservedAnnualVolumeComplete"] & audit[
+        "ObservedSubtotal_kL"
+    ].isna()
+    if complete_missing_summary.any():
+        raise ValueError(
+            "At least one complete observed annual-volume group has no observed "
+            "annual summary."
+        )
+    audit["ObservedAnnualVolume_kL"] = audit["ObservedSubtotal_kL"].where(
+        audit["ObservedAnnualVolumeComplete"]
+    )
+    audit["ObservedAnnualVolumeLower95_kL"] = audit[
+        "ObservedSubtotalLower95_kL"
+    ].where(audit["ObservedAnnualVolumeComplete"])
+    audit["ObservedAnnualVolumeUpper95_kL"] = audit[
+        "ObservedSubtotalUpper95_kL"
+    ].where(audit["ObservedAnnualVolumeComplete"])
+    return audit.sort_values(key).reset_index(drop=True)
+
+
+def complete_observed_load_rows(audit: pd.DataFrame) -> pd.DataFrame:
+    rows = audit.loc[audit["ObservedAnnualLoadComplete"]].copy()
+    return rows.rename(
+        columns={
+            "ObservedAnnualLoad_kg": "center_kg",
+            "ObservedAnnualLoadLower95_kg": "lower_95_kg",
+            "ObservedAnnualLoadUpper95_kg": "upper_95_kg",
+        }
+    )[
+        ["Year", "Analyte", "Treatment", "center_kg", "lower_95_kg", "upper_95_kg"]
+    ]
+
+
+def complete_observed_volume_rows(
+    annual_volume: pd.DataFrame,
+    audit: pd.DataFrame,
+) -> pd.DataFrame:
+    modeled = annual_volume.loc[~annual_volume["Method"].eq("Observed")].copy()
+    observed = audit.loc[audit["ObservedAnnualVolumeComplete"]].copy()
+    observed = observed.rename(
+        columns={
+            "ObservedAnnualVolume_kL": "center_kL",
+            "ObservedAnnualVolumeLower95_kL": "lower_95_kL",
+            "ObservedAnnualVolumeUpper95_kL": "upper_95_kL",
+        }
+    )
+    observed["Method"] = "Observed"
+    observed["Scenario"] = "complete_observed_reference"
+    observed["central_estimate_type"] = "event_bootstrap_mean"
+    observed["interval_type"] = "event-bootstrap 95% confidence interval"
+    observed = observed[
+        [
+            "Method",
+            "Scenario",
+            "Year",
+            "Treatment",
+            "center_kL",
+            "lower_95_kL",
+            "upper_95_kL",
+            "central_estimate_type",
+            "interval_type",
+        ]
+    ]
+    return pd.concat([modeled, observed], ignore_index=True)
+
+
+def annual_load_complete_observed_comparison(
+    annual_summary: pd.DataFrame,
+    audit: pd.DataFrame,
+) -> pd.DataFrame:
+    key = ["Year", "Analyte", "Treatment"]
+    primary = annual_summary.loc[
+        (
+            annual_summary["Method"].eq("Bayes")
+            & annual_summary["Scenario"].eq("model_only")
+        )
+        | (
+            annual_summary["Method"].eq("ML")
+            & annual_summary["Scenario"].eq("full_record_model_only")
+        )
+    ].copy()
+    keep = key + ["primary_center", "lower_95", "upper_95"]
+    bayes = primary.loc[primary["Method"].eq("Bayes"), keep].rename(
+        columns={
+            "primary_center": "BayesPosteriorMedian_kg",
+            "lower_95": "BayesLower95_kg",
+            "upper_95": "BayesUpper95_kg",
+        }
+    )
+    ml = primary.loc[primary["Method"].eq("ML"), keep].rename(
+        columns={
+            "primary_center": "MLPointTotal_kg",
+            "lower_95": "MLLower95_kg",
+            "upper_95": "MLUpper95_kg",
+        }
+    )
+    output = bayes.merge(ml, on=key, how="outer", validate="one_to_one")
+    audit_columns = key + [
+        "n_expected_physical_events",
+        "n_observed_event_loads",
+        "observed_event_fraction",
+        "ObservedAnnualLoadComplete",
+        "ObservedAnnualLoad_kg",
+        "ObservedAnnualLoadLower95_kg",
+        "ObservedAnnualLoadUpper95_kg",
+    ]
+    output = output.merge(
+        audit[audit_columns],
+        on=key,
+        how="left",
+        validate="one_to_one",
+    )
+    if output["ObservedAnnualLoadComplete"].isna().any():
+        raise ValueError(
+            "Annual model comparison contains groups absent from the observed "
+            "annual-load completeness audit."
+        )
+    return output.sort_values(key).reset_index(drop=True)
+
+
+def annual_volume_complete_observed_comparison(
+    annual_volume: pd.DataFrame,
+    audit: pd.DataFrame,
+) -> pd.DataFrame:
+    key = ["Year", "Treatment"]
+    modeled = annual_volume.loc[
+        annual_volume["Method"].isin(["Bayes", "ML"])
+    ].copy()
+    keep = key + ["center_kL", "lower_95_kL", "upper_95_kL"]
+    bayes = modeled.loc[modeled["Method"].eq("Bayes"), keep].rename(
+        columns={
+            "center_kL": "BayesPosteriorMean_kL",
+            "lower_95_kL": "BayesLower95_kL",
+            "upper_95_kL": "BayesUpper95_kL",
+        }
+    )
+    ml = modeled.loc[modeled["Method"].eq("ML"), keep].rename(
+        columns={
+            "center_kL": "MLPointTotal_kL",
+            "lower_95_kL": "MLLower95_kL",
+            "upper_95_kL": "MLUpper95_kL",
+        }
+    )
+    output = bayes.merge(ml, on=key, how="outer", validate="one_to_one")
+    audit_columns = key + [
+        "n_expected_physical_events",
+        "n_observed_event_volumes",
+        "observed_event_fraction",
+        "ObservedAnnualVolumeComplete",
+        "ObservedAnnualVolume_kL",
+        "ObservedAnnualVolumeLower95_kL",
+        "ObservedAnnualVolumeUpper95_kL",
+    ]
+    output = output.merge(
+        audit[audit_columns],
+        on=key,
+        how="left",
+        validate="one_to_one",
+    )
+    if output["ObservedAnnualVolumeComplete"].isna().any():
+        raise ValueError(
+            "Annual volume model comparison contains groups absent from the "
+            "observed annual-volume completeness audit."
+        )
+    return output.sort_values(key).reset_index(drop=True)
+
+
+def publication_complete_observed_table(
+    frame: pd.DataFrame,
+    *,
+    value_columns: Sequence[str],
+    complete_column: str,
+) -> pd.DataFrame:
+    output = frame.copy()
+    for column in value_columns:
+        output[column] = output[column].map(
+            lambda value: "-" if pd.isna(value) else f"{float(value):.4g}"
+        )
+    output[complete_column] = output[complete_column].map(
+        {True: "Complete", False: "Incomplete"}
+    )
+    return output
 
 
 def annual_volume_comparison(bayes_dir: Path, ml_dir: Path) -> pd.DataFrame:
@@ -1297,7 +1673,8 @@ def plot_annual_comparison(
         ),
         Line2D(
             [0], [0], color="black", marker="o", markerfacecolor="none",
-            linestyle="none", markersize=8, label="Observed (event-bootstrap 95% CI)",
+            linestyle="none", markersize=8,
+            label="Complete observed annual load (event-bootstrap 95% CI)",
         ),
     ]
     for analyte, group in primary.groupby("Analyte", sort=False):
@@ -1354,7 +1731,7 @@ def plot_annual_comparison(
         axes[0].set_ylabel("Annual load (kg)")
         axes[1].set_xlabel("Year")
         figure.suptitle(
-            f"{analyte}: observed vs Bayes vs ML annual load (corrected physical-event)",
+            f"{analyte}: complete observed annual loads vs Bayes vs ML",
             fontsize=14,
         )
         figure.legend(handles=legend_handles, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 0.94))
@@ -1363,6 +1740,8 @@ def plot_annual_comparison(
             figure,
             figure_dir / f"annual_load_{analyte}",
             figure_dir / "annual_obs_vs_modeled" / f"annual_load_{safe}_obs_vs_modeled_v3p0",
+            figure_dir / "annual_complete_observed"
+            / f"annual_load_{safe}_complete_observed_v3p0",
             layout_top=0.88,
         )
 
@@ -1380,7 +1759,8 @@ def plot_annual_volume_comparison(volume: pd.DataFrame, figure_dir: Path) -> Non
         ),
         Line2D(
             [0], [0], color="black", marker="o", markerfacecolor="none",
-            linestyle="none", markersize=8, label="Observed (event-bootstrap 95% CI)",
+            linestyle="none", markersize=8,
+            label="Complete observed annual volume (event-bootstrap 95% CI)",
         ),
     ]
     figure, axes = plt.subplots(1, 3, figsize=(16, 5.2), sharey=True)
@@ -1427,7 +1807,7 @@ def plot_annual_volume_comparison(volume: pd.DataFrame, figure_dir: Path) -> Non
     axes[0].set_ylabel("Annual runoff volume (kL)")
     axes[1].set_xlabel("Year")
     figure.suptitle(
-        "Observed vs Bayes vs ML annual runoff volume (corrected physical-event)",
+        "Complete observed annual runoff volume vs Bayes vs ML",
         fontsize=14,
     )
     figure.legend(
@@ -1437,6 +1817,9 @@ def plot_annual_volume_comparison(volume: pd.DataFrame, figure_dir: Path) -> Non
         figure,
         figure_dir / "annual_runoff_volume_bayes_vs_ml_v3p0",
         figure_dir / "annual_obs_vs_modeled" / "annual_runoff_volume_obs_vs_modeled_v3p0",
+        figure_dir
+        / "annual_complete_observed"
+        / "annual_runoff_volume_complete_observed_v3p0",
         layout_top=0.88,
     )
 
@@ -1469,7 +1852,8 @@ def plot_annual_uncertainty_supplement(
         ),
         Line2D(
             [0], [0], color="black", marker="o", markerfacecolor="none",
-            linestyle="none", markersize=8, label="Observed (event-bootstrap 95% CI)",
+            linestyle="none", markersize=8,
+            label="Complete observed annual load (event-bootstrap 95% CI)",
         ),
     ]
     supplemental_dir = figure_dir / "supplemental_uncertainty"
@@ -2236,6 +2620,123 @@ def main() -> None:
     annual_volume.to_csv(
         output_dir / "annual_runoff_volume_summary_raw.csv", index=False
     )
+    expected_event_analytes = read_required(
+        bayes_dir / "event_analyte_provenance_bayes_v3p0_physical_event.csv",
+        "Bayesian event-analyte provenance",
+    )
+    observed_event_analytes = read_required(
+        bayes_dir / "observed_event_analyte_ledger_v3p0_physical_event.csv",
+        "corrected observed event ledger",
+    )
+    observed_annual_summary = read_observed_annual_summary(bayes_dir)
+    observed_load_audit = observed_annual_load_completeness(
+        expected_event_analytes,
+        observed_event_analytes,
+        observed_annual_summary,
+    )
+    volume_event_rows = read_required(
+        ml_dir / "volume_observation_and_event_predictions.csv",
+        "volume observation and event-prediction table",
+    )
+    expected_events = expected_event_analytes[
+        ["Year", "Treatment", "PhysicalEventID"]
+    ].drop_duplicates()
+    observed_volume_audit = observed_annual_volume_completeness(
+        expected_events,
+        volume_event_rows,
+        annual_volume,
+    )
+    complete_observed_loads = complete_observed_load_rows(observed_load_audit)
+    annual_volume_for_figures = complete_observed_volume_rows(
+        annual_volume,
+        observed_volume_audit,
+    )
+    annual_volume_complete = annual_volume_complete_observed_comparison(
+        annual_volume,
+        observed_volume_audit,
+    )
+
+    observed_load_audit.to_csv(
+        output_dir / "observed_annual_load_completeness_audit_raw.csv",
+        index=False,
+    )
+    observed_load_audit_publication = observed_load_audit[
+        [
+            "Year",
+            "Analyte",
+            "Treatment",
+            "n_expected_physical_events",
+            "n_observed_event_loads",
+            "observed_event_fraction",
+            "ObservedAnnualLoadComplete",
+            "ObservedAnnualLoad_kg",
+            "ObservedAnnualLoadLower95_kg",
+            "ObservedAnnualLoadUpper95_kg",
+        ]
+    ]
+    publication_complete_observed_table(
+        observed_load_audit_publication,
+        value_columns=[
+            "ObservedAnnualLoad_kg",
+            "ObservedAnnualLoadLower95_kg",
+            "ObservedAnnualLoadUpper95_kg",
+        ],
+        complete_column="ObservedAnnualLoadComplete",
+    ).to_csv(
+        output_dir / "observed_annual_load_completeness_publication.csv",
+        index=False,
+    )
+    observed_volume_audit.to_csv(
+        output_dir / "observed_annual_volume_completeness_audit_raw.csv",
+        index=False,
+    )
+    observed_volume_audit_publication = observed_volume_audit[
+        [
+            "Year",
+            "Treatment",
+            "n_expected_physical_events",
+            "n_observed_event_volumes",
+            "observed_event_fraction",
+            "ObservedAnnualVolumeComplete",
+            "ObservedAnnualVolume_kL",
+            "ObservedAnnualVolumeLower95_kL",
+            "ObservedAnnualVolumeUpper95_kL",
+        ]
+    ]
+    publication_complete_observed_table(
+        observed_volume_audit_publication,
+        value_columns=[
+            "ObservedAnnualVolume_kL",
+            "ObservedAnnualVolumeLower95_kL",
+            "ObservedAnnualVolumeUpper95_kL",
+        ],
+        complete_column="ObservedAnnualVolumeComplete",
+    ).to_csv(
+        output_dir / "observed_annual_volume_completeness_publication.csv",
+        index=False,
+    )
+    annual_volume_complete.to_csv(
+        output_dir / "annual_runoff_volume_complete_observed_raw.csv",
+        index=False,
+    )
+    publication_complete_observed_table(
+        annual_volume_complete,
+        value_columns=[
+            "BayesPosteriorMean_kL",
+            "BayesLower95_kL",
+            "BayesUpper95_kL",
+            "MLPointTotal_kL",
+            "MLLower95_kL",
+            "MLUpper95_kL",
+            "ObservedAnnualVolume_kL",
+            "ObservedAnnualVolumeLower95_kL",
+            "ObservedAnnualVolumeUpper95_kL",
+        ],
+        complete_column="ObservedAnnualVolumeComplete",
+    ).to_csv(
+        output_dir / "annual_runoff_volume_complete_observed_publication.csv",
+        index=False,
+    )
     (
         performance,
         ml_evaluation_tracks,
@@ -2246,8 +2747,38 @@ def main() -> None:
     write_performance_products(output_dir, performance, ml_evaluation_tracks)
 
     if args.figures_only:
+        saved_annual = read_required(
+            output_dir / "annual_load_summary_raw.csv",
+            "saved annual-load summary",
+        )
+        annual_load_complete = annual_load_complete_observed_comparison(
+            saved_annual,
+            observed_load_audit,
+        )
+        annual_load_complete.to_csv(
+            output_dir / "annual_load_complete_observed_raw.csv",
+            index=False,
+        )
+        publication_complete_observed_table(
+            annual_load_complete,
+            value_columns=[
+                "BayesPosteriorMedian_kg",
+                "BayesLower95_kg",
+                "BayesUpper95_kg",
+                "MLPointTotal_kg",
+                "MLLower95_kg",
+                "MLUpper95_kg",
+                "ObservedAnnualLoad_kg",
+                "ObservedAnnualLoadLower95_kg",
+                "ObservedAnnualLoadUpper95_kg",
+            ],
+            complete_column="ObservedAnnualLoadComplete",
+        ).to_csv(
+            output_dir / "annual_load_complete_observed_publication.csv",
+            index=False,
+        )
         make_figures(
-            read_required(output_dir / "annual_load_summary_raw.csv", "saved annual-load summary"),
+            saved_annual,
             read_required(
                 output_dir / "cumulative_load_2011_2025_raw.csv",
                 "saved cumulative-load summary",
@@ -2267,8 +2798,8 @@ def main() -> None:
                 output_dir / "feature_importance_descriptive_noncausal_raw.csv",
                 "saved feature-importance table",
             ),
-            read_observed_annual_summary(bayes_dir),
-            annual_volume,
+            complete_observed_loads,
+            annual_volume_for_figures,
             figure_dir,
         )
         update_saved_comparison_manifest(output_dir)
@@ -2379,6 +2910,10 @@ def main() -> None:
         keys=["Method", "Scenario", "Analyte", "ComparisonTreatment"],
         point_column="PointPercentDifference",
     )
+    annual_load_complete = annual_load_complete_observed_comparison(
+        annual_summary,
+        observed_load_audit,
+    )
     spearman_raw, spearman_publication = spearman_tables(annual_summary)
 
     loyo_coverage = coverage_by_year_target(ml_rows, "ML")
@@ -2394,10 +2929,7 @@ def main() -> None:
     )
     negative_ct_raw, negative_ct_summary = ct_relative(negative_sensitivity_draws)
 
-    observed_ledger = read_required(
-        bayes_dir / "observed_event_analyte_ledger_v3p0_physical_event.csv",
-        "corrected observed event ledger",
-    )
+    observed_ledger = observed_event_analytes.copy()
     require_columns(observed_ledger, ["PhysicalEventID", "Analyte", "Year", "Treatment", "Load_kg"], "Observed ledger")
     observed_ledger = observed_ledger.loc[
         observed_ledger["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
@@ -2429,6 +2961,28 @@ def main() -> None:
     annual_summary.to_csv(output_dir / "annual_load_summary_raw.csv", index=False)
     publication_load_table(annual_summary, "Central_95_interval_kg").to_csv(
         output_dir / "annual_load_summary_publication.csv", index=False
+    )
+    annual_load_complete.to_csv(
+        output_dir / "annual_load_complete_observed_raw.csv",
+        index=False,
+    )
+    publication_complete_observed_table(
+        annual_load_complete,
+        value_columns=[
+            "BayesPosteriorMedian_kg",
+            "BayesLower95_kg",
+            "BayesUpper95_kg",
+            "MLPointTotal_kg",
+            "MLLower95_kg",
+            "MLUpper95_kg",
+            "ObservedAnnualLoad_kg",
+            "ObservedAnnualLoadLower95_kg",
+            "ObservedAnnualLoadUpper95_kg",
+        ],
+        complete_column="ObservedAnnualLoadComplete",
+    ).to_csv(
+        output_dir / "annual_load_complete_observed_publication.csv",
+        index=False,
     )
     cumulative_points.to_csv(output_dir / "cumulative_load_point_totals_raw.csv", index=False)
     cumulative_summary.to_csv(output_dir / "cumulative_load_2011_2025_raw.csv", index=False)
@@ -2517,13 +3071,17 @@ def main() -> None:
         "split-conformal calibration set, with performance evaluated by outer LOYO. "
         "The ML line is not "
         "the median of the propagated draws.\n"
-        "- Observed markers: corrected physical-event observed annual summaries, "
-        "kept separate from both model-only products; error bars are the existing "
-        "event-bootstrap 95% intervals.\n\n"
+        "- Observed markers: corrected physical-event observed annual summaries are "
+        "shown only when every expected physical-event load in the corresponding "
+        "Year x Analyte x Treatment group is observed. Partial observed subtotals "
+        "remain in separate audit outputs and are not plotted or reported as annual "
+        "observed loads. Error bars are the existing event-bootstrap 95% intervals.\n\n"
         "- Annual runoff-volume figure: Bayesian posterior mean with 95% credible "
         "interval, deterministic ML sum of physical-event point volumes without an ML "
-        "ribbon, and observed event-bootstrap mean with 95% confidence interval; all "
-        "volumes are shown in kL.\n\n"
+        "ribbon, and a complete observed event-bootstrap mean with 95% confidence "
+        "interval; all volumes are shown in kL. Observed volume markers require every "
+        "expected physical event in the Year x Treatment group to have an observed "
+        "volume.\n\n"
         "The primary annual comparison figures retain the Bayesian 95% credible-interval "
         "ribbon and observed bootstrap intervals, while omitting the ML prediction ribbon "
         "so that Bayes and ML centers remain readable on a common linear scale. Full model "
@@ -2555,8 +3113,8 @@ def main() -> None:
             loyo_coverage,
             bayes_coverage,
             feature_importance,
-            read_observed_annual_summary(bayes_dir),
-            annual_volume,
+            complete_observed_loads,
+            annual_volume_for_figures,
             figure_dir,
         )
 
@@ -2570,7 +3128,18 @@ def main() -> None:
         "event_analyte_point_uniqueness_asserted": True,
         "primary_bayes_central_estimate": "posterior_median",
         "primary_ml_central_estimate": "physical_event_point_total",
-        "primary_observed_role": "separate_reference_markers_only",
+        "primary_observed_role": "complete_annual_reference_markers_only",
+        "observed_annual_load_completeness_unit": "Year x Analyte x Treatment",
+        "observed_annual_volume_completeness_unit": "Year x Treatment",
+        "partial_observed_annual_subtotals_plotted": False,
+        "observed_annual_load_complete_groups": int(
+            observed_load_audit["ObservedAnnualLoadComplete"].sum()
+        ),
+        "observed_annual_load_total_groups": int(len(observed_load_audit)),
+        "observed_annual_volume_complete_groups": int(
+            observed_volume_audit["ObservedAnnualVolumeComplete"].sum()
+        ),
+        "observed_annual_volume_total_groups": int(len(observed_volume_audit)),
         "ml_interval_type": "95% Monte Carlo empirical calibration-residual prediction interval",
         "ml_interval_evaluation": "outer leave-one-year-out",
         "ml_monte_carlo_propagation": "weighted_resampling_of_signed_log_scale_split_conformal_calibration_residuals",

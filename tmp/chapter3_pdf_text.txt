@@ -1,0 +1,1842 @@
+
+
+--- PAGE 1 ---
+ 
+Page 1 of 73 
+ 
+DISENTANGLING TILLAGE EFFECTS AND TEMPORAL PERSISTENCE IN EDGE-
+OF-FIELD WATER QUALITY USING A BAYESIAN CAUSAL FRAMEWORK 
+ 
+Abbreviations: ARDEC, Agricultural Research, Development, and Education Center; AWQP, 
+Agricultural Water Quality Program; CEMA, conservation evaluation and monitoring activity; 
+CSU, Colorado State University; CT, conventional tillage; DAG, directed acyclic graph; EC, 
+electrical conductivity; EoF, edge-of-field; GB, grab sample; GB3, three-part grab composite; 
+GBH, hourly grab composite; GBW, grab sample from temporary V-notch weir; HDPI, highest-
+density posterior interval; HMC, Hamiltonian Monte Carlo; ISCO, commercial automated 
+sampler; LC, low-cost automated sampler; LKJ, Lewandowski-Kurowicka-Joe; MDL, method 
+detection limit; MOGP, multi-output Gaussian process; MOSES, Management Operations and 
+Soil Erosion Simulation; MT, minimum tillage; NA, not available; NH4-N, ammonium nitrogen; 
+NO2-N, nitrite nitrogen; NO3-N, nitrate nitrogen; NRCS, Natural Resources Conservation 
+Service; OP, orthophosphate as phosphorus; RL, reporting limit; Se, selenium; ST, strip tillage; 
+STIR, Soil Tillage Intensity Rating; TDS, total dissolved solids; TKN-N, total Kjeldahl nitrogen 
+as nitrogen; TN-N, total nitrogen as nitrogen; TP, total phosphorus; TSS, total suspended solids; 
+TTM, tillage type modifier; USDA, United States Department of Agriculture. 
+CORE IDEAS 
+• Tillage increased sediment and insoluble nutrients more than dissolved solutes. 
+• Residue cover reduced runoff volume, linking tillage to lower loads. 
+• MT and ST had similar outcomes, suggesting some conservation tillage helps. 
+
+--- PAGE 2 ---
+ 
+Page 2 of 73 
+ 
+• Bayesian modeling used imperfect data and characterized 1 to 3 year persistence in 
+tillage effects. 
+PLAIN LANGUAGE SUMMARY 
+The adoption of conservation tillage on farmlands continues to increase, providing economic and 
+environmental benefits, but its long-term effects on runoff water quality remain poorly 
+understood. Previous work has focused on short studies or small plot areas, making it unclear 
+whether tillage effects extend beyond a single season. This project analyzed runoff water quality 
+from a production-scale, surface-irrigated conservation tillage study field monitored from 2011 
+to 2025. Because long-term data often contain gaps, changing practices, and evolving 
+measurement methods, a Bayesian statistical approach was used to account for these challenges 
+rather than overlook them. Results show that more intensive tillage incurred more sediment and 
+sediment-bound nutrient loss, including phosphorus and organic nitrogen. Some tillage-analyte 
+effects persisted across years. These findings provide evidence that conservation tillage can 
+protect runoff water quality beyond the year it is applied. 
+ABSTRACT 
+Understanding how tillage practices influence runoff water quality is critical for evaluating 
+agricultural management, but few studies have examined long-term effects in operational 
+surface-irrigated systems. We analyzed a 2011 to 2025 edge-of-field monitoring record from 
+conventional tillage (CT), minimum tillage (MT), and strip tillage (ST) systems in Fort Collins, 
+Colorado. Tillage disturbance was represented with the NRCS Soil Tillage Intensity Rating 
+(STIR), allowing disturbance intensity to be compared across years with changing crop rotations 
+and field operations. A hierarchical Bayesian causal framework estimated direct STIR effects on 
+
+--- PAGE 3 ---
+ 
+Page 3 of 73 
+ 
+residue cover, concentration, and volume which propagated uncertainty from measurement error, 
+censoring, missing observations, and evolving field methods; and characterized temporal 
+structure with a multi-output Gaussian process. Greater STIR was most associated with increased 
+concentrations and loads of particulate-associated constituents, especially total suspended solids 
+(TSS), total phosphorus (TP), and total Kjeldahl nitrogen (TKN-N), while dissolved constituent 
+responses were weaker or more variable. Across 2011 to 2025, MT and ST reduced cumulative 
+export of TSS by 29.4% and 24.2%, TKN-N by 31.3% and 26.9%, TP by 15.9% and 16.6%, and 
+total nitrogen by 19.6% and 17.8%, respectively, relative to CT. Temporal covariance suggested 
+some nutrient patterns, particularly TN-N and TP, persisted up to 3 years, whereas TSS 
+responses were more immediate and closely linked to current residue and runoff. These results 
+support reduced tillage as a practical conservation strategy for limiting sediment and sediment-
+associated nutrient losses, while highlighting the need for complementary strategies to address 
+dissolved constituents. 
+1 INTRODUCTION 
+Water quality is a critical component of environmental sustainability, ecosystem function, and 
+human health, with widespread implications for drinking water supplies, aquatic habitat integrity, 
+and downstream water use (Carpenter et al., 1998; V. H. Smith et al., 1999). Globally, 
+agriculture is one of the dominant contributors to nonpoint source pollution, exporting sediments, 
+nutrients, and agrochemicals from managed landscapes into surface waters through runoff 
+processes (Foley et al., 2011; Kleinman & Harmel, 2024; Tilman et al., 2002). These losses are 
+driven by the interaction of climatic forcing, soil properties, and management practices, and can 
+lead to eutrophication, hypoxia, and degradation of freshwater and coastal systems (Diaz & 
+Rosenberg, 2008; Hopkins et al., 2025; Kleinman et al., 2011, 2015). As a result, improving 
+
+--- PAGE 4 ---
+ 
+Page 4 of 73 
+ 
+water-quality outcomes in agricultural systems has become a central focus of both research and 
+policy, requiring a better understanding of how management practices influence hydrologic 
+pathways and constituent transport across spatial and temporal scales (Harmel, Pampell, et al., 
+2018; D. R. Smith et al., 2018; Trotter et al., 2025; Zhang et al., 2026). 
+Among agricultural management practices, tillage plays a particularly important role in shaping 
+water quality outcomes because it directly alters soil physical properties that govern hydrologic 
+response and erosion processes at the field scale by modifying soil structure, residue cover, and 
+aggregate stability. Tillage influences infiltration, surface runoff generation, and the mobilization 
+and transport of both sediment-bound and dissolved constituents. Multiple short-term and plot-
+scale studies, particularly in rainfed systems, have documented these relationships (Montgomery, 
+2007; Prasad, Thompson, et al., 2023). In addition, several long-term watershed and field-scale 
+investigations in rainfall-driven environments have demonstrated that conservation tillage and 
+nutrient management substantially influence runoff, sediment, and nutrient export over long-term 
+time scales (Carver et al., 2022; Harmel et al., 2014; Nelson et al., 2023; Nonxuba et al., 2026; 
+Sun et al., 2026). However, relatively fewer investigations have characterized these effects in 
+surface-irrigated fields under operational conditions. This distinction is important because furrow 
+irrigation introduces managed inflow, tailwater runoff, and irrigation-induced erosion processes 
+that differ fundamentally from rainfall-driven runoff (Bjorneberg, Westermann, et al., 2006; 
+Sojka, Bjorneberg, & Strelkoff, 2007; Sojka, Bjorneberg, Entry, et al., 2007). Research in semi-
+arid furrow-irrigated systems in Colorado has shown that conventional tillage increases runoff of 
+sediment-bound constituents relative to conservation tillage, while improvements in soil 
+structure and residue retention are associated with reduced sediment export (Trimarco et al., 
+2023). Similarly, studies in irrigated furrow systems demonstrate strong coupling between 
+
+--- PAGE 5 ---
+ 
+Page 5 of 73 
+ 
+sediment transport and phosphorus losses in irrigation return flow (Bjorneberg, Westermann, et 
+al., 2006; Kleinman et al., 2015). However, relatively few long-term (>5 years) edge-of-field 
+(EoF) investigations have quantified tillage effects in surface-irrigated systems over extended 
+time horizons (Sun et al., 2026). In addition, tillage effects are often evaluated as aggregate 
+treatment differences, making it difficult to distinguish water-quality responses associated with 
+soil disturbance from those associated with residue cover. This distinction is important because 
+conservation tillage simultaneously reduces mechanical disturbance and increases surface 
+residue, creating both direct and indirect pathways through which management may influence 
+runoff, erosion, and constituent transport. Long-term analyses that include both tillage intensity 
+and measured residue cover are therefore needed to distinguish transient responses from 
+persistent system behavior and to better characterize the mechanisms underlying conservation-
+tillage effects under variable operational conditions. 
+Despite their importance, long-term EoF datasets in operational agricultural systems present 
+substantial analytical challenges. Often arising from logistical and/or financial constraints, 
+records commonly include irregular sampling, evolving instrumentation, missing observations, 
+and measurement uncertainty, all of which complicate inference on management effects (Brown 
+et al., 2026; Daniels et al., 2018; Harmel et al., 2006, 2023; Harmel, King, et al., 2018; King & 
+Harmel, 1998). Process-based water quality models are widely applied to assess the effects of 
+agricultural practices on water quality at many scales (Daniels et al., 2018; Liu et al., 2017; 
+Marshall et al., 2018), but their application in EoF and long-term observational contexts is often 
+constrained by high data requirements, parameter uncertainty, and challenges in calibration to 
+site-specific conditions, particularly where management, soil, and weather interactions vary 
+through time and space. These limitations are well documented in agricultural systems, where 
+
+--- PAGE 6 ---
+ 
+Page 6 of 73 
+ 
+model performance is sensitive to parameterization and local conditions, and where equifinality 
+and structural uncertainty can complicate inference from observational datasets (Badrudeen et 
+al., 2026; Beven, 2006; Guzman et al., 2015; Harmel & King, 2005; Harmel & Smith, 2007; 
+Moriasi et al., 2007; Yen et al., 2014). In contrast, empirical approaches that directly leverage 
+observed data provide a complementary pathway for inference, particularly in contexts where the 
+data required to parameterize and calibrate process-based models are incomplete, uncertain, or 
+unavailable. By relying on observed relationships rather than fully specified system 
+representations, empirical models reduce calibration burden, avoid issues of parameter non-
+identifiability, and are more readily applied to long-term datasets characterized by variability in 
+management, environmental conditions, and measurement systems. Recent work in on-farm 
+experimentation and digital agronomy further highlights the need for analytical frameworks 
+capable of extracting reliable insight from such data while accounting for spatial variability and 
+limited replication (Cho et al., 2021; Córdoba et al., 2024). Moreover, causal inference 
+frameworks offer a structured way to integrate mechanistic reasoning with observational data, 
+enabling more conservative and interpretable conclusions by explicitly evaluating intermediary 
+processes rather than relying solely on outcome-based associations (Longchamps, Lanza, Wei, et 
+al., 2025; Longchamps, Lanza, Yore, et al., 2025). Together, these approaches support the 
+development of statistical models that explicitly account for measurement error, process 
+variability, and temporal dependence while preserving interpretable relationships among 
+variables. 
+Therefore, the present analysis aims to 1) quantify differences in runoff volume, concentration, 
+and mass loadings among conventional, strip, and minimum tillage study treatments through 
+time, 2) estimate analyte-specific direct effects of tillage intensity after accounting for measured 
+
+--- PAGE 7 ---
+ 
+Page 7 of 73 
+ 
+residue cover and other measured covariates, and 3) evaluate the temporal persistence of tillage 
+effects under long-term, operational field conditions. These objectives are addressed using a 
+hierarchical Bayesian framework that jointly models runoff volume, concentration, and derived 
+loads while accounting for measurement error, missing data, measured residue cover, and shared 
+temporal structure across analytes. To assess persistence, the model incorporates a multi-output 
+Gaussian process that captures temporal dependence and enables evaluation of whether observed 
+treatment effects reflect transient responses or sustained system behavior. This integrated 
+approach provides a framework for separating treatment-level water-quality patterns, direct 
+tillage-intensity effects, and residue-associated pathways in complex, long-term EoF datasets. 
+2 MATERIALS AND METHODS 
+2.1 Study Site Description and Experimental History 
+This study was conducted at the Colorado State University (CSU) Agricultural Research, 
+Development, and Education Center (ARDEC) near Fort Collins, Colorado (40.68° N, 104.99° 
+W; elevation approximately 1567 m), within a semi-arid, surface-irrigated production system 
+representative of furrow-irrigated agriculture in the western United States. The 5.3-hectare field 
+was selected by CSU researchers and an accompanying producer advisory board to evaluate how 
+tillage practices influence runoff generation and water-quality transport under operational field 
+conditions, where managed irrigation drives hydrologic processes distinct from rainfall-
+dominated systems. 
+The experiment was established in 2011 following a uniform conventional tillage baseline to 
+compare three tillage systems: conventional tillage (CT), minimum tillage (MT), and strip tillage 
+(ST). Treatments were implemented in a randomized complete block design with two blocks and 
+
+--- PAGE 8 ---
+ 
+Page 8 of 73 
+ 
+each treatment replicated once per block. Individual plots were approximately 320 m long and 28 
+m wide (i.e., 0.9 ha), reflecting production-scale field dimensions necessary to capture realistic 
+furrow flow dynamics and EoF runoff processes (Figure 1).  
+ 
+Figure 1. Aerial overview of the edge-of-field (EoF) experimental design at the CSU Agricultural Research, Development, and 
+Education Center (ARDEC) near Fort Collins, Colorado. The study consists of two blocks arranged along the direction of furrow 
+irrigation flow, with each block containing replicated conventional tillage (CT), minimum tillage (MT), and strip tillage (ST) 
+treatments. Irrigation water is applied at the upstream end of each plot and flows downslope through furrows, generating 
+tailwater runoff at the downstream edge. Water sampling locations are positioned to capture both inflow and outflow conditions 
+for each treatment, enabling direct quantification of changes in runoff volume and water-quality constituents across the field. 
+The MT and ST treatments were developed in collaboration with regional producers to evaluate 
+the feasibility of conservation tillage in furrow-irrigated systems, where residue management and 
+water conveyance present unique challenges. 
+
+
+--- PAGE 9 ---
+ 
+Page 9 of 73 
+ 
+Soils at the site are classified as Garrett fine-loamy, mixed, mesic Pachic Argiustolls based on 
+the USDA NRCS Soil Survey (Soil Survey Staff, 2003). The soil profile is characterized by 
+approximately 52% sand, 18% silt, and 30% clay, with an average organic matter content of 
+1.8% and a pH of 7.8. The region receives approximately 407 mm of annual precipitation, with 
+mean monthly temperatures ranging from 2.7 °C in January to 17.6 °C in July, reinforcing the 
+reliance on irrigation for crop production. Irrigation was applied using a siphon tube system from 
+2011 – 2022 and a gated pipe system thereafter, supplied by a groundwater well in most years 
+but surface water in instances where the well was inoperative or insufficient, with water 
+delivered to furrows during controlled irrigation events typically occurring between 06:00 and 
+18:00 hours (i.e., 10 – 12 hour sets). Flow was directed down alternating rows, generating 
+tailwater runoff that was collected and measured at the downstream edge of each plot. Other 
+management practices, including crop rotation, residue handling, and irrigation scheduling, were 
+adapted annually in response to environmental conditions and operational constraints, reflecting 
+realistic production-scale management rather than a fixed experimental protocol. 
+2.2 Tillage Management and Field Operations 
+Tillage management at the study site was implemented through a sequence of field operations 
+that varied in type, intensity, and timing across treatments and years. CT generally involved 
+multiple full-width disturbance operations, including moldboard plowing, disking, and 
+harrowing, followed by furrow maintenance and planting operations. MT reduced both the 
+number and intensity of disturbance passes, typically relying on vertical tillage and limited soil 
+manipulation to maintain irrigation function. ST further minimized disturbance by restricting soil 
+disruption to narrow bands along the seed row using a strip-till implement, while maintaining 
+
+--- PAGE 10 ---
+ 
+Page 10 of 73 
+ 
+residue cover between rows. All treatments included some level of row maintenance and 
+cultivation to preserve furrow irrigation performance (e.g., row cleaner with cans). 
+Fertilizer management also differed among treatments in ways that influenced soil disturbance 
+and nutrient placement. Conventional and minimum tillage systems typically received dry 
+broadcast fertilizer applications prior to incorporation, whereas strip-till systems consistently 
+utilized liquid nitrogen (N) and phosphorus (P) applied in bands during the strip-till or planting 
+operation. When applicable, such as during grain and silage corn production years, nitrogen side-
+dressing was applied across all treatments to meet crop nutrient demands. 
+Field operations, including tillage, crop type, planting, cultivation, fertilizer and pesticide 
+application, and harvest, were recorded by CSU ARDEC staff using FarmLogic farm 
+management software (TapLogic LLC, Murray, KY, USA). These records included operation 
+date, implement type, and treatment designation.  
+Despite consistent treatment designations, the specific combination and intensity of operations 
+varied substantially from year to year in response to crop rotation, weather conditions, irrigation 
+requirements, and operational constraints. For example, during a representative grain corn year 
+(2015), CT included multiple full-width disturbance operations, while MT and ST reduced both 
+the number and intensity of passes, with ST concentrating disturbance within the seedbed (Figure 
+2). In contrast, certain years exhibited minimal differentiation among treatments. In 2023, corn 
+was harvested as silage and all plots were uniformly vertical-tilled immediately prior to planting 
+winter wheat in order to meet narrow agronomic timing requirements ahead of forecasted 
+precipitation. These examples illustrate that categorical treatment labels do not fully capture the 
+dynamic nature of soil disturbance in production systems. 
+
+--- PAGE 11 ---
+ 
+Page 11 of 73 
+ 
+ 
+Figure 2. Flowchart showing example tillage operations occurring annually during a year where grain corn was planted at the 
+conservation tillage study site. 
+2.3 Quantification of tillage intensity using STIR 
+Because implemented tillage operations varied across years and occasionally converged among 
+treatments for agronomic or operational reasons, disturbance intensity was quantified using the 
+Soil Tillage Intensity Rating (STIR) rather than relying solely on categorical CT, MT, and ST 
+designations. STIR provides a continuous, operation-based measure of mechanical soil 
+disturbance that standardizes tillage intensity across years and management adjustments (Foster 
+et al., 2003; Renard et al., 2017). STIR integrates implement speed, tillage depth, a tillage type 
+modifier (TTM), and the proportion of soil surface disturbed into a dimensionless index 
+calibrated to erosion-relevant energy units. Values for each field operation were derived using 
+the Management Operations and Soil Erosion Simulation (MOSES) database distributed by 
+USDA–NRCS and implemented via the SoilManageR R package (Heller et al., 2025; Meyer et 
+al., 2001). The STIR value for a given operation was calculated as: 
+
+
+--- PAGE 12 ---
+ 
+Page 12 of 73 
+ 
+𝑆𝑇𝐼𝑅 = (0.5 ⋅ 𝑆𝑝𝑒𝑒𝑑
+1.609 ) ⋅ (3.25 ⋅ 𝑇𝑇𝑀)⋅ (𝐷𝑒𝑝𝑡ℎ
+2.54 ) ⋅ (𝑆𝑢𝑟𝑓𝑎𝑐𝑒𝐷𝑖𝑠𝑡𝑢𝑟𝑏𝑎𝑛𝑐𝑒
+100 ) (1) 
+where speed (km/h) is converted to miles per hour, tillage depth (cm) to inches, TTM represents 
+implement aggressiveness on a unitless scale from 0 to 1, and surface disturbance represents the 
+percentage of soil area mechanically affected. STIR values were computed for each recorded 
+tillage operation and later summarized during dataset assembly (Section 2.7) to align tillage 
+disturbance with crop-season windows and irrigation events. This approach is particularly useful 
+in the present study, where interannual variability in field operations can obscure treatment 
+effects when represented using discrete treatment categories alone. 
+2.4 Residue characterization 
+Crop residue cover was measured to characterize soil-surface protection associated with each 
+tillage system and to provide residue context for the water-quality analysis. Residue cover was 
+estimated using a line-transect method adapted from UNL and NRCS residue measurement 
+procedures (Shelton et al., 1990; USDA-NRCS, 2011). Measurements were collected annually 
+within a week of crop planting for each of the six plots when field conditions and project 
+logistics allowed. 
+Within each plot, three transect locations were selected to represent the north, middle, and south 
+portions of the plot (i.e., a sub-plot grid). In each sub-plot, a point was selected randomly and 
+used as the center of an X-shaped transect layout. Each arm of the X was 30.5 m long (100 ft) 
+and was oriented diagonally across the crop rows. Transects crossed six 0.762 m beds, equivalent 
+to six 30-inch beds. Surface cover was recorded at 0.305 m intervals (1 ft) along each transect 
+arm. 
+
+--- PAGE 13 ---
+ 
+Page 13 of 73 
+ 
+At each interval, the surface condition directly beneath the transect mark was classified as crop 
+residue, bare soil, living vegetation, human trash, or other surface cover. Only crop residue was 
+counted toward percent residue cover (Figure 3). 
+ 
+Figure 3. AWQP students collecting crop residue cover measurements at planting in the CT1 plot during the 2023 monitoring 
+season. Residue cover was measured using a line-transect method, with surface cover recorded at regular intervals along the 
+transect and crop residue used to calculate plot-level percent residue cover. 
+Percent residue cover was calculated for each transect as the number of points classified as crop 
+residue divided by the total number of observed points (200), multiplied by 100. When one or 
+
+
+--- PAGE 14 ---
+ 
+Page 14 of 73 
+ 
+more transects were not collected in a given plot and year, the missing transect values were 
+retained as missing. 
+2.5 Flow monitoring and water quality sampling 
+Six EoF monitoring sites were installed in the study field, approximately 8 m from the lower 
+field edge, with one site corresponding to each tillage research plot. Each plot was 36 seed beds 
+wide, with 0.762 m spacing between beds (i.e., 30-inch), and the EoF monitoring site was placed 
+near the plot center on rows 17 through 19. The two irrigated rows contributing to each 
+monitoring site, rows 17 and 19, were diverted into row 17 to provide sufficient flow for sample 
+collection and to reduce ponding around installed flumes. Because the study was maintained as a 
+long-term field experiment under operational agricultural conditions, monitoring infrastructure, 
+stage measurement technology, and sampling protocols evolved over the 14-year monitoring 
+period. 
+2.5.1 Flow monitoring infrastructure 
+EoF monitoring sites consisted of flow-control structures positioned to capture plot-level outflow 
+from furrow-irrigation events. Flow-measurement infrastructure varied through time as 
+equipment was replaced, refined, or upgraded. From 2011 through 2021, galvanized metal V-
+notch flumes, including 7-inch and 10-inch configurations, were deployed at each EoF site. From 
+2022 through 2025, runoff was monitored using fiberglass 60-degree trapezoidal flumes 
+(Robinson & Chamberlain, 1960). 
+Runoff stage and discharge were measured using a combination of automated and manual field 
+methods depending on study year, equipment availability, and sensor reliability. Pressure 
+transducers placed in flume stilling wells were used during early study years, including YSI 
+
+--- PAGE 15 ---
+ 
+Page 15 of 73 
+ 
+Level Scout pressure transducers from 2011 through 2013 (YSI Incorporated, Yellow Springs, 
+OH). Teledyne ISCO 730 bubbler units (Teledyne ISCO, Lincoln, NE) were used as the primary 
+automated stage measurement system from 2014 through 2025. Additional sensor technologies 
+were evaluated or deployed during later monitoring years, including Mileone eTape sensors 
+(Mileone Technologies, Inc., Sewell, NJ) from 2021 through 2025 and HOBO U20L-01 Water 
+Level Loggers (HOBO Data Loggers, Bourne, MA) in 2023. Manual ruler measurements were 
+collected throughout the study period to measure water depth when automated measurements 
+were unavailable and to calibrate, verify, or correct automated stage measurements when 
+possible. 
+Stage observations were converted to runoff discharge and event volume using the relevant 
+rating relationship for each flow-control structure. Because flow measurement technology and 
+reliability varied across the monitoring record, each observation was assigned metadata 
+describing the flume type and measurement method used. Years or events associated with 
+experimental sensors, incomplete deployment, equipment failure, or otherwise unreliable stage 
+records were flagged during quality assurance. When runoff volume could not be estimated 
+defensibly (e.g., equipment failure), the associated volume record was treated as unobserved 
+(i.e., missing) in the final dataset rather than assigned an assumed or calculated value. Events 
+where irrigation occurred but no plot outflow was observed, such as under extremely dry soil 
+conditions, were recorded as zero volume.  
+Inflow volume was measured for each plot during each irrigation event. For each plot and 
+irrigation set, inflow rate was estimated using two replicate timed fills of a 7 L bucket from each 
+of the two irrigation inflow rows. Replicate fill times were averaged and converted to an inflow 
+
+--- PAGE 16 ---
+ 
+Page 16 of 73 
+ 
+rate, which was then multiplied by the recorded irrigation duration for that plot to estimate total 
+inflow volume.  
+2.5.2 Water quality sampling approaches 
+Water-quality samples were collected at each plot’s outflow using multiple sampling approaches 
+over the long-term study period (Figure 4). Inflow water-quality samples were also collected 
+during irrigation events, whenever possible, from the concrete ditch, siphon tube, or gated-pipe 
+outlet used to deliver irrigation water. Inflow samples generally consisted of a primary sample 
+and field duplicate when feasible and were used to characterize source-water chemistry 
+associated with each irrigation event. 
+
+--- PAGE 17 ---
+ 
+Page 17 of 73 
+ 
+ 
+Figure 4. Example edge-of-field monitoring installation in a grain corn plot during the 2025 monitoring season. The image 
+shows a Teledyne ISCO automated sampler, an AWQP low-cost automated sampler, and a fiberglass 60-degree trapezoidal 
+flume installed near the plot outflow location. Multiple sampling systems are shown together here for visualization; in the long-
+term monitoring record, sampling infrastructure varied by year and plot, and a given plot was typically monitored using a single 
+sampling method deployed for that season. 
+
+
+--- PAGE 18 ---
+ 
+Page 18 of 73 
+ 
+Sampling methods at EoF sites varied over the long-term record as project objectives, labor 
+availability, monitoring technology, and equipment changed. Each sample was assigned a 
+method code describing how the sample was collected. Grab samples (GB) consisted of a 
+manually collected point sample at a single time without a technical sampler and were not 
+composited. Grab samples from a temporary V-notch weir (GBW), used during early monitoring 
+years, were collected manually with a bottle from water passing through an elevated V-notch 
+weir installed in the furrow. Hourly grab composites (GBH) consisted of manually collected grab 
+samples composited across an irrigation event or sampling window at approximately hourly 
+intervals. Three-part grab composites (GB3), used in 2023, combined subsamples representing 
+first-flush, first-hour, and last-hour runoff conditions. Automated samples were collected using 
+either commercial ISCO 6712 samplers (ISCO; Teledyne ISCO, Lincoln, NE) or low-cost 
+automated samplers (LC) developed by the CSU Agricultural Water Quality Program (Deleon et 
+al., 2025). ISCO and LC samplers collected water automatically from the outflow monitoring 
+location according to the sampling program used for that event. 
+These sample types were retained as explicit metadata because they represent different levels of 
+temporal integration within runoff events. GB and GBW samples represented point-in-time 
+conditions, GBH and GB3 samples represented manually composited event or within-event 
+conditions, and ISCO and LC samples represented automated sampler collections. This 
+classification allowed the long-term dataset to preserve information on whether each 
+concentration value reflected a single grab, a manual composite, or an automated sample, rather 
+than treating all water-quality observations as equivalent measurements. 
+For each water-quality observation, detailed sample metadata were retained to identify the 
+method by which the sample was collected and how it should be interpreted analytically. 
+
+--- PAGE 19 ---
+ 
+Page 19 of 73 
+ 
+Metadata fields included sampling method, composite type, duplicate status, first-flush 
+designation, measurement method, laboratory identifier, and other quality-control notes. 
+Duplicate samples, when available, were retained to characterize field variability. This structure 
+allowed the final dataset to distinguish among observed concentrations, missing samples, such as 
+samples lost through spills or sampler malfunction, and samples collected under conditions 
+requiring special interpretation. 
+In 2023 and 2024, this study site also served as a dedicated sampler comparison experiment 
+evaluating several EoF water-sampling approaches under the same field conditions as the long-
+term dataset. That work found broad agreement among sampling methods for most analytes, 
+supporting the use of multiple sampling approaches in long-term EoF monitoring when 
+collection methods and site configuration are documented. However, the study also showed that 
+apparent sampler differences can arise from interactions among flume morphology, intake 
+placement, and automated sampler purge procedures rather than from sampler type alone (Brown 
+et al., 2026). The present 14-year analysis extends that framework to a longer historical record 
+with additional sampling methods, but also including flow measurement type, and measurement 
+metadata needed to account for method-related uncertainty. 
+2.6 Laboratory analysis 
+Water samples collected from all sampling methods were analyzed for nutrients, sediment, salts, 
+and trace elements using methods generally consistent with NRCS CEMA 201 guidance for 
+edge-of-field monitoring where possible (USDA-NRCS, 2012). Because this study spans 14 
+years, analytical laboratories, method availability, detection limits, reporting limits, and project 
+objectives changed over time. Therefore, the methods listed below represent the primary 
+analytical approaches used for the final analytes included in this analysis, while year-specific 
+
+--- PAGE 20 ---
+ 
+Page 20 of 73 
+ 
+laboratory methods, method detection limits, reporting limits, qualifier flags, and laboratory 
+identifiers were retained in the dataset whenever available. When analytical results or method 
+documentation were not sufficiently reliable for a given sample, analyte, or year, those 
+observations were treated as missing rather than assigned assumed values. 
+The primary analytes used in this analysis included: Nitrate and Nitrite -N (NO3-N and NO2-N, 
+respectively; U.S. Environmental Protection Agency, 1993b; 353.2), ammonium-N (NH4-N; 
+U.S. Environmental Protection Agency, 1993b; 350.1), Total Phosphorus (TP; U.S. 
+Environmental Protection Agency, 1993c; 365.2), Total Kjeldahl Nitrogen (TKN; Standard 
+Methods Committee of the American Public Health Association American Water Works 
+Association & Federation, 2017; A4500-NH3), Orthophosphate as P (OP; U.S. Environmental 
+Protection Agency, 1993a; 300.0), Total Suspended Solids (TSS; U.S. Environmental Protection 
+Agency, 1971; 160.2), pH (U.S. Environmental Protection Agency, 1982a; 150.1), Total 
+Dissolved Solids (TDS; U.S. Environmental Protection Agency, 1971a; 160.1), selenium (Se; 
+U.S. Environmental Protection Agency, 1994; 200.8), and specific conductance (EC; U.S. 
+Environmental Protection Agency, 1982b). 
+Laboratory analyses were conducted by a combination of CSU and external analytical 
+laboratories over the long-term monitoring record. These included the CSU Soil, Water, and 
+Plant Testing Laboratory (Denver, CO, USA), the CSU EcoCore Analytical Facility (Fort 
+Collins, CO, USA), ALS Environmental (Houston, TX, USA), and the CSU AWQP wet 
+laboratory (Fort Collins, CO, USA). Laboratory selection varied by year, analyte, available 
+analytical capacity, and project objectives. Early years relied primarily on CSU laboratory 
+analyses, whereas later years increasingly used external commercial laboratory services, 
+including ALS Environmental. TSS was measured throughout the study period because sediment 
+
+--- PAGE 21 ---
+ 
+Page 21 of 73 
+ 
+loss was a primary water-quality response of interest, whereas EC, TDS, and pH were added 
+beginning in 2022. 
+Where analytical methods changed through time, those changes were documented and retained 
+as part of the long-term data record. Not all analytes were measured in all years because 
+monitoring objectives, funding, and laboratory capacity changed during the study period. 
+Accordingly, the final dataset preserved analytical method, laboratory identifier, minimum 
+detection limit (MDL), reporting limit (RL), qualifier flags, and laboratory comments as 
+metadata. This structure allowed results generated by multiple laboratories and evolving 
+analytical methods to be retained while maintaining traceability for quality assurance. 
+2.7 Data preparation 
+Data processing was conducted using a scripted workflow that integrated water-quality records, 
+runoff-volume estimates, residue-cover measurements, tillage operation records, and crop 
+records into a common long-format analytical dataset. The purpose of this workflow was to 
+preserve the long-term monitoring record while maintaining traceability of laboratory methods, 
+field measurement methods, crop-season assignments, treatment history, and missing or censored 
+observations. 
+2.7.1 Data processing and quality control 
+Water-quality records were screened for laboratory qualifiers, non-detect flags, duplicate status, 
+sampling method, laboratory identifier, analytical method, and reporting or detection-limit 
+information. Values reported below detection or reporting limits were retained with censoring 
+information when available. Qualifier flags, estimated-value flags, holding-time notes, laboratory 
+comments, and other quality-control metadata were preserved in the analytical dataset when 
+
+--- PAGE 22 ---
+ 
+Page 22 of 73 
+ 
+available. Duplicate samples were retained and explicitly identified so that duplicate status could 
+be represented in the statistical model. 
+Runoff-volume records were screened separately from concentration records. Events with 
+observed irrigation but no plot runoff were coded using a no-runoff indicator and distinguished 
+from events where runoff volume was unavailable because of equipment failure, incomplete 
+stage records, experimental sensor deployment, or other field limitations. Missing runoff-volume 
+values were retained as missing values rather than replaced by assumed values. For the final 
+Bayesian model, runoff volume was indexed at the event-volume-unit level and then mapped to 
+analyte-specific concentration rows, preventing repeated analyte rows from being treated as 
+independent volume measurements. 
+Residue-cover records were screened for plot, treatment, replicate, year, sampling position, and 
+percent-cover values. Transect-level measurements from the north, middle, and south portions of 
+each plot were averaged to obtain plot-level residue cover for each measurement year when 
+available. Missing transect or plot-year residue measurements were retained as missing values. 
+For Bayesian model inputs, residue cover was converted from percent cover to a proportion. 
+Values of 0% and 100% were adjusted slightly inward so that all residue-cover values fell within 
+the open interval required for logit-scale modeling. The residue-cover dataset used in this 
+analysis is provided as Supplementary Material S1. 
+Tillage records were screened for date consistency, treatment assignment, duplicate entries, 
+missing operation names, and user-entry differences where different labels referred to the same 
+implement or field activity. Operation names were standardized to a common tillage-operation 
+key, and implement assignments were checked against field notes and supplemental records 
+
+--- PAGE 23 ---
+ 
+Page 23 of 73 
+ 
+when available. The cleaned tillage records were normalized into a master operation table 
+containing date, treatment system, operation type, and STIR input information for each field 
+activity. STIR was calculated for each recorded operation and accumulated within crop-season 
+windows. Seasonal STIR was reset immediately after harvest, such that tillage operations 
+occurring after harvest were assigned to the following crop season. For each water-quality 
+sampling date, season-to-date STIR represented cumulative disturbance from the previous crop 
+harvest through the sampling date. The tillage operation records used to calculate STIR are 
+provided as Supplementary Material S2. 
+Crop records were screened for crop type, planting date, harvest date, and yield information 
+when available. These records were used to define crop-season windows, assign water-quality 
+observations to crop seasons, and identify the previous crop associated with each observation for 
+the residue submodel. The crop records used for seasonal assignment and previous-crop 
+classification are provided as Supplementary Material S3. 
+Event chronology was preserved using date, year, irrigation number, treatment, replicate, and 
+inflow or outflow designation. Records with partial information were retained when the available 
+fields could be linked reliably to an irrigation event, plot, treatment, and analyte. Field notes 
+were retained as a notes field and used to document year-specific issues, including 
+instrumentation transitions, sampling limitations, laboratory changes, irrigation infrastructure 
+changes, funding-related gaps, and unusual field conditions. 
+2.7.2 Dataset integration 
+The dataset assembly workflow consisted of three primary integration steps. First, water-quality 
+data were converted from wide-format laboratory records to a long-format structure in which 
+
+--- PAGE 24 ---
+ 
+Page 24 of 73 
+ 
+each row represented a single sample, analyte, and result. The long-format table retained sample 
+identifiers, date, year, irrigation number, treatment, replicate, inflow or outflow designation, 
+analyte, concentration, qualifier flags, sampling method, compositing information, duplicate 
+status, first-flush designation, laboratory, analytical method, and field notes. Runoff-volume 
+records were linked to water-quality observations by date, year, irrigation event, treatment, 
+replicate, and inflow or outflow designation. 
+Second, management records were prepared for integration with the water-quality dataset. 
+Tillage records were processed from FarmLogic logs and supplemental field records and used to 
+calculate season-to-date STIR. Crop records were processed to identify crop type, planting date, 
+harvest date, and yield. Residue-cover records were summarized by plot, treatment, replicate, 
+and year. 
+Third, water-quality observations were assigned to crop-season windows based on sampling date 
+relative to planting and harvest records. Seasonal merging attached crop metadata, previous-crop 
+metadata, plot-level residue cover, and season-to-date STIR values to each water-quality record. 
+The final merged dataset was indexed by date, treatment, irrigation event, replicate, and analyte, 
+with one row per analyte-specific outflow observation when available. Key derived fields 
+included crop-season metadata, plot-level residue cover, season-to-date STIR from the previous 
+crop harvest through the sample date, inflow chemistry, inflow volume, outflow concentration, 
+outflow volume, censoring information, and field-method metadata. 
+Data processing and dataset assembly were implemented in Python using pandas for tabular data 
+manipulation and NumPy for numerical operations (Harris et al., 2020; McKinney, 2010; Python 
+Software Foundation, 2023). The final model-ready dataset spanned the 2011 through 2025 
+
+--- PAGE 25 ---
+ 
+Page 25 of 73 
+ 
+monitoring period and retained years with partial records, instrumentation transitions, laboratory 
+changes, irrigation infrastructure changes, and funding-related gaps. The full cleaned and merged 
+analytical dataset used for Bayesian modeling is provided as Supplementary Material S4.  
+2.8 Bayesian modeling framework for tillage effects on runoff and water quality 
+2.8.1 Directed acyclic graph and target estimand 
+A directed acyclic graph (DAG; Figure 5) was used to define the assumed data-generating 
+process before fitting the statistical model. The DAG was used for two purposes. First, it 
+clarified the target estimand as the direct effect of season-to-date STIR on latent runoff 
+concentration and latent runoff volume, conditional on the measured and modeled mediating and 
+adjustment variables included in the model. Second, it identified the variables needed to separate 
+this direct effect from confounding, measurement heterogeneity, censoring, missing 
+observations, and shared temporal structure. This approach follows the general causal workflow 
+in which a graphical model is used to state assumptions, define the estimand, and then translate 
+those assumptions into a statistical model rather than treating regression adjustment as a purely 
+algorithmic variable-selection exercise (Gelman et al., 2026; McElreath, 2020; Pearl, 2009, 
+2012) .
+
+--- PAGE 26 ---
+ 
+Page 26 of 73 
+ 
+ 
+Figure 5. Directed acyclic graph (DAG) used to define the Bayesian causal model for estimating direct STIR effects on runoff concentration, runoff volume, and derived mass load. 
+Subscript 𝑎 denotes variables fit on a per-analyte basis. Arrows represent causal influence, and dashed boxes indicate latent or derived quantities that were not observed directly. 
+For analyte-specific quantities, including inflow concentration 𝐼𝑁𝐹𝑐𝑜𝑛𝑐,𝑎, latent true concentration 𝐶𝑎,𝑡𝑟𝑢𝑒, observed concentration 𝐶𝑎,𝑜𝑏𝑠, and derived load 𝐿𝑎, the subscript 
+denotes the corresponding analyte. For design and management variables, including flume type 𝐹𝑎, block 𝐵𝑎, irrigation count 𝐼𝑅𝑅𝑎, sampler method 𝑆𝑎, duplicate status 𝐷𝑈𝑃𝑎, 
+year 𝑌𝑎, crop 𝐶𝑅𝑂𝑃𝑎𝑡, previous crop 𝐶𝑅𝑂𝑃𝑎𝑡−1, and residue 𝑅𝑎, the subscript denotes the analyte-indexed row to which the variable or modeled effect was assigned. Observed 
+outflow concentration 𝐶𝑎,𝑜𝑏𝑠 and observed outflow volume 𝑉𝑜𝑢𝑡,𝑜𝑏𝑠 were modeled as noisy measurements of latent true states 𝐶𝑎,𝑡𝑟𝑢𝑒 and 𝑉𝑜𝑢𝑡,𝑡𝑟𝑢𝑒, with observation error terms 𝑒𝑐 
+and 𝑒𝑣, respectively. STIR was the primary exposure of interest. Residue cover 𝑅𝑎 was modeled as a descendant of STIR and previous crop and as a predictor of concentration and 
+volume, so the main STIR coefficients estimate direct effects conditional on residue rather than total residue-mediated effects. Inflow concentration and inflow volume accounted 
+for upstream water-quality and water-quantity conditions. Current crop, previous crop, irrigation count, block, sampler method, flume method, duplicate status, and shared year 
+effects represented management, design, measurement, and temporal structure. Dashed colored arrows indicate the direct STIR pathways estimated in the outcome submodels; 
+load 𝐿𝑎 was then derived from the latent concentration and volume states. Colors separate the concentration, volume, residue, and temporal components of the joint generative 
+model.
+
+
+--- PAGE 27 ---
+ 
+Page 27 of 73 
+ 
+The primary exposure was season-to-date STIR, a continuous index of realized soil disturbance 
+accumulated from the previous crop harvest through each runoff sampling date. The DAG 
+distinguished STIR from nominal treatment labels, which describe the experimental management 
+systems but do not fully capture year-specific differences in implemented operations. The 
+modeled outcomes were latent true outflow concentration, denoted 𝐶𝑎,true, and latent true 
+outflow volume, denoted 𝑉out,true. Their observed counterparts, 𝐶𝑎,obs and 𝑉out,obs, were treated 
+as noisy measurements of those latent states. Concentration observations could also be left 
+censored below a reporting or detection limit, denoted 𝐿𝑖. Derived mass load was post-calculated 
+as a deterministic function of latent concentration and event-level latent runoff volume. 
+The DAG included two distinct pathways by which tillage disturbance could influence water 
+quality: 1) the direct pathway from STIR to latent concentration and latent volume after 
+conditioning on the other modeled variables and 2) an indirect pathway through residue cover 
+because tillage disturbance can alter surface residue, and residue can in turn affect runoff 
+generation, sediment detachment, and constituent transport.  
+2.8.2 Joint generative model structure 
+The statistical model was fit as a joint hierarchical Bayesian latent-state generalized linear mixed 
+model rather than as a sequence of independent regressions. The term generalized linear mixed 
+model is used here in the broad sense that the joint likelihood combined multiple linked 
+components: Gaussian latent-state models for continuous standardized concentration and runoff 
+volume, a logit-normal component for bounded residue proportions, left-censoring for non-
+detects, imputed missing predictors, hierarchical multivariate normal effects, and a multi-output 
+Gaussian process (MOGP) over year. This joint structure allowed uncertainty from measurement 
+
+--- PAGE 28 ---
+ 
+Page 28 of 73 
+ 
+error, censoring, missing predictors, latent runoff volume, residue cover, and temporal 
+dependence to propagate through the posterior distribution.  
+The concentration component was a Gaussian latent-state linear mixed model on the 
+standardized concentration scale. Observed outflow concentrations were modeled as noisy 
+measurements of analyte-specific latent true concentration states, 𝐶𝑖
+∗. The latent concentration 
+process included season-to-date STIR, inflow concentration, event-level latent runoff volume, 
+irrigation count, duplicate status, residue cover, crop, block, sampler method, flume method, and 
+year-by-analyte temporal deviations. For observed, uncensored concentrations, the observation 
+model was: 
+𝐶𝑖
+obs ∼ 𝒩(𝐶𝑖
+∗, 𝜎𝐶,obs,𝑎[𝑖]) (2) 
+where 𝐶𝑖
+obs is the observed standardized concentration for row 𝑖, 𝐶𝑖
+∗ is latent true concentration, 
+and 𝜎𝐶,obs,𝑎[𝑖] is the analyte-specific observation standard deviation. Observations reported below 
+a method detection or reporting limit were retained using a left-censored likelihood: 
+Pr(𝐶𝑖
+obs < 𝐿𝑖 ∣ 𝐶𝑖
+∗, 𝜎𝐶,obs,𝑎[𝑖]) = 𝛷 ( 𝐿𝑖 − 𝐶𝑖
+∗
+𝜎𝐶,obs,𝑎[𝑖]
+) (3) 
+where 𝐿𝑖 is the reporting or detection limit transformed to the standardized concentration scale 
+and 𝛷(⋅) is the standard normal cumulative distribution function. This approach used the 
+information that the unobserved concentration was below the reporting threshold without 
+replacing non-detects with zero, one-half the reporting limit, or another substituted value. 
+The runoff-volume component was a Gaussian hierarchical linear model on the standardized 
+runoff-volume scale. Because runoff volume was measured at the event scale but repeated across 
+
+--- PAGE 29 ---
+ 
+Page 29 of 73 
+ 
+analyte rows in the long-format dataset, the model indexed runoff volume at the event-volume-
+unit level. Let 𝑒 = 1, … , 𝐸 index unique event-volume units and let 𝑒[𝑖] map analyte row 𝑖 to its 
+corresponding event-volume unit. For observed runoff volume records, the observation model 
+was applied once per event-volume unit: 
+𝑉𝑒
+obs ∼ 𝒩(𝑉𝑒
+∗, 𝜎𝑉,obs) (4) 
+where 𝑉𝑒
+obs is observed standardized runoff volume, 𝑉𝑒
+∗ is latent true event-level runoff volume, 
+and 𝜎𝑉,obs is the runoff-volume observation standard deviation. The volume submodel included 
+STIR, inflow volume, residue cover, and crop. The resulting latent event-level volume 𝑉𝑒
+∗ was 
+mapped back to each analyte row as 𝑉𝑒[𝑖]
+∗  for use in the concentration and load calculations. 
+The residue component was a logit-normal regression model for bounded residue proportions. 
+Residue cover was modeled explicitly because it occupied an intermediate position in the DAG: 
+STIR and previous crop were used to estimate residue cover, and residue was then included as a 
+predictor of both concentration and runoff volume. In the cover-based implementation, the model 
+used a Gaussian likelihood for logit-transformed residue proportion: 
+logit(𝑅𝑖
+obs) ∼ 𝒩(𝜂𝑖
+𝑅, 𝜎𝑅) (5) 
+where 𝑅𝑖
+obs is the observed residue proportion assigned to row 𝑖, 𝜂𝑖
+𝑅 is the modeled residue mean 
+on the logit scale, and 𝜎𝑅 is the residue observation standard deviation. Missing residue values 
+were estimated within the model rather than removed through listwise deletion. 
+Missing inflow concentration and missing inflow volume were represented as latent standardized 
+predictors rather than assigned separate regression submodels. Missing values were assigned 
+weakly informative standard normal priors on their standardized scales and then merged with 
+
+--- PAGE 30 ---
+ 
+Page 30 of 73 
+ 
+observed values before entering the concentration and volume submodels. This allowed 
+incomplete events to remain in the analysis while carrying forward uncertainty in upstream 
+water-quality and water-quantity conditions. 
+Shared temporal structure was represented using a MOGP over year. This component estimated 
+year-by-analyte deviations, 𝐺𝑦,𝑎, from the modeled mean response, allowing annual deviations to 
+be correlated through time and across analytes. The MOGP was included to capture temporal 
+persistence and shared unexplained structure in the long-term monitoring record after accounting 
+for STIR, residue, inflow conditions, crop, irrigation count, measurement method, and design 
+variables. Full mathematical specification of the concentration, volume, residue, missing-data, 
+and temporal components is provided in Supplementary Material S5. 
+2.8.3 Priors and computation 
+Prior distributions were selected to regularize estimation on standardized scales while allowing 
+effects large enough to be detected when supported by the data. Regression slopes in the 
+concentration, volume, and residue submodels were assigned zero-centered weakly informative 
+normal priors, commonly 𝑁𝑜𝑟𝑚𝑎𝑙(0, 1), reflecting the expectation that a one standard deviation 
+change in a predictor would usually produce a one standard deviation change in the response 
+while still allowing larger effects when supported by the likelihood. 
+A key feature of the model was the use of non-centered multivariate normal prior structures for 
+related parameter groups. The analyte-specific concentration intercepts, direct STIR slopes, 
+inflow-concentration slopes, and duplicate-sample effects were modeled jointly so that 
+information could be partially pooled across analytes while allowing correlations among these 
+related coefficients. Block, sampler-method, and flume-method effects were also parameterized 
+
+--- PAGE 31 ---
+ 
+Page 31 of 73 
+ 
+using non-centered multivariate normal structures, allowing the model to estimate structured 
+variation associated with experimental design and measurement heterogeneity rather than 
+treating each level as an unrelated fixed adjustment. In addition, irrigation-count slopes were 
+modeled as correlated analyte-specific effects. 
+For a generic vector of related effects, the non-centered multivariate normal structure can be 
+written as: 
+𝜽 ∗ 𝑗 = 𝝁 ∗ 𝜃 + diag(𝝈 ∗ 𝜃)𝐋 ∗ 𝛺𝐳𝑗, 𝐳𝑗 ∼ Normal(𝟎, 𝐈) (6) 
+where(𝜽 ∗ 𝑗) is a vector of related effects, (𝝁 ∗ 𝜃) is the corresponding mean vector, (𝝈 ∗ 𝜃) is a 
+vector of marginal standard deviations, (𝐋 ∗ 𝛺) is the Cholesky factor of the correlation matrix 
+(𝛀), and (𝐳𝑗) is a vector of independent standard normal variables. This non-centered form 
+implies the multivariate normal prior: 
+𝜽 ∗ 𝑗 ∼ MVN(𝝁 ∗ 𝜃, diag(𝝈 ∗ 𝜃)𝛀diag(𝝈 ∗ 𝜃)) (7) 
+where (diag(𝝈 ∗ 𝜃)𝛀diag(𝝈 ∗ 𝜃)) is the covariance matrix. This parameterization allows related 
+effects to be partially pooled while estimating their posterior correlation structure, and it 
+generally improves Hamiltonian Monte Carlo sampling behavior in hierarchical models. 
+Correlation matrices were assigned Lewandowski-Kurowicka-Joe (LKJ) Cholesky correlation 
+priors (Lewandowski et al., 2009). In the final model, LKJ priors were used for the multivariate 
+analyte-level concentration coefficients, block effects, sampler-method effects, flume-method 
+effects, analyte-specific irrigation slopes, and the cross-analyte covariance structure in the multi-
+output Gaussian process. The LKJ shape parameter was set to (𝜂 = 2) for the final model, 
+providing mild regularization toward zero correlation while still allowing substantial posterior 
+
+--- PAGE 32 ---
+ 
+Page 32 of 73 
+ 
+correlation when supported by the data. Marginal standard deviations for hierarchical effects, 
+process variation, crop effects, and Gaussian-process output variation were assigned exponential 
+priors, commonly 𝐸𝑥𝑝𝑜𝑛𝑒𝑛𝑡𝑖𝑎𝑙(2). The runoff-volume observation standard deviation was 
+assigned 𝐸𝑥𝑝𝑜𝑛𝑒𝑛𝑡𝑖𝑎𝑙(5), reflecting stronger regularization of measurement error on the 
+standardized volume scale. The baseline residue proportion was assigned a 𝐵𝑒𝑡𝑎(2, 10) prior, 
+while residue observations were modeled with a logit-normal likelihood. 
+The model was implemented in Stan version 2.36 using cmdStanR version 2.36 (Gabry et al., 
+2025; Stan Development Team, 2023). Stan was used to estimate the joint posterior distribution 
+for all model parameters, latent states, imputed predictors, and derived quantities using 
+Hamiltonian Monte Carlo with the No-U-Turn Sampler. Posterior distributions were processed in 
+R version 4.4.2 (R Core Team, 2020) using RStudio version 2025.9.1.401 (Posit team, 2025). 
+The final model was fit using four Markov chains with 2000 warmup iterations 1000 retained 
+posterior draws per chain.  
+Model convergence and sampling quality were evaluated using visual inspection of trace plots, 
+split (𝑅ˆ ), effective sample size, divergent transitions, tree-depth warnings, and energy 
+diagnostics. Detailed convergence diagnostics, posterior checking figures, and sampling 
+summaries are provided in Supplementary Material S5. 
+2.8.4 Posterior load calculation 
+Mass load was not modeled as an independent observed response. Instead, event loads were 
+calculated as posterior derived quantities from analyte-specific latent concentration and event-
+level latent runoff volume, and annual loads were obtained by summing event loads within year, 
+treatment, and analyte. This approach allowed annual load estimates to inherit uncertainty from 
+
+--- PAGE 33 ---
+ 
+Page 33 of 73 
+ 
+concentration, volume, censoring, missing predictors, residue cover, regression parameters, 
+hierarchical effects, and temporal dependence. For each posterior draw, analyte-specific 
+concentration and event-level runoff volume were transformed back to their original units and 
+multiplied at the event scale: 
+𝑀𝑖,𝑎 = 𝐶𝑖,𝑎
+orig𝑉𝑒𝑖
+orig (8) 
+where 𝑀𝑖,𝑎 is event load for analyte 𝑎 in row 𝑖, 𝐶𝑖,𝑎
+orig is concentration in original concentration 
+units, and 𝑉𝑒𝑖
+orig is runoff volume in original volume units for the event-volume unit associated 
+with row 𝑖. Thus, each analyte-specific concentration record was paired with the corresponding 
+event-level volume, but the volume observation likelihood was applied only once per event-
+volume unit. 
+Annual load was then obtained by summing event loads within each year, treatment, and analyte: 
+𝑀𝑌,𝑇,𝑎 = ∑ 𝑀𝑖,𝑎
+𝑖∈(𝑌,𝑇,𝑎)
+(9) 
+where 𝑀𝑌,𝑇,𝑎 is annual load for year 𝑌, treatment 𝑇, and analyte 𝑎. Because this calculation was 
+repeated for each posterior draw, annual load uncertainty propagated uncertainty from latent 
+concentration, event-level latent volume, censoring, missing inflow concentration, missing 
+inflow volume, missing residue, regression parameters, hierarchical effects, and temporal 
+dependence. 
+3 RESULTS AND DISCUSSION 
+Focusing on the impacts of tillage disturbance intensity (i.e., STIR) on the system over time, 
+several key outcomes are presented, including STIR impacts on constituent concentrations, 
+
+--- PAGE 34 ---
+ 
+Page 34 of 73 
+ 
+surface residue cover, runoff volume, temporal persistence trends and a cumulative effect in 
+annual loadings for each analyte. 
+3.1 Final analytical dataset and realized tillage disturbance 
+The final analytical dataset combined long-term water-quality observations with crop history, 
+residue cover, runoff-volume estimates, inflow conditions, sampling metadata, and calculated 
+STIR values for the 2011 to 2025 monitoring period. This integrated structure allowed each 
+analyte-specific outflow observation to be linked to the crop season, previous crop, plot-level 
+residue cover, event-level runoff volume, inflow concentration, inflow volume, field 
+measurement method, laboratory method, and cumulative soil disturbance history associated 
+with that sampling event. 
+Figure 6 shows season-to-date STIR accumulation by tillage system from 2011 through 2025, 
+with values resetting after each crop harvest. These seasonal trajectories show how mechanical 
+disturbance accumulated within individual crop seasons and how strongly CT separated from the 
+two conservation tillage systems. Across the full monitoring period, total cumulative STIR was 
+greatest under CT (2,894), whereas MT and ST accumulated substantially lower total disturbance 
+(1,158 and 1,156, respectively). Although MT and ST were implemented using distinct 
+conservation tillage practices, their cumulative STIR totals were nearly identical, indicating that 
+both systems produced similar overall mechanical disturbance relative to CT. 
+
+--- PAGE 35 ---
+ 
+Page 35 of 73 
+ 
+ 
+Figure 6. Season-to-date Soil Tillage Intensity Rating (STIR) accumulation for conventional tillage (CT), strip tillage (ST), and 
+minimum tillage (MT) treatments from 2011 through 2025. STIR values were accumulated within each crop-season window and 
+reset after harvest, such that post-harvest field operations were assigned to the following crop season. Higher values indicate 
+greater cumulative mechanical soil disturbance within the active crop season. 
+Water-quality analyte availability varied through time because the analytical suite changed with 
+monitoring objectives, laboratory capacity, and funding (Table 1). Unobserved values therefore 
+primarily represent irrigation-event records for which a given analyte was not analyzed, rather 
+than samples that were collected and lost. For example, nitrogen reporting changed over time as 
+total nitrogen measurements were replaced or supplemented by individual nitrogen fractions, 
+including NO3-N, NO2-N, TKN, and, in selected years, NH4-N. Other analytes, such as TDS 
+and Se, were added only during later or selected monitoring periods. The long-format dataset 
+retained these unobserved analyte-event combinations as NA values to preserve the event 
+structure needed for model fitting and imputation. TSS had the greatest availability, with 
+measured values for 81% of possible analyte-event records, followed by NO3-N, OP, TP, and 
+TKN, which were observed for approximately 67 to 76% of records. NH4-N, TN, Se, TDS, and 
+NO2-N were observed less consistently, with unobserved or unavailable values ranging from 60 
+to 93% of possible records. 
+
+
+--- PAGE 36 ---
+ 
+Page 36 of 73 
+ 
+Table 1. Water-quality analyte availability in the assembled long-format dataset. Possible analyte-event records represent 
+padded event-level records after dataset assembly. Observed values are nonmissing analytical results. Unobserved or 
+unavailable records are records where the irrigation event existed in the dataset but the analyte was not measured, was not 
+included in that year’s analytical suite, or did not have a usable result. 
+Analyte Possible analyte-
+event records 
+Observed 
+values 
+Unobserved or 
+unavailable records 
+Unobserved or 
+unavailable (%) 
+NH4-N 1,095 82 1,013 93 
+NO3-N 1,100 831 269 24 
+NO2-N 1,095 440 655 60 
+OP 1,098 811 287 26 
+Se 1,095 215 880 80 
+TDS 1,095 368 727 66 
+TKN 1,095 739 356 33 
+TN 1,101 172 929 84 
+TP 1,101 815 286 26 
+TSS 1,109 894 215 19 
+ 
+3.2 Direct effects of STIR on water quality 
+The analyte-specific concentration STIR effects are shown in Figure 7. Posterior distributions for 
+TSS, TKN, and TP are shifted clearly to the right of zero, indicating that higher STIR was 
+associated with higher concentrations of these analytes. Se and OP also show positive median 
+effects, although with broader uncertainty. By contrast, the distributions for NH4-N, TDS, NO3-
+N, and NO2-N remain closer to zero and overlap it more strongly, indicating weaker or less 
+certain relationships with soil disturbance. This contrast between particulate-associated and more 
+dissolved constituents is consistent with the broader tillage and water-quality literature, which 
+shows that reduced disturbance and greater residue cover are effective at reducing sediment and 
+
+--- PAGE 37 ---
+ 
+Page 37 of 73 
+ 
+sediment-bound nutrient transport, while dissolved constituents are often more weakly or 
+inconsistently tied to surface soil disturbance alone (Baulch et al., 2019; Duncan et al., 2019; 
+Prasad, Thomason, et al., 2023). In irrigated furrow systems, sediment transport is also closely 
+coupled to phosphorus movement, making positive STIR effects on particulate analytes 
+particularly plausible in this setting (Bjorneberg, Aase, et al., 2006). 
+
+--- PAGE 38 ---
+ 
+Page 38 of 73 
+ 
+ 
+Figure 7. Posterior distributions of analyte-specific effects of soil disturbance intensity (STIR) on edge-of-field runoff 
+concentrations. Each ridge represents the range of plausible effect sizes estimated by the Bayesian model for a given analyte. The 
+horizontal axis shows the direction and magnitude of the relationship between STIR and concentration, with the dashed vertical 
+line at zero indicating no effect. Distributions located primarily to the right of zero indicate that higher soil disturbance is 
+associated with higher runoff concentrations, whereas distributions overlapping zero indicate weaker or uncertain relationships. 
+Vertical tick marks within each distribution denote the posterior median estimate. Analytes are ordered by increasing median 
+effect size. Particulate-associated constituents (e.g., TSS, TP, TKN) show the strongest and most consistently positive responses 
+to increasing tillage intensity, while dissolved constituents display weaker or more uncertain responses. 
+ 
+
+
+--- PAGE 39 ---
+ 
+Page 39 of 73 
+ 
+These concentration responses translate into comparable event-scale loading patterns when 
+runoff volume is considered. The modeled STIR-load relationships show positive average trends 
+for several analytes, with the strongest increases occurring for TSS, TP, and TKN (Figure 8). 
+The darker ribbons represent uncertainty in the estimated mean relationship between STIR and 
+analyte load, shown as the 95% posterior HDPI for the expected mean response. In contrast, the 
+lighter ribbons represent the 95% posterior predictive HDPI (henceforth, “prediction interval”), 
+which describes the range of individual observations expected around that mean relationship. 
+Predictive uncertainty, or the inherent imprecision and range of possible outcomes in forecasts 
+by the generative model, includes multiple sources of variability: natural process variability (e.g., 
+year effects, block effects, temporal MOGP deviations, and residual variability representing 
+unmodeled physical variability), as well as observation uncertainty (e.g., measurement error in 
+the derivation of concentration values and runoff volume). As a result, the predictive intervals for 
+each analyte are substantially wider than that of the mean STIR-load response. Because event 
+loads are computed from the modeled latent “true” concentration and runoff-volume states rather 
+than directly from noisy observations, the model explicitly separates measurement error from 
+underlying process relationships. This hierarchical structure allows uncertainty in the observation 
+process to be accounted for in estimating the mean STIR-load response from the latent 
+environmental states, providing clearer inference about management effects than approaches that 
+rely solely on observed measurements (e.g., machine-learning). 
+The resulting mean relationships consistently indicate that increasing STIR tends to elevate mass 
+export for analytes most closely associated with sediment mobilization. The persistence of 
+positive STIR-load relationships despite wide predictive intervals indicates that the management 
+signal is present but embedded within substantial real-world hydrologic variability, which is 
+
+--- PAGE 40 ---
+ 
+Page 40 of 73 
+ 
+typical of field-scale EoF systems (Brown et al., 2026; Harmel et al., 2023; Issaka & Ashraf, 
+2017). By contrast, dissolved analytes such as NO3-N and TDS display much flatter average 
+load responses, reinforcing the conclusion that their transport is less directly controlled by soil 
+disturbance and residue-mediated erosion processes. 
+
+--- PAGE 41 ---
+ 
+Page 41 of 73 
+ 
+ 
+Figure 8. Modeled relationships between seasonal soil disturbance intensity (STIR) and event-scale analyte loads at the field edge. Points represent observed loads from 
+individual runoff events. The solid line shows the posterior mean relationship estimated by the Bayesian model, holding other predictors at representative average values. The 
+darker shaded ribbon indicates uncertainty in the estimated mean relationship (95% HDPI), while the lighter ribbon shows the posterior predictive interval that incorporates both 
+model uncertainty and observation-level variability. Seasonal STIR represents the cumulative soil disturbance applied during the growing season. Positive slopes indicate 
+increasing mass export with greater soil disturbance, while flat relationships indicate weak or negligible responses.  
+
+
+--- PAGE 42 ---
+ 
+Page 42 of 73 
+3.3 Disentangling tillage and residue effects on volume 1 
+The posterior distribution for the effect of STIR on residue cover lies almost entirely below zero, 2 
+indicating strong evidence that greater disturbance reduced surface residue cover (Figure 9). This 3 
+result is consistent with the physical role of tillage in incorporating and fragmenting crop 4 
+residues and with broader evidence that reduced tillage generally preserves greater surface cover 5 
+than conventional systems (Deleon et al., 2020; Prasad, Thompson, et al., 2023; Trimarco et al., 6 
+2025).  7 
+ 8 
+Figure 9. Posterior distribution of the estimated effect of soil disturbance intensity (STIR) on surface residue cover. The 9 
+horizontal axis shows the estimated change in the logit-transformed residue proportion associated with increasing tillage 10 
+intensity, while the vertical axis represents the density of plausible effect values inferred from the Bayesian model. The dashed 11 
+vertical line at zero indicates no effect. The distribution lies almost entirely to the left of zero, indicating strong evidence that 12 
+greater soil disturbance reduces surface residue cover.  13 
+The model also characterized the impact of residue cover on runoff volume, in which the 14 
+posterior distribution lies entirely below zero (Figure 10). This suggests that greater retained 15 
+
+
+--- PAGE 43 ---
+ 
+Page 43 of 73 
+residue consistently reduces runoff generation. Residue cover increases surface roughness, slows 16 
+overland and furrow flow velocities, and enhances infiltration opportunity time, all of which can 17 
+reduce the fraction of applied water leaving the field as runoff (Bryant et al., 2021; Mailapalli et 18 
+al., 2013). Because residue retention is itself strongly influenced by tillage intensity (Figure 9), 19 
+this relationship provides a pathway linking disturbance to downstream hydrologic and water-20 
+quality responses. 21 
+ 22 
+Figure 10. Posterior distribution for the effect of surface residue cover (decimal percent from 0 – 1) on runoff volume. The 23 
+distribution lies entirely below zero, indicating strong evidence that greater residue cover reduces runoff volume. The dashed 24 
+vertical line denotes a null effect.  25 
+The effect of STIR on runoff volume indicates a modest negative association, with most 26 
+plausible effect values falling below zero (Figure 11). This indicates that, in this dataset, greater 27 
+soil disturbance was associated with slightly lower runoff volumes on average, although the 28 
+magnitude of the effect is small and sometimes also positive (i.e., some of the distribution lies 29 
+
+
+--- PAGE 44 ---
+ 
+Page 44 of 73 
+above zero). Tillage can alter soil structure, infiltration, surface roughness, and furrow flow 30 
+hydraulics in ways that do not produce a universal hydrologic response across sites or 31 
+management systems (Berehe et al., 2013; Bjorneberg, Aase, et al., 2006; Munkholm et al., 32 
+2013). In surface-irrigated fields specifically, runoff is controlled not only by soil properties but 33 
+also by managed inflow, advance time, infiltration opportunity time, and tailwater hydraulics, 34 
+which can complicate simple expectations derived from rainfall-driven systems (Berehe et al., 35 
+2013; Bjorneberg, Aase, et al., 2006). One plausible explanation for the modest negative direct 36 
+STIR effect is the role of freshly disturbed furrow roughness in surface irrigation. A newly tilled 37 
+field may have slower advance times than the same field after rows have been pre-irrigated or 38 
+partially smoothed by prior flow. Greater surface roughness would reduce flow velocity, thereby 39 
+increasing infiltration opportunity time and reducing the fraction of applied water that exits the 40 
+field as tailwater runoff, provided infiltration capacity is not simultaneously reduced enough to 41 
+offset that hydraulic effect. Evidence from furrow-irrigation studies supports this interpretation. 42 
+Berehe et al. (2013) found that deeper tillage increased advance time and irrigation infiltration in 43 
+a furrow-irrigated system, and Bryant et al. (2021) showed that conservation tillage systems can 44 
+alter furrow-irrigation efficiency through changes in infiltration and flow behavior. Under this 45 
+interpretation, a recently cultivated corn field, such as after sidedressing or cultivation, could 46 
+temporarily exhibit less runoff because roughness and infiltration opportunity act together to 47 
+slow water movement through the furrow. Thus, the negative direct STIR effect is physically 48 
+plausible, even if it is weaker than the residue-mediated pathway. 49 
+
+--- PAGE 45 ---
+ 
+Page 45 of 73 
+ 50 
+Figure 11. Posterior distribution of the estimated effect of soil disturbance intensity (STIR) on runoff volume. The horizontal axis 51 
+shows the modeled change in runoff volume associated with increasing tillage intensity, while the vertical axis represents the 52 
+density of plausible effect values inferred from the Bayesian model. The dashed vertical line at zero indicates no effect. The 53 
+distribution is centered slightly below zero, suggesting that higher soil disturbance is associated with modest reductions in runoff 54 
+volume.  55 
+The contrast between the residue and STIR effects on runoff volume provides additional insight 56 
+into the mechanisms governing runoff generation in this system; after a tillage operation, 57 
+opposing mechanisms operate concurrently: 1) residue is removed which increases runoff, and 2) 58 
+surface roughness is increased which may temporarily reduce it. The relatively small direct STIR 59 
+effect (i.e., Figure 11) therefore likely reflects the balance between these competing pathways, 60 
+while the residue effect (i.e., Figure 10) represents the more consistent hydrologic control put 61 
+forth by residue accumulation.  62 
+
+
+--- PAGE 46 ---
+ 
+Page 46 of 73 
+3.4 Temporal persistence of tillage 63 
+The long-term record also indicates that some water-quality responses are not purely 64 
+contemporaneous. The year-distance covariance functions from the multi-output Gaussian 65 
+process (MOGP) show how residual year effects remain correlated as the temporal distance 66 
+between years increases, after accounting for STIR, residue cover, irrigation count, inflow 67 
+conditions, crop effects, sampling method, flume method, and other predictors included in the 68 
+hierarchical model (Error! Reference source not found.). These temporal effects represent 69 
+residual year-to-year variation in analyte concentrations that remains after conditioning on other 70 
+modeled covariates. Larger covariance at greater year distances therefore indicates stronger 71 
+temporal persistence, whereas rapid decay toward zero indicates that unexplained deviations are 72 
+mostly limited to the current year. Because these latent temporal effects persist after accounting 73 
+for the modeled predictors, they likely reflect broader system-level influences not included in the 74 
+dataset, such as soil characteristics that may impact water quality such as bulk density and 75 
+electrical conductivity (Trimarco et al., 2025). 76 
+ 77 
+
+--- PAGE 47 ---
+ 
+Page 47 of 73 
+ 78 
+Figure 12. Year-distance covariance functions from the multi-output Gaussian process (MOGP) component of the Bayesian 79 
+hierarchical model, shown separately by analyte. Lines represent prior and posterior draws of the within-analyte temporal 80 
+covariance function, with dotted and dashed lines showing the prior and posterior mean functions, respectively. The x-axis 81 
+represents the temporal distance between years, where larger values indicate more distant years, and the y-axis represents 82 
+modeled covariance in latent year effects. Faster decay toward zero indicates weaker temporal persistence in year-to-year 83 
+deviations. Because the MOGP uses a shared temporal kernel with analyte-specific scaling, differences among facets primarily 84 
+reflect the magnitude of each analyte’s loading onto the shared temporal process rather than fully independent decay structures. 85 
+
+
+--- PAGE 48 ---
+ 
+Page 48 of 73 
+The posterior covariance functions suggest that temporal persistence was analyte-specific. Total 86 
+nitrogen (TN-N) and total phosphorus (TP) showed clearer residual covariance across adjacent 87 
+years than several other analytes, consistent with the interpretation that N and P responses may 88 
+partly reflect legacy nutrient pools, soil structural change, residue-mediated nutrient cycling, or 89 
+hydrologic transport pathways that do not reset completely between growing seasons. This 90 
+interpretation is consistent with broader evidence that soil structure, residue dynamics, and 91 
+erosion susceptibility can carry management legacies across years rather than resetting 92 
+completely after each crop cycle (Grahmann et al., 2022; Larney et al., 2016; Munkholm et al., 93 
+2013). It is also consistent with the broader water-quality literature showing that legacy 94 
+phosphorus accumulated from past management can continue to influence future P losses, and 95 
+that nitrogen legacies and hydrologic lag times can delay water-quality responses after changes 96 
+in management (Golden et al., 2023; Sharpley et al., 2013). 97 
+The strong posterior covariance for NO2-N should be interpreted cautiously. Nitrite is a transient 98 
+intermediate in the nitrogen cycle, and the concentration-effect estimates indicated that NO2-N 99 
+was not strongly explained by tillage intensity, with comparatively wide uncertainty (Figure 7). 100 
+The MOGP covariance function may therefore be capturing temporally structured residual 101 
+variation that was not explained by the measured covariates rather than indicating a direct nitrite 102 
+legacy effect. In this sense, the NO2-N pattern is useful as a diagnostic result: it suggests that 103 
+unmeasured processes, such as short-term redox conditions, nitrification and denitrification 104 
+timing, fertilizer timing relative to irrigation, soil moisture dynamics, microbial activity, or other 105 
+year-specific biogeochemical controls, may be important for explaining NO2-N behavior in this 106 
+system. This interpretation is consistent with the purpose of the temporal covariance term, which 107 
+is to characterize residual year-to-year structure after accounting for observed predictors, not to 108 
+
+--- PAGE 49 ---
+ 
+Page 49 of 73 
+identify the specific mechanism responsible for that structure. Additional targeted measurements 109 
+or complementary modeling approaches, including more mechanistic N-cycling models or 110 
+flexible predictive models (e.g., machine learning), should be used to evaluate why NO2-N 111 
+exhibited this residual temporal pattern. 112 
+3.5 Annual mass loadings and practical implications 113 
+Annual mass loads were estimated from posterior event-load distributions and summed within 114 
+year, treatment, and analyte. Figure 13 presents annual modeled and observed loads for TSS, TP, 115 
+and TN, which were selected for the main text because they represent sediment and nutrient 116 
+exports of broad management relevance. TSS provides a direct measure of sediment loss and 117 
+physical water-quality impairment, while TP and TN are central nutrient indicators associated 118 
+with downstream eutrophication risk. Together, these analytes provide a management-facing 119 
+summary of how reduced disturbance affected both sediment and nutrient export over the long-120 
+term monitoring period. 121 
+
+--- PAGE 50 ---
+ 
+Page 50 of 73 
+ 122 
+Figure 13. Annual modeled and observed loads for selected analytes by tillage treatment from 2011 to 2025. Panels show annual loads for (a) total suspended solids (TSS), (b) 123 
+total phosphorus (TP), and (c) total nitrogen (TN). Filled points and connecting lines represent modeled annual loads estimated from the Bayesian hierarchical framework, while 124 
+open points represent annual loads calculated directly from observed event concentration-volume pairs where available. Vertical bars indicate 95% posterior intervals for 125 
+modeled annual loads. Colors denote tillage treatments: conventional tillage (CT), minimum tillage (MT), and strip tillage (ST). The Bayesian model integrates uncertainty in 126 
+analyte concentration, runoff volume, measurement structure, and missing observations, allowing annual load estimates to be generated even in years when direct observed-load 127 
+summaries were unavailable or incomplete.  128 
+
+
+--- PAGE 51 ---
+ 
+Page 51 of 73 
+Across years, CT generally produced greater modeled loads than MT or ST, although the 129 
+magnitude of treatment separation varied among years and analytes. This interannual variability 130 
+is expected in long-term EoF monitoring because annual loads depend not only on management, 131 
+but also on runoff occurrence, irrigation timing, inflow conditions, antecedent soil conditions, 132 
+crop sequence, and the number of sampled events. The comparison of modeled and observed 133 
+annual loads also illustrates a practical advantage of the generative Bayesian framework. In years 134 
+with observed data, modeled estimates generally track the scale and treatment ordering of direct 135 
+observed-load summaries. In years with limited or missing observations, including 2018 and 136 
+2019, the model still estimates annual loads while widening posterior intervals to reflect reduced 137 
+information rather than implying false precision. 138 
+For implementation, these results suggest that conservation tillage should be understood as both 139 
+an immediate and cumulative water-quality practice. Immediate benefits arise because reduced 140 
+disturbance lowers sediment detachment potential and preserves residue cover within the current 141 
+season. Longer term benefits arise because lower annual exports occur repeatedly through time 142 
+and because some water-quality responses show temporal persistence beyond the year of 143 
+disturbance. Thus, Figure 13 does not imply that reduced tillage will produce large treatment 144 
+separation every year. Rather, it shows that reduced disturbance can shift the long-term 145 
+distribution of annual loads downward, producing meaningful cumulative reductions even when 146 
+individual years are dominated by hydrologic variability. 147 
+When annual loads were summed across the full monitoring period, MT and ST had lower 148 
+posterior mean cumulative exports than CT for every analyte considered (Table 2). Among 149 
+analytes with interpretable cumulative totals, the largest reductions occurred for TKN-N and 150 
+TSS. Relative to CT, MT reduced cumulative TKN-N and TSS export by 31.3% and 29.4%, 151 
+
+--- PAGE 52 ---
+ 
+Page 52 of 73 
+respectively, while ST reduced these exports by 26.9% and 24.2%. Total phosphorus also 152 
+declined under both reduced-disturbance systems, with posterior mean reductions of 15.9% 153 
+under MT and 16.6% under ST. Total nitrogen showed similar reductions, with MT and ST 154 
+reducing cumulative TN-N export by 19.6% and 17.8%, respectively. Selenium, NO3-N, and 155 
+TDS also showed lower cumulative exports under MT and ST, although the magnitude of 156 
+reduction was more modest than for sediment-associated constituents. Percent reductions for 157 
+NO2-N were not emphasized because cumulative modeled loads were near zero, producing 158 
+unstable treatment-ratio intervals. 159 
+Table 2. Cumulative analyte loads in kilograms across the full monitoring period from 2011 to 2025 by tillage treatment. Values 160 
+represent posterior mean total loads summed across all modeled annual runoff-event loads for each treatment, with 95% 161 
+posterior intervals shown in parentheses. Treatments include conventional tillage (CT), minimum tillage (MT), and strip tillage 162 
+(ST). The final two columns report the posterior mean percent reduction in cumulative load for MT and ST relative to CT, 163 
+respectively, with 95% posterior intervals calculated from draw-wise treatment ratios. Estimates are derived from the Bayesian 164 
+hierarchical model, which propagates uncertainty in runoff volume, analyte concentration, temporal structure, and incomplete 165 
+sampling when estimating study-period total loads. 166 
+Analyte CT MT ST MT reduction 
+from CT 
+ST reduction 
+from CT 
+ Mass Load (kg) % 
+NH4-N 1.47 
+(0.63, 2.40) 
+1.15 
+(0.30, 1.94) 
+1.23 
+(0.43, 2.05) 
+21.9 
+(0.7, 47.5) 
+13.8 
+(0.0, 34.3) 
+NO3-N 87.53 
+(79.75, 95.37) 
+76.89 
+(71.74, 82.49) 
+78.83 
+(73.44, 84.22) 
+12.0 
+(5.6, 18.8) 
+9.8 
+(2.6, 17.3) 
+NO2-N 0.00 
+(0.00, 4.77) 
+0.00 
+(0.00, 2.73) 
+0.00 
+(0.00, 3.94) 
+42.8 
+(0.0, 1388.7) 
+17.4 
+(0.0, 882.7) 
+OP 1.80 
+(1.27, 2.31) 
+1.73 
+(1.37, 2.11) 
+1.76 
+(1.39, 2.15) 
+2.4 
+(0.0, 20.4) 
+1.2 
+(0.0, 18.2) 
+Se 0.09 
+(0.07, 0.11) 
+0.07 
+(0.06, 0.09) 
+0.08 
+(0.06, 0.09) 
+18.3 
+(12.3, 24.4) 
+15.7 
+(9.7, 21.9) 
+TDS 
+12,429 
+(10,823, 
+13,978) 
+11,093 
+(9,948, 
+12,294) 
+11,288 
+(10,072, 
+12,584) 
+10.6 
+(3.4, 17.4) 
+9.1 
+(2.6, 16.0) 
+TKN-N 22.74 
+(17.74, 27.84) 
+15.58 
+(11.82, 19.71) 
+16.57 
+(13.01, 20.52) 
+31.3 
+(17.6, 43.7) 
+26.9 
+(14.1, 38.4) 
+
+--- PAGE 53 ---
+ 
+Page 53 of 73 
+TN-N 
+92.34 
+(58.55, 
+131.30) 
+74.50 
+(42.45, 
+111.05) 
+76.01 
+(45.02, 
+111.86) 
+19.6 
+(10.1, 31.0) 
+17.8 
+(9.4, 26.3) 
+TP 12.25 
+(8.14, 16.70) 
+10.13 
+(7.03, 13.53) 
+10.06 
+(7.19, 12.96) 
+15.9 
+(0.0, 37.6) 
+16.6 
+(0.0, 35.4) 
+TSS 
+17,927 
+(13,832, 
+22,092) 
+12,588 
+(9,478, 
+15,414) 
+13,525 
+(10,877, 
+16,316) 
+29.4 
+(15.9, 42.4) 
+24.2 
+(11.3, 35.3) 
+ 167 
+These cumulative patterns are consistent with the concentration, event-load, residue, and 168 
+temporal-persistence results presented earlier. Constituents most closely associated with 169 
+sediment and particulate transport showed the clearest response to reduced disturbance, whereas 170 
+more dissolved constituents exhibited weaker or less consistent responses. This pattern supports 171 
+the interpretation that the primary water-quality benefit of reduced tillage in this system was 172 
+erosion control and reduced mobilization of sediment-associated nutrients, especially TSS, TP, 173 
+and organic nitrogen fractions. These findings are consistent with prior syntheses showing that 174 
+conservation tillage and residue retention are most effective for reducing runoff pollutants linked 175 
+to sediment detachment and transport, while dissolved nutrient responses may depend more 176 
+strongly on nutrient placement, timing, hydrology, and source-water chemistry (Prasad, 177 
+Thomason, et al., 2023). 178 
+From a producer-facing standpoint, these results suggest that adopting some form of 179 
+conservation tillage was more important than the specific reduced-tillage label applied. Although 180 
+MT and ST were implemented using distinct operations, their cumulative STIR totals were 181 
+nearly identical and their cumulative water-quality outcomes were similar. Producers may 182 
+therefore have flexibility to choose the reduced-disturbance system that best fits their equipment, 183 
+crop rotation, irrigation constraints, residue-management goals, and economic conditions, while 184 
+
+--- PAGE 54 ---
+ 
+Page 54 of 73 
+still achieving meaningful reductions in sediment and sediment-associated nutrient export 185 
+relative to CT. The central management implication is therefore not that one conservation tillage 186 
+system was universally superior, but that reducing mechanical disturbance and maintaining 187 
+surface cover provided measurable long-term water-quality benefits compared with continued 188 
+full-width conventional tillage. 189 
+The temporal-persistence results also indicate that tillage decisions should not be evaluated only 190 
+in the year they occur. Some benefits of conservation tillage are expected immediately through 191 
+reduced disturbance and greater surface cover, whereas additional benefits likely accrue over 192 
+multiple seasons as residue, soil structure, nutrient pools, and hydrologic pathways adjust. 193 
+Conversely, occasional high-disturbance operations may have carryover consequences beyond a 194 
+single season. Conservation programs and producer evaluations should therefore consider both 195 
+annual outcomes and multi-year cumulative responses when assessing the water-quality value of 196 
+reduced tillage. 197 
+The weaker responses for dissolved constituents also indicate that reduced tillage alone should 198 
+not be expected to control all water-quality pathways. Management strategies targeting soluble 199 
+nutrient transport will likely require complementary practices, including nutrient source, rate, 200 
+timing, and placement management, irrigation scheduling, and runoff-volume reduction. In this 201 
+sense, conservation tillage appears most effective as part of a broader conservation system: it can 202 
+reduce sediment and sediment-associated nutrient export, while complementary nutrient and 203 
+irrigation practices are needed to address dissolved nutrient and salt transport. 204 
+
+--- PAGE 55 ---
+ 
+Page 55 of 73 
+3.6 Limitations 205 
+This analysis was designed primarily for inference about tillage effects within a long-term EoF 206 
+experiment, not as a transferable prediction tool for other sites. The Bayesian model was 207 
+intentionally structured to estimate direct STIR effects, residue-associated pathways, event-level 208 
+runoff volume, temporal persistence, and cumulative mass loads while accounting for 209 
+measurement heterogeneity, censoring, and missing data. As a result, the model required detailed 210 
+covariate information that is uncommon in many monitoring datasets, including sampling 211 
+method, duplicate status, flume type, stage or flow measurement method, inflow concentration, 212 
+inflow volume, residue cover, crop history, and operation-level STIR values. Although the 213 
+general DAG and modeling framework could be adapted to other EoF datasets, the fitted model 214 
+should not be interpreted as directly transportable to sites lacking comparable covariate detail or 215 
+similar irrigation, soil, and management conditions. 216 
+The study was conducted at a single surface-irrigated site in northern Colorado. The long 217 
+monitoring period strengthens inference about temporal behavior within this field system, but the 218 
+spatial scope remains limited. Responses to tillage may differ in rainfall-driven systems, 219 
+subsurface-drained fields, different soil textures, different irrigation technologies, or systems 220 
+with different nutrient-management histories. Therefore, the estimated effects should be 221 
+interpreted as broad evidence for a furrow-irrigated, semi-arid production system rather than as 222 
+universal effect sizes for conservation tillage. Multi-site studies using similar causal and 223 
+uncertainty-aware frameworks would be needed to determine how general these relationships are 224 
+across irrigation systems, climates, soils, and management histories. 225 
+The causal interpretation depends on the DAG and the measured adjustment set. The model 226 
+estimates direct STIR effects conditional on residue and other modeled covariates, however, 227 
+
+--- PAGE 56 ---
+ 
+Page 56 of 73 
+some potential mechanisms were not measured consistently across the full record, including 228 
+infiltration, aggregate stability, bulk density, soil moisture, furrow roughness, soil electrical 229 
+conductivity, nutrient stratification, and other soil physical or chemical properties. The year-by-230 
+analyte Gaussian process captures shared temporal structure remaining after modeled covariates 231 
+are considered, but those latent year effects should not be interpreted as identifying a specific 232 
+physical mechanism. 233 
+Long-term monitoring heterogeneity also creates unavoidable uncertainty. Laboratory methods, 234 
+analytical suites, flow-measurement technologies, sampling approaches, and project objectives 235 
+changed during the 2011 to 2025 record. The Bayesian framework was developed specifically to 236 
+retain these data rather than discard incomplete years or rely on substitution methods for 237 
+censored observations. The present analysis provides probabilistic evidence about plausible 238 
+mechanisms, direct effects, persistence, and long-term treatment differences, but it should not be 239 
+treated as a mechanistic process model of erosion, infiltration, or nutrient transport. 240 
+Future work should build on this inference-focused framework in three directions. First, 241 
+additional long-term EoF studies should collect covariates that more directly represent soil 242 
+physical mechanisms, including residue architecture, infiltration, aggregate stability, bulk 243 
+density, soil moisture, furrow roughness, nutrient stratification, and soil nutrient status. These 244 
+measurements would help separate the latent temporal structure currently absorbed by year 245 
+effects into more interpretable physical pathways. Second, the posterior relationships estimated 246 
+here should be compared with process-based models such as SWAT+, RZWQM2, or other 247 
+mechanistic water-quality models capable of representing tillage, residue, soil-water movement, 248 
+erosion, and nutrient cycling. Such comparisons would help determine whether the empirical 249 
+causal patterns identified here are consistent with mechanistic expectations, where process-based 250 
+
+--- PAGE 57 ---
+ 
+Page 57 of 73 
+models reproduce or fail to reproduce observed treatment differences, and which missing 251 
+processes may be needed to improve representation of conservation tillage effects in irrigated 252 
+systems. Third, prediction-focused tools should be developed separately from the causal model 253 
+used here. Physically informed machine-learning models, Bayesian machine-learning 254 
+approaches, or hybrid models that combine approaches could provide more pragmatic 255 
+forecasting tools for annual load estimation. Such models would ideally rely on covariates that 256 
+are routinely available to monitoring programs while still respecting known hydrologic and 257 
+biogeochemical constraints. In this study, the primary objective was not to build a general 258 
+prediction machine, but to clarify how tillage disturbance, residue cover, runoff volume, and 259 
+temporal persistence shaped water-quality outcomes within a complex long-term monitoring 260 
+record. 261 
+4 CONCLUSION 262 
+This study shows that realized tillage intensity is a useful lens for interpreting long-term edge-of-263 
+field water-quality outcomes in a surface-irrigated production system. By replacing nominal 264 
+treatment labels with season-to-date STIR, the analysis captured the operational reality that 265 
+conservation systems vary through time and that water-quality responses are tied to the amount 266 
+of mechanical disturbance actually imposed on the field. Across the 2011 to 2025 record, 267 
+reduced-disturbance systems consistently lowered cumulative sediment and sediment-associated 268 
+nutrient exports relative to conventional tillage, with the clearest benefits for TSS, TP, and 269 
+organic nitrogen fractions. 270 
+The practical implication is that conservation tillage should be evaluated as a multi-year 271 
+management strategy rather than as a single-season intervention. Reduced disturbance can 272 
+provide immediate benefits by limiting sediment detachment and preserving surface residue, but 273 
+
+--- PAGE 58 ---
+ 
+Page 58 of 73 
+the broader water-quality value also accrues through repeated annual reductions and legacy 274 
+effects that persist beyond the year of a given field operation. The similarity between MT and ST 275 
+outcomes further suggests that producers may have flexibility in how they reduce disturbance; 276 
+the specific conservation-tillage label may matter less than maintaining enough residue and 277 
+reducing enough mechanical disturbance to limit runoff-driven sediment and nutrient transport. 278 
+More broadly, this work demonstrates how uncertainty-aware Bayesian causal modeling can turn 279 
+an imperfect long-term monitoring record into defensible inference about management effects. 280 
+The framework retained censored observations, incomplete years, changing measurement 281 
+methods, missing covariates, and shared temporal structure rather than treating those 282 
+complications as reasons to discard data. For conservation research and practice, this is the larger 283 
+contribution: long-term field datasets do not need to be clean or perfectly balanced to be 284 
+scientifically useful, but they do require models that respect how the data were generated. In this 285 
+system, that approach revealed that conservation tillage provides measurable and persistent 286 
+water-quality benefits, while also showing that dissolved nutrient pathways will likely require 287 
+complementary nutrient and irrigation management practices. 288 
+ACKNOWLEDGMENTS 289 
+Acknowledgments are included in the title page to preserve anonymity during the review 290 
+process. 291 
+CONFLICT OF INTEREST 292 
+The authors declare no conflict of interest in the creation of this manuscript. 293 
+
+--- PAGE 59 ---
+ 
+Page 59 of 73 
+SUPPLEMENTAL MATERIAL 294 
+Supplementary Material S1 contains the residue cover records used in the residue submodel and 295 
+as predictors in the concentration and runoff-volume submodels.  296 
+Supplementary Material S2 contains the cleaned tillage operation records used to calculate Soil 297 
+Tillage Intensity Rating (STIR) values. This file includes the operation dates, treatment 298 
+assignments, standardized operation labels, and operation-level information used to derive 299 
+seasonal and cumulative tillage disturbance metrics. 300 
+Supplementary Material S3 contains the crop records used to define crop-season windows and 301 
+previous-crop assignments. These records include crop type, planting date, harvest date, and 302 
+yield information where available.  303 
+Supplementary Material S4 contains the final cleaned and merged model-ready water-quality 304 
+dataset (wq_cleaned.csv). This dataset includes the long-format water-quality observations used 305 
+in the Bayesian model, including sample identifiers, date, year, irrigation event, treatment, 306 
+replication, analyte, inflow concentration, inflow volume, outflow concentration, outflow 307 
+volume, censoring and reporting-limit information, residue cover, crop-season metadata, STIR 308 
+values, and field-method metadata. 309 
+Supplementary Material S5 contains Bayesian model convergence diagnostics and posterior 310 
+checking materials for the final model. 311 
+Supplementary Material S6 contains additional annual load figures. These figures present 312 
+posterior annual load estimates by analyte, treatment, and year to complement the main-text load 313 
+summaries. 314 
+
+--- PAGE 60 ---
+ 
+Page 60 of 73 
+DATA AND CODE AVAILABILITY 315 
+All data, analysis code, and output for this work are available at the following Zenodo repository 316 
+(Brown, 2026): https://doi.org/10.5281/zenodo.20740274. The repository includes the processing 317 
+scripts, Stan model file, R workflow, and plotting code needed to reproduce the main analyses.  318 
+REFERENCES 319 
+Badrudeen, A. T., Sahoo, D., Sawyer, C. B., Pike, J. W., & Harmel, R. D. (2026). A critical 320 
+review of statistical, signal processing and machine learning methods for continuous and 321 
+high-frequency water quality data improvement. Ecological Informatics, 94, 103619. 322 
+https://doi.org/https://doi.org/10.1016/j.ecoinf.2026.103619 323 
+Baulch, H. M., Elliott, J. A., Cordeiro, M. R. C., Flaten, D. N., Lobb, D. A., & Wilson, H. F. 324 
+(2019). Soil and water management: opportunities to mitigate nutrient losses to surface 325 
+waters in the Northern Great Plains. Environmental Reviews, 27(4), 447–477. 326 
+https://doi.org/10.1139/er-2018-0101 327 
+Berehe, F. T., Melesse, A. M., Fanta, A., & Alamirew, T. (2013). Characterization of the effect 328 
+of tillage on furrow irrigation hydraulics for the Dire Dawa Area, Ethiopia. Catena, 110, 329 
+161–175. https://doi.org/10.1016/j.catena.2013.06.003 330 
+Beven, K. (2006). A manifesto for the equifinality thesis. Journal of Hydrology, 320(1–2), 18–331 
+36. 332 
+Bjorneberg, D. L., Aase, J. K., & Westermann, D. T. (2006). Sediment and Phosphorus 333 
+Transport in Irrigation Furrows. Journal of Environmental Quality, 35(3), 786–794. 334 
+https://doi.org/10.2134/jeq2005.0116 335 
+
+--- PAGE 61 ---
+ 
+Page 61 of 73 
+Bjorneberg, D. L., Westermann, D. T., Aase, J. K., Clemmens, A. J., & Strelkoff, T. S. (2006). 336 
+Sediment and phosphorus transport in irrigation furrows. Journal of Environmental Quality, 337 
+35(3), 786–794. 338 
+Brown, A. J. (2026). ansleybrown1337/bayes-tillage-on-wq: V2.1. Zenodo. 339 
+https://doi.org/10.5281/zenodo.20740274 340 
+Brown, A. J., Deleon, E., Wardle, E., Ladow, J. F., & Andales, A. A. (2026). Unveiling biases in 341 
+water sampling: A Bayesian approach for precision in edge-of-field monitoring. Journal of 342 
+Environmental Quality, 55(1), e70149. https://doi.org/https://doi.org/10.1002/jeq2.70149 343 
+Bryant, C. J., Locke, M. A., Krutz, L. J., Reynolds, D. B., Golden, B. R., Irby, T., Steinriede, R. 344 
+W., & Spencer, G. D. (2021). Furrow-irrigation application efficiency in mid-southern U.S. 345 
+conservation tillage systems. Agronomy Journal, 113(1), 397–406. 346 
+https://doi.org/10.1002/agj2.20468 347 
+Carpenter, S. R., Caraco, N. F., Correll, D. L., Howarth, R. W., Sharpley, A. N., & Smith, V. H. 348 
+(1998). Nonpoint pollution of surface waters with phosphorus and nitrogen. Ecological 349 
+Applications, 8(3), 559–568. 350 
+Carver, R. E., Nelson, N. O., Roozeboom, K. L., Kluitenberg, G. J., Tomlinson, P. J., Kang, Q., 351 
+& Abel, D. S. (2022). Cover crop and phosphorus fertilizer management impacts on surface 352 
+water quality from a no-till corn-soybean rotation. Journal of Environmental Management, 353 
+301, 113818. 354 
+
+--- PAGE 62 ---
+ 
+Page 62 of 73 
+Cho, J. B., Guinness, J., Kharel, T., Maresma, Á., Czymmek, K. J., van Aardt, J., & Ketterings, 355 
+Q. M. (2021). Proposed method for statistical analysis of on-farm single strip treatment 356 
+trials. Agronomy, 11(10), 2042. 357 
+Córdoba, M., Paccioretti, P., & Balzarini, M. (2024). A new method to compare treatments in 358 
+unreplicated on-farm experimentation. Precision Agriculture, 26(1), 4. 359 
+https://doi.org/10.1007/s11119-024-10206-0 360 
+Daniels, M. B., Sharpley, A., Harmel, R. D., & Anderson, K. (2018). The utilization of edge-of-361 
+field monitoring of agricultural runoff in addressing nonpoint source pollution. Journal of 362 
+Soil and Water Conservation, 73(1), 1–8. https://doi.org/10.2489/jswc.73.1.1 363 
+Deleon, E., Bauder, T. A., Wardle, E., & Fonte, S. J. (2020). Conservation tillage supports soil 364 
+macrofauna communities, infiltration, and farm profits in an irrigated maize-based cropping 365 
+system of Colorado. Soil Science Society of America Journal, 84(6), 1943–1956. 366 
+https://doi.org/10.1002/saj2.20167 367 
+Diaz, R. J., & Rosenberg, R. (2008). Spreading dead zones and consequences for marine 368 
+ecosystems. Science, 321(5891), 926–929. 369 
+Duncan, E. W., Osmond, D. L., Shober, A. L., Starr, L., Tomlinson, P., Kovar, J. L., Moorman, 370 
+T. B., Peterson, H. M., Fiorellino, N. M., & Reid, K. (2019). Phosphorus and Soil Health 371 
+Management Practices. Agricultural & Environmental Letters, 4(1), 190014. 372 
+https://doi.org/https://doi.org/10.2134/ael2019.04.0014 373 
+
+--- PAGE 63 ---
+ 
+Page 63 of 73 
+Foley, J. A., Ramankutty, N., Brauman, K. A., Cassidy, E. S., Gerber, J. S., Johnston, M., 374 
+Mueller, N. D., O’Connell, C., Ray, D. K., & West, P. C. (2011). Solutions for a cultivated 375 
+planet. Nature, 478(7369), 337–342. 376 
+Foster, G. R., Yoder, D. C., Weesies, G. A., McCool, D. K., McGregor, K. C., & Bingner, R. L. 377 
+(2003). RUSLE 2.0 user’s guide. USDA-Agricultural Research Service, Washington, DC. 378 
+Gabry, J., Češnovar, R., Johnson, A., & Bronder, S. (2025). cmdstanr: R Interface to 379 
+“CmdStan.” https://mc-stan.org/cmdstanr/ 380 
+Gelman, A., Vehtari, A., McElreath, R., Simpson, D., Margossian, C. C., Yao, Y., Kennedy, L., 381 
+Gabry, J., Bürkner, P.-C., & Modrák, M. (2026). Bayesian Workflow. CRC Press. 382 
+Golden, H. E., Evenson, G. R., Christensen, J. R., & Lane, C. R. (2023). Advancing watershed 383 
+legacy nitrogen modeling to improve global water quality. Environmental Science & 384 
+Technology, 57(7), 2691–2697. 385 
+Grahmann, K., Rubio, V., Perez-Bidegain, M., & Quincke, J. A. (2022). Soil Use Legacy as 386 
+Driving Factor for Soil Erosion under Conservation Agriculture. Frontiers in 387 
+Environmental Science, Volume 10-2022. 388 
+https://www.frontiersin.org/journals/environmental-389 
+science/articles/10.3389/fenvs.2022.822967 390 
+Guzman, J. A., Shirmohammadi, A., Sadeghi, A. M., Wang, X., Chu, M. L., Jha, M. K., Parajuli, 391 
+P. B., Harmel, R. D., Khare, Y. P., & Hernandez, J. E. (2015). Uncertainty considerations in 392 
+calibration and validation of hydrologic and water quality models. Transactions of the 393 
+ASABE, 58(6), 1745–1762. 394 
+
+--- PAGE 64 ---
+ 
+Page 64 of 73 
+Harmel, R. D., Haney, R. L., Smith, D. R., White, M., & King, K. W. (2014). USDA-ARS Riesel 395 
+Watersheds, Riesel, Texas, USA: Water quality research database. Water Resources 396 
+Research, 50(10), 8374–8382. https://doi.org/https://doi.org/10.1002/2013WR015191 397 
+Harmel, R. D., King, K., Busch, D., Smith, D., Birgand, F., & Haggard, B. (2018). Measuring 398 
+edge-of-field water quality: Where we have been and the path forward. Journal of Soil and 399 
+Water Conservation, 73(1), 86–96. https://doi.org/https://doi.org/10.2489/jswc.73.1.86 400 
+Harmel, R. D., & King, K. W. (2005). Uncertainty in measured sediment and nutrient flux in 401 
+runoff from small agricultural watersheds. Transactions of the ASAE, 48(5), 1713–1721. 402 
+Harmel, R. D., King, K. W., Haggard, B. E., Wren, D. G., & Sheridan, J. M. (2006). Practical 403 
+guidance for discharge and water quality data collection on small watersheds. Transactions 404 
+of the ASABE, 49(4), 937–948. 405 
+Harmel, R. D., Pampell, R. A., Leytem, A. B., Smith, D. R., & Haney, R. L. (2018). Assessing 406 
+edge-of-field nutrient runoff from agricultural lands in the United States: How clean is clean 407 
+enough? Journal of Soil and Water Conservation, 73(1), 9–23. 408 
+Harmel, R. D., Preisendanz, H. E., King, K. W., Busch, D., Birgand, F., & Sahoo, D. (2023). A 409 
+review of data quality and cost considerations for water quality monitoring at the field scale 410 
+and in small watersheds. Water, 15(17), 3110. 411 
+Harmel, R. D., & Smith, P. K. (2007). Consideration of measurement uncertainty in the 412 
+evaluation of goodness-of-fit in hydrologic and water quality modeling. Journal of 413 
+Hydrology, 337(3–4), 326–336. 414 
+
+--- PAGE 65 ---
+ 
+Page 65 of 73 
+Heller, O., Chervet, A., Durand‐Maniclas, F., Guillaume, T., Häfner, F., Müller, M., Wittwer, R., 415 
+& Keller, T. (2025). SoilManageR—An R Package for Deriving Soil Management 416 
+Indicators to Harmonise Agricultural Practice Assessments. European Journal of Soil 417 
+Science, 76(2), e70102. 418 
+Hopkins, A. P., Harmel, R. D., Kleinman, P. J. A., Sahoo, D., & Ippolito, J. A. (2025). Nutrient 419 
+Runoff From Agricultural Lands in North American Ecoregions. JAWRA Journal of the 420 
+American Water Resources Association, 61(1), e70004. 421 
+https://doi.org/https://doi.org/10.1111/1752-1688.70004 422 
+Issaka, S., & Ashraf, M. A. (2017). Impact of soil erosion and degradation on water quality: a 423 
+review. Geology, Ecology, and Landscapes, 1(1), 1–11. 424 
+https://doi.org/10.1080/24749508.2017.1301053 425 
+King, K. W., & Harmel, R. D. (1998). Considerations in selecting a water quality sampling 426 
+strategy. 2001 ASAE Annual Meeting, 1. 427 
+Kleinman, P. J. A., & Harmel, R. D. (2024). Grappling with the success and trade-offs of global 428 
+nutrient redistribution. Environment, Development and Sustainability, 26(12), 29793–429 
+29811. https://doi.org/10.1007/s10668-023-03846-1 430 
+Kleinman, P. J. A., Sharpley, A. N., McDowell, R. W., Flaten, D. N., Buda, A. R., Tao, L., 431 
+Bergstrom, L., & Zhu, Q. (2011). Managing agricultural phosphorus for water quality 432 
+protection: principles for progress. Plant and Soil, 349(1), 169–182. 433 
+
+--- PAGE 66 ---
+ 
+Page 66 of 73 
+Kleinman, P. J. A., Sharpley, A. N., Withers, P. J. A., Bergström, L., Johnson, L. T., & Doody, 434 
+D. G. (2015). Implementing agricultural phosphorus science and management to combat 435 
+eutrophication. Ambio, 44(Suppl 2), 297–310. 436 
+Larney, F. J., Li, L., Janzen, H. H., Angers, D. A., & Olson, B. M. (2016). Soil quality attributes, 437 
+soil resilience, and legacy effects following topsoil removal and one-time amendments. 438 
+Canadian Journal of Soil Science, 96(2), 177–190. https://doi.org/10.1139/cjss-2015-0089 439 
+Lewandowski, D., Kurowicka, D., & Joe, H. (2009). Generating random correlation matrices 440 
+based on vines and extended onion method. Journal of Multivariate Analysis, 100(9), 1989–441 
+2001. https://doi.org/https://doi.org/10.1016/j.jmva.2009.04.008 442 
+Liu, Y., Engel, B. A., Flanagan, D. C., Gitau, M. W., McMillan, S. K., & Chaubey, I. (2017). A 443 
+review on effectiveness of best management practices in improving hydrology and water 444 
+quality: Needs and opportunities. Science of the Total Environment, 601, 580–593. 445 
+Longchamps, L., Lanza, P., Wei, M. F. C., & Yore, A. (2025). Using causal diagrams to interpret 446 
+unreplicated on-farm experiments. In Precision agriculture’25 (pp. 1209–1216). 447 
+Wageningen Academic. 448 
+Longchamps, L., Lanza, P., Yore, A., McElwee, A., Chan Fu Wei, M., Panneton, B., Buckley, D. 449 
+H., Lachgar, A., & Thomas, M. (2025). Strengthening farmer-led experiments through 450 
+agronomic and causal inference frameworks. Agronomy Journal, 117(6), e70263. 451 
+https://doi.org/https://doi.org/10.1002/agj2.70263 452 
+
+--- PAGE 67 ---
+ 
+Page 67 of 73 
+Mailapalli, D. R., Burger, M., Horwath, W. R., & Wallender, W. W. (2013). Crop Residue 453 
+Biomass Effects on Agricultural Runoff. Applied and Environmental Soil Science, 2013, 454 
+805206. https://doi.org/10.1155/2013/805206 455 
+Marshall, E., Aillery, M., Ribaudo, M., Key, N., Sneeringer, S., Hansen, L., Malcolm, S., & 456 
+Riddle, A. (2018). Reducing nutrient losses from cropland in the Mississippi/Atchafalaya 457 
+River Basin: Cost efficiency and regional distribution. 458 
+McElreath, R. (2020). Statistical rethinking: A Bayesian course with examples in R and Stan. 459 
+Chapman and Hall/CRC. 460 
+Meyer, C. R., Wagner, L. E., Yoder, D. C., & Flanagan, D. C. (2001). The modular soil erosion 461 
+system (MOSES). Soil Erosion, 358. 462 
+Montgomery, D. R. (2007). Soil erosion and agricultural sustainability. Proceedings of the 463 
+National Academy of Sciences, 104(33), 13268–13272. 464 
+Moriasi, D. N., Arnold, J. G., Van Liew, M. W., Bingner, R. L., Harmel, R. D., & Veith, T. L. 465 
+(2007). Model evaluation guidelines for systematic quantification of accuracy in watershed 466 
+simulations. Transactions of the ASABE, 50(3), 885–900. 467 
+Munkholm, L. J., Heck, R. J., & Deen, B. (2013). Long-term rotation and tillage effects on soil 468 
+structure and crop yield. Soil and Tillage Research, 127, 85–91. 469 
+https://doi.org/https://doi.org/10.1016/j.still.2012.02.007 470 
+Nelson, N. O., Roozeboom, K. L., Yeager, E. A., Williams, J. R., Zerger, S. E., Kluitenberg, G. 471 
+J., Tomlinson, P. J., Abel, D. S., & Carver, R. E. (2023). Agronomic and economic 472 
+
+--- PAGE 68 ---
+ 
+Page 68 of 73 
+implications of cover crop and phosphorus fertilizer management practices for water 473 
+quality improvement. Wiley Online Library. 474 
+Nonxuba, C. S., Elephant, D. E., Manyevere, A., & Nciizah, A. D. (2026). Long-term 475 
+conservation agriculture effects on soil erosion and runoff in Eastern Cape, South Africa. 476 
+Journal of Soils and Sediments, 26(6), 202. https://doi.org/10.1007/s11368-026-04398-3 477 
+Pearl, J. (2009). Causality. Cambridge university press. 478 
+Pearl, J. (2012). The do-calculus revisited. ArXiv Preprint ArXiv:1210.4852. 479 
+Posit team. (2025). RStudio: Integrated Development Environment for R. http://www.posit.co/ 480 
+Prasad, L. R., Thomason, A. M., Arriaga, F. J., Koropeckyj-Cox, L., & Yuan, Y. (2023). 481 
+Effectiveness of Residue and Tillage Management on Runoff Pollutant Reduction from 482 
+Agricultural Areas. Journal of the ASABE, 66(6), 1341–1354. 483 
+https://doi.org/10.13031/ja.15518 484 
+Prasad, L. R., Thompson, A. M., Arriaga, F. J., Koropeckyj-Cox, L., & Yuan, Y. (2023). 485 
+Effectiveness of residue and tillage management on runoff pollutant reduction from 486 
+agricultural areas. Journal of the ASABE, 66(6), 1341–1354. 487 
+https://doi.org/10.13031/ja.15518 488 
+R Core Team. (2020). R: A Language and Environment for Statistical Computing. 489 
+https://www.R-project.org/ 490 
+Renard, K. G., Laflen, J. M., Foster, G. R., & McCool, D. K. (2017). The revised universal soil 491 
+loss equation. In Soil erosion research methods (pp. 105–126). Routledge. 492 
+
+--- PAGE 69 ---
+ 
+Page 69 of 73 
+Robinson, A. R., & Chamberlain, A. R. (1960). Trapezoidal flumes for open-channel flow 493 
+measurement. 494 
+Sharpley, A., Jarvie, H. P., Buda, A., May, L., Spears, B., & Kleinman, P. (2013). Phosphorus 495 
+Legacy: Overcoming the Effects of Past Management Practices to Mitigate Future Water 496 
+Quality Impairment. Journal of Environmental Quality, 42(5), 1308–1326. 497 
+https://doi.org/https://doi.org/10.2134/jeq2013.03.0098 498 
+Shelton, D. P., Dickey, E. C., Jasa, P. J., Kanable, R., & Smydra Krotz, S. (1990). Using the line-499 
+transect method to estimate percent residue cover. 500 
+Smith, D. R., Wilson, R. S., King, K. W., Zwonitzer, M., McGrath, J. M., Harmel, R. D., Haney, 501 
+R. L., & Johnson, L. T. (2018). Lake Erie, phosphorus, and microcystin: Is it really the 502 
+farmer’s fault? Journal of Soil and Water Conservation, 73(1), 48–57. 503 
+Smith, V. H., Tilman, G. D., & Nekola, J. C. (1999). Eutrophication: impacts of excess nutrient 504 
+inputs on freshwater, marine, and terrestrial ecosystems. Environmental Pollution, 100(1–505 
+3), 179–196. 506 
+Soil Survey Staff. (2003). Garrett Series – Official Soil Series Description. Natural Resources 507 
+Conservation Service, United States Department of Agriculture. 508 
+https://soilseries.sc.egov.usda.gov/ 509 
+Sojka, R. E., Bjorneberg, D. L., Entry, J. A., Lentz, R. D., & Orts, W. J. (2007). Polyacrylamide 510 
+in agriculture and environmental land management. Advances in Agronomy, 92, 75–162. 511 
+Sojka, R. E., Bjorneberg, D. L., & Strelkoff, T. S. (2007). Irrigation‐Induced Erosion. Irrigation 512 
+of Agricultural Crops, 30, 237–275. 513 
+
+--- PAGE 70 ---
+ 
+Page 70 of 73 
+Stan Development Team. (2023). Stan Modeling Language Users Guide and Reference Manual, 514 
+version 2.36. https://mc-stan.org 515 
+Standard Methods Committee of the American Public Health Association American Water 516 
+Works Association, & Federation, W. E. (2017). 4500-NH3 Nitrogen (Ammonia). In W. C. 517 
+Lipps, T. E. Baxter, & E. Braun-Howland (Eds.), Standard Methods for the Examination of 518 
+Water and Wastewater. APHA Press. https://doi.org/10.2105/SMWW.2882.087 519 
+Sun, Q., Zi, R., Fang, F., Yang, B., Hong, M., Xu, Y., Peng, L., Qin, L., Song, T., Du, J., Liu, Z., 520 
+Han, Z., & Zhao, L. (2026). Assessing the impact of four tillage methods on soil and water 521 
+conservation in karst areas of Southwest China: Evidence from a 10-year field study. 522 
+Agriculture, Ecosystems & Environment, 406, 110416. 523 
+https://doi.org/https://doi.org/10.1016/j.agee.2026.110416 524 
+Tilman, D., Cassman, K. G., Matson, P. A., Naylor, R., & Polasky, S. (2002). Agricultural 525 
+sustainability and intensive production practices. Nature, 418(6898), 671–677. 526 
+Trimarco, T., Harmel, R. D., Wardle, E., Buchanan, C., Brown, A., Deleon, E., Bauder, T., & 527 
+Ippolito, J. A. (2025). Connecting the soil health–water quality nexus under surface-528 
+irrigated conservation tillage. Journal of Environmental Quality, 54(5), 1090–1102. 529 
+https://doi.org/10.1002/jeq2.70013 530 
+Trimarco, T., Wardle, E., Deleon, E., Brown, A., Buchanan, C., & Ippolito, J. (2023, May). 531 
+Exploring the soil health-water quality-ecosystems services nexus of long-term conservation 532 
+tillage plots under intense irrigation. https://doi.org/10.5194/egusphere-egu23-2137 533 
+
+--- PAGE 71 ---
+ 
+Page 71 of 73 
+Trotter, B., Wible, T., Brink, P., Arabi, M., Carlson, J., Newton, C., Bauder, T., Wardle, E., & 534 
+Harmel, D. (2025). Edge-of-field water quality impacts of EQIP-funded conservation 535 
+practices on irrigated fields in Colorado. Journal of Soil and Water Conservation, 80(2), 536 
+176–189. https://doi.org/10.1080/00224561.2025.2467589 537 
+U.S. Environmental Protection Agency. (1971a). Method 160.1: Residue, Filterable 538 
+(Gravimetric, Dried at 180°C). https://www.epa.gov/sites/default/files/2015-539 
+06/documents/160_1dqi.pdf 540 
+U.S. Environmental Protection Agency. (1971b). Method 160.2: Residue, Non-Filterable 541 
+(Gravimetric, Dried at 103–105°C). https://www.epa.gov/sites/default/files/2015-542 
+06/documents/160_2.pdf 543 
+U.S. Environmental Protection Agency. (1982a). Method 120.1: Specific Conductance 544 
+(Electrometric Method). https://www.epa.gov/sites/default/files/2015-545 
+08/documents/method_120-1_1982.pdf 546 
+U.S. Environmental Protection Agency. (1982b). Method 150.1: pH (Electrometric Method). 547 
+https://www.epa.gov/sites/default/files/2015-08/documents/method_150-1_1982.pdf 548 
+U.S. Environmental Protection Agency. (1993a). Method 300.0: Determination of Inorganic 549 
+Anions by Ion Chromatography. https://www.epa.gov/sites/default/files/2015-550 
+08/documents/method_300-0_rev_2-1_1993.pdf 551 
+U.S. Environmental Protection Agency. (1993b). Method 350.1: Determination of Ammonia 552 
+Nitrogen by Semi-Automated Colorimetry. https://www.epa.gov/esam/epa-method-3501-553 
+determination-ammonia-nitrogen-semi-automated-colorimetry 554 
+
+--- PAGE 72 ---
+ 
+Page 72 of 73 
+U.S. Environmental Protection Agency. (1993c). Method 353.2: Determination of Nitrate-Nitrite 555 
+Nitrogen by Automated Colorimetry. https://www.epa.gov/sites/default/files/2015-556 
+08/documents/method_353-2_1993.pdf 557 
+U.S. Environmental Protection Agency. (1993d). Method 365.2: Determination of Phosphorus 558 
+by Semi-Automated Colorimetry. https://www.epa.gov/sites/default/files/2015-559 
+08/documents/method_365-1_1993.pdf 560 
+U.S. Environmental Protection Agency. (1994). Method 200.8: Determination of Trace Elements 561 
+in Waters and Wastes by Inductively Coupled Plasma-Mass Spectrometry. 562 
+https://www.epa.gov/sites/default/files/2015-08/documents/method_200-8_rev_5-563 
+4_1994.pdf 564 
+USDA-NRCS. (2011). National Agronomy Manual: Estimating Crop Residue Cover (Numbers 565 
+190-V-NAM, Part 503, Subpart 503.51). https://www.nrcs.usda.gov/sites/default/files/2022-566 
+10/National-Agronomy-Manual.pdf 567 
+USDA-NRCS. (2012). Edge-Of-Field Water Quality Monitoring Data Collection And 568 
+Evaluation. In CONSERVATION ACTIVITY: Code 201. Natural Resources Conservation 569 
+Service, United States Department of Agriculture. 570 
+https://www.nrcs.usda.gov/sites/default/files/2023-09/FY24-CEMA-201-Edge-of-Field-571 
+WQ-Monitoring-Data-Collection-and-Evaluation-10-23.pdf 572 
+Yen, H., Wang, X., Fontane, D. G., Harmel, R. D., & Arabi, M. (2014). A framework for 573 
+propagation of uncertainty contributed by parameterization, input data, model structure, and 574 
+calibration/validation data in watershed modeling. Environmental Modelling & Software, 575 
+54, 211–221. 576 
+
+--- PAGE 73 ---
+ 
+Page 73 of 73 
+Zhang, W., Fang, L., Zhang, W., Wang, C., Qiu, T., Li, X., Huang, M., Li, B., Xia, L., Peng, L., 577 
+Xu, Y., Wu, X., Hu, J., Tan, J., Shi, S., Jia, J., & Kuzyakov, Y. (2026). Global Potential and 578 
+Trade-Offs of Conservation Tillage for Crop Productivity and Ecosystem Services. Global 579 
+Change Biology, 32(4), e70825. https://doi.org/https://doi.org/10.1111/gcb.70825 580 
+  581 

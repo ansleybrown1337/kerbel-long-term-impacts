@@ -31,6 +31,8 @@ from comparison.bayes_ml_comparison_v3p0_physical_event import (  # noqa: E402
     normalize_ledger,
     normalize_point_ledger,
     overall_nrmse_table,
+    observed_annual_load_completeness,
+    observed_annual_volume_completeness,
     performance_table,
     read_observed_annual_summary,
 )
@@ -405,6 +407,88 @@ def test_comparison_observed_annual_summary_converts_grams_to_kg(tmp_path: Path)
     assert observed["center_kg"].tolist() == [2.5]
     assert observed["lower_95_kg"].tolist() == [2.0]
     assert observed["upper_95_kg"].tolist() == [3.0]
+
+
+def test_observed_annual_load_requires_every_expected_event() -> None:
+    expected = pd.DataFrame(
+        {
+            "Year": [2020, 2020, 2021],
+            "Analyte": ["TN", "TN", "TN"],
+            "Treatment": ["CT", "CT", "CT"],
+            "PhysicalEventID": ["E1", "E2", "E3"],
+        }
+    )
+    observed_events = pd.DataFrame(
+        {
+            "Year": [2020, 2020, 2021],
+            "Analyte": ["TN", "TN", "TN"],
+            "Treatment": ["CT", "CT", "CT"],
+            "PhysicalEventID": ["E1", "E2", "E3"],
+            "Load_kg": [1.0, np.nan, 2.0],
+        }
+    )
+    observed_annual = pd.DataFrame(
+        {
+            "Year": [2020, 2021],
+            "Analyte": ["TN", "TN"],
+            "Treatment": ["CT", "CT"],
+            "center_kg": [1.0, 2.0],
+            "lower_95_kg": [0.8, 1.8],
+            "upper_95_kg": [1.2, 2.2],
+        }
+    )
+
+    audit = observed_annual_load_completeness(
+        expected,
+        observed_events,
+        observed_annual,
+    ).set_index("Year")
+
+    assert not bool(audit.loc[2020, "ObservedAnnualLoadComplete"])
+    assert audit.loc[2020, "n_observed_event_loads"] == 1
+    assert pd.isna(audit.loc[2020, "ObservedAnnualLoad_kg"])
+    assert audit.loc[2020, "ObservedSubtotal_kg"] == 1.0
+    assert bool(audit.loc[2021, "ObservedAnnualLoadComplete"])
+    assert audit.loc[2021, "ObservedAnnualLoad_kg"] == 2.0
+
+
+def test_observed_annual_volume_requires_every_expected_event() -> None:
+    expected = pd.DataFrame(
+        {
+            "Year": [2020, 2020, 2021],
+            "Treatment": ["CT", "CT", "CT"],
+            "PhysicalEventID": ["E1", "E2", "E3"],
+        }
+    )
+    volume_rows = pd.DataFrame(
+        {
+            "Year": [2020, 2020, 2021],
+            "Treatment": ["CT", "CT", "CT"],
+            "PhysicalEventID": ["E1", "E2", "E3"],
+            "Volume": [100.0, np.nan, 200.0],
+        }
+    )
+    annual_volume = pd.DataFrame(
+        {
+            "Method": ["Observed", "Observed"],
+            "Year": [2020, 2021],
+            "Treatment": ["CT", "CT"],
+            "center_kL": [0.1, 0.2],
+            "lower_95_kL": [0.08, 0.18],
+            "upper_95_kL": [0.12, 0.22],
+        }
+    )
+
+    audit = observed_annual_volume_completeness(
+        expected,
+        volume_rows,
+        annual_volume,
+    ).set_index("Year")
+
+    assert not bool(audit.loc[2020, "ObservedAnnualVolumeComplete"])
+    assert pd.isna(audit.loc[2020, "ObservedAnnualVolume_kL"])
+    assert bool(audit.loc[2021, "ObservedAnnualVolumeComplete"])
+    assert audit.loc[2021, "ObservedAnnualVolume_kL"] == 0.2
 
 
 def test_complete_v3p0_figure_suites_are_wired_to_entrypoints() -> None:
