@@ -1,0 +1,373 @@
+VolumeObservationID,PhysicalEventID,Year,Irrigation,Rep,Treatment,Date,MeasureMethod,FlumeMethod,Volume,_confirmed_zero,source_row_count,_wq_idx,SampleID,Duplicate,NoRunoff,Notes,EventDate
+VO_2298d33c07ffe58b4508,PE_8372856d847ab29e3d55,2011,1,1,CT,2011-06-30,Transducer,Weir,11576.43,False,14,0,CT1-01-OT,False,False,"OG Sample IDS: CT1-T1, CT1-T2, CT1-T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-06-30
+VO_7e900f468a4edca4d288,PE_7ab5d22c48132f848099,2011,1,2,CT,2011-07-01,Transducer,Weir,7426.17,False,14,3,CT2-01-0T,False,False,"OG Sample IDS: CT2-T1, CT2-T2, CT2-T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-07-01
+VO_5a456c5930de8120af54,PE_35e13c2714d6ea95f5d3,2011,2,1,CT,2011-07-18,Transducer,Weir,28720.58,False,14,6,CT1-02-OT,False,False,"OG Sample IDS: CT1 I2 T1, CT1 I2 T2, CT1 I2 T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.  CT1 I2 T2 value used in this sheet is the average between the sample and its dupe",2011-07-18
+VO_f1f2f42f24158a0551c6,PE_9e155a06de6d2a36ed95,2011,2,2,CT,2011-07-19,Transducer,Weir,13281.57,False,14,9,CT2-02-OT,False,False,"OG Sample IDS: CT2 I2 T1, CT2 I2 T2, CT2 I2 T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-07-19
+VO_51fed297660faf977c91,PE_c33b54f99c0ede44173e,2011,3,1,CT,2011-07-28,Transducer,Weir,14140.76,False,14,12,,False,,,2011-07-28
+VO_a6727d56bf06d1ef6e2d,PE_d16ac2ea89bbe98196a0,2011,3,2,CT,2011-07-29,Transducer,Weir,30783.41,False,14,15,,False,,,2011-07-29
+VO_c5cbf8ec270f84add3e1,PE_9b06b2640ba03d9fa7c4,2011,4,1,CT,2011-08-09,Transducer,Weir,17607.82,False,14,18,CT1-04-OT,False,False,"OG Sample IDs: CT1 T1 I4, CT1 T2 I4, CT1 T3 I4. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-08-09
+VO_4bb3417fbda1fe458aa6,PE_57effa7ea94a4868513b,2011,4,2,CT,2011-08-10,Ruler,Weir,4102.0,False,14,21,CT2-04-OT,False,False,"OG Sample IDs: CT2 T1 I4, CT2 T2 I4, CT2 T3 I4. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-08-10
+VO_7c0af5255edf2ffde077,PE_478d3c0884b4f50a8523,2011,5,2,CT,2011-08-19,Transducer,Weir,23467.0,False,14,27,,False,,,2011-08-19
+VO_257b327d5071d69bbb80,PE_3da987b4bbd059aa3b87,2011,6,2,CT,2011-08-29,Transducer,Weir,16597.23,False,14,33,,False,,,2011-08-29
+VO_780b7ae32ea411f8ac5d,PE_df9469438e8cb790e7af,2012,1,1,CT,2012-05-15,Transducer,7 V,0.0,True,5,1147,CT1-01-OT,False,True,"CT1 LABELED NO RUNOFF IN OTHER MASTER SHEET, THESE VALUES ARE FROM ""1st irr. (before cultivate) CSU Lab runoff nutrients"". Flagged because samples were taken with a weer in the field, not representative of runoff. Og sample labels ""CT1 I1 T1, T2, T3"" The results are averages of the 3 samples taken at different times. Before cultivation.",2012-05-15
+VO_a6c06c2d6af39f438424,PE_c022cac1f55e539686af,2012,1,2,CT,2012-05-16,Transducer,7 V,0.0,True,5,1150,CT2-01-0T,False,True,"CT2 LABELED NO RUNOFF IN OTHER MASTER SHEET, THESE VALUES ARE FROM ""1st irr. (before cultivate) CSU Lab runoff nutrients"". Flagged because samples were taken with a weer in the field, not representative of runoff. Og sample labels ""CT2 I1 T1, T2, T3""",2012-05-16
+VO_a11871cf7456d3a63125,PE_42eb29bd3d8b55596b0d,2012,2,1,CT,2012-06-03,Ruler,7 V,7407.0,False,14,42,CT1-02-OT,False,False,"The results are averages of 2 samples taken at different times. Before cultivation. OG Sample IDs ""CT1 I2 T1, T2"". No TSS results in the ""2012 sediment load excel file""",2012-06-03
+VO_732565ef270f03e20bdc,PE_964f9e60ef2ea5038dae,2012,2,2,CT,2012-06-04,Ruler,7 V,7951.0,False,14,45,CT2-02-OT,False,False,"The results are averages of the 3 samples taken at different times. Before cultivation. OG Sample IDs ""CT2 I2 T1, T2, T3"". No TSS results in the ""2012 sediment load excel file""",2012-06-04
+VO_b9cee10a1f0ad581e4fb,PE_e36c37e82bf0717de103,2012,3,1,CT,2012-06-11,Transducer,7 V,0.0,True,2,4492,CT1-03-OT,False,True,". No TSS results in the ""2012 sediment load excel file""",2012-06-11
+VO_f2f8f5fe4d8a136f62e5,PE_6dd6e0481282dc87af9e,2012,3,2,CT,2012-06-12,Transducer,7 V,0.0,True,2,4495,CT2-03-OT,False,True,". No TSS results in the ""2012 sediment load excel file""",2012-06-12
+VO_93d9138b16681246c78b,PE_8926ae228cc15db54f23,2012,4,1,CT,2012-06-26,Transducer,7 V,13880.0,False,14,54,CT1-04-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-06-26
+VO_76ed801b0620a8009006,PE_93fc10203fe8e4c919ea,2012,4,2,CT,2012-06-27,Transducer,7 V,9625.0,False,14,57,CT2-04-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-06-27
+VO_e3f2fec9726705e3fd65,PE_9990eb3a8c35bbfe0d52,2012,5,1,CT,2012-07-16,Transducer,7 V,15768.0,False,14,60,CT1-05-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-07-16
+VO_240487e0613d1b407af6,PE_cbed8a7088e045d7b553,2012,5,2,CT,2012-07-17,Transducer,7 V,19064.0,False,14,63,CT2-05-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-07-17
+VO_e0c778f1a25ed3f7cf47,PE_7105f0f414cf84b7ea78,2012,6,1,CT,2012-07-24,Ruler,7 V,10219.0,False,14,66,CT1-06-OT,False,,,2012-07-24
+VO_37cb001f3f1365df3f26,PE_980f4b8e6c4ad4f916f0,2012,7,1,CT,2012-07-31,Ruler,7 V,6527.0,False,14,72,CT1-07-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-07-31
+VO_e10b74e7dc66a67337f3,PE_0d403a1dbd25bf378957,2012,7,2,CT,2012-08-01,Transducer,7 V,16037.0,False,14,75,CT2-07-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-08-01
+VO_e38f6551d062794da72f,PE_17730c5643d948b203ad,2012,8,1,CT,2012-08-08,Ruler,7 V,5919.0,False,14,78,CT1-08-OT,False,,,2012-08-08
+VO_60d1861bda1ee1739382,PE_f0826e18d2e4817478f5,2012,9,1,CT,2012-08-19,Ruler,7 V,4758.0,False,14,84,CT1-09-OT,False,,,2012-08-19
+VO_dd0dc745cbdf5a0b888f,PE_15c01ebd332fd5d41b39,2012,9,2,CT,2012-08-20,Transducer,7 V,18085.0,False,14,87,CT2-09-OT,False,,,2012-08-20
+VO_197310d56fb6be50d3f6,PE_2efa629b1e4ba707bca1,2012,10,1,CT,2012-08-30,Ruler,7 V,3753.0,False,14,90,CT1-10-OT,False,,,2012-08-30
+VO_25fc1d14c157d24e1423,PE_32cf57061f68ffb1c9cf,2012,10,2,CT,2012-08-31,Transducer,7 V,26764.0,False,14,93,CT2-10-OT,False,,,2012-08-31
+VO_2d35eadb92ff161413e3,PE_06846811b2896d804676,2013,2,2,CT,2013-07-03,Transducer,7 V,17620.0,False,14,105,CT2-02-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-03
+VO_833ed9ee33f5bf27cd8e,PE_1486d363f9b911e8c7c4,2013,3,1,CT,2013-07-11,Transducer,7 V,12709.0,False,14,108,,False,,"This date was determined by the ""2013_DataLogger"" file, assumed to be soil moisture sensors",2013-07-11
+VO_6a0b2a4359249cda8c26,PE_3aa6f9c73e9503f289eb,2013,3,2,CT,2013-07-12,Transducer,7 V,15886.0,False,14,111,,False,,"This date was determined by the ""2013_DataLogger"" file, assumed to be soil moisture sensors",2013-07-12
+VO_0511c11747725e7774f6,PE_7dbc678d30fda2bb0d2c,2013,4,1,CT,2013-07-30,Transducer,7 V,6754.0,False,14,114,CT1-04-OT,False,False,The analyte values are averages of 6 samples over the irrigation period. Farm logic date reports 7/30,2013-07-30
+VO_0c742abd11b232fb629a,PE_2e9d58711c9824497c11,2013,4,2,CT,2013-07-31,Transducer,7 V,8443.0,False,14,117,CT2-04-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-31
+VO_3c6324a9df90b6967064,PE_8fc624aa7b0c0a5ff950,2013,5,1,CT,2013-08-08,Transducer,7 V,3573.0,False,14,120,,False,,,2013-08-08
+VO_f66afb7b5563c765d245,PE_f631c0023156acc8f2cb,2013,5,2,CT,2013-08-09,Transducer,7 V,23134.0,False,14,123,,False,,,2013-08-09
+VO_ce7edefd088f1f43f433,PE_dc649077fd49ff457e31,2013,6,1,CT,2013-08-19,Transducer,7 V,20902.0,False,14,126,CT1-06-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-08-19
+VO_452ddd5ff9e52051fca1,PE_a814ea72d8a79e5ce612,2013,6,2,CT,2013-08-20,Transducer,7 V,30421.0,False,14,129,CT2-06-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-08-20
+VO_9e4c15f6639f955f4a51,PE_91e7db994d29b3cdcef3,2013,7,1,CT,2013-08-28,Transducer,7 V,34505.0,False,14,132,,False,,,2013-08-28
+VO_222c2bec9a2dfd372bcc,PE_5084a07101a28e5fba2b,2013,7,2,CT,2013-08-29,Transducer,7 V,43131.0,False,14,135,,False,,,2013-08-29
+VO_01018d149452530442d9,PE_e1f06f083d001c899062,2014,1,1,CT,2014-07-01,Bubbler,7 V,44359.44,False,56,138,CT1-FF-01-OT,False,False,OG sample ID CT1 I1 S1 - S1= the first first samplable water  through flume.,2014-07-01
+VO_75a5e3937e5c7a0b0b64,PE_0f6804c5fdc4da7fb4f7,2014,1,2,CT,2014-07-02,Bubbler,7 V,67070.2,False,56,148,CT2-FF-01-OT,False,False,OG sample ID CT2 I1 S1 - S1= the first first samplable water  through flume.,2014-07-02
+VO_d3a1d3b91adb9354357a,PE_ab1e5addf2e00bc003a1,2014,2,1,CT,2014-07-21,Transducer,7 V,10627.9,False,14,158,,False,,,2014-07-21
+VO_861933ea464b0914dfb0,PE_bb21dc13f44e7cae1045,2014,2,2,CT,2014-07-22,Transducer,7 V,7867.88,False,14,161,,False,,,2014-07-22
+VO_df7984040ed81c26911d,PE_0f2c1b5db3c1949d1f74,2014,3,1,CT,2014-08-04,Bubbler,7 V,22785.7,False,56,164,CT1-FF-03-OT,False,False,OG sample ID CT1 I3 S1 - S1= the first first samplable water  through flume.,2014-08-04
+VO_8108ac99f980f0dcf458,PE_0c873ebca68f220b5575,2014,3,2,CT,2014-08-05,Bubbler,7 V,35177.79,False,56,173,CT2-FF-03-OT,False,False,OG sample ID CT2 I3 S1 - S1= the first first samplable water  through flume.,2014-08-05
+VO_78b6b3846b672a1539a9,PE_4c80e607422dec97f0c9,2014,4,1,CT,2014-08-17,Transducer,7 V,16189.58,False,42,182,CT1-04-OT,False,False,"TSS value  is an average of CT1 I4 S2,S3,S4,S5,S6,S7,S15",2014-08-17
+VO_4a0d1b84f8145e03eb34,PE_e4c541913dac4c0bca3d,2014,4,2,CT,2014-08-18,Transducer,7 V,70208.72,False,28,188,CT2-04-OT,False,False,"TSS value  is an average of CT2 I4 S1, S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S15,S16",2014-08-18
+VO_b6558a113fa146ed6af1,PE_effd37ee189df750ad5a,2015,1,1,CT,2015-07-06,Bubbler,7 V,20881.85,False,28,199,CT1-01-OT,False,False,"Analytical composite. Average of CT1 I1 bottles 2, 4, 6, 8",2015-07-06
+VO_c268ec36ab339dd3a268,PE_63a5c105af28ea9f75a7,2015,1,2,CT,2015-07-07,Bubbler,7 V,6831.93,False,28,205,CT2-01-OT,False,False,"Analytical composite. Average of CT2 I1 bottles 2, 4, 6",2015-07-07
+VO_f5107c4d0363ce6d163c,PE_ece5ee3d9a47f8a4b70b,2015,2,1,CT,2015-07-20,Bubbler,7 V,25946.18,False,28,211,CT1-02-OT,False,False,"Analytical composite. Average of CT1 I 2 bottles 2, 4, 6, 8, 10",2015-07-20
+VO_cd3b1c5d251c27ed3ea4,PE_003510690d55f2e080ab,2015,2,2,CT,2015-07-21,Bubbler,7 V,25518.47,False,28,217,CT2-02-OT,False,False,"Analytical composite. Average of CT2 I 2 bottles 2, 4, 6, 8, 10. Original Ortho P values, 0.03,0.01,0.01,0,0. Any average with a 0 or negative value is changed to U",2015-07-21
+VO_f90af9ee83cec3ff1e2c,PE_b307adedb4f140b2f276,2015,3,1,CT,2015-07-30,Bubbler,7 V,26669.11,False,28,223,CT1-03-OT,False,False,,2015-07-30
+VO_0d203abac1375a75a283,PE_38f43e287ee7d1f916e4,2015,3,2,CT,2015-07-31,Bubbler,7 V,20056.72,False,28,229,CT2-03-OT,False,False,,2015-07-31
+VO_102721a67dc688247e75,PE_9a36752b43ad5983930a,2015,4,1,CT,2015-08-06,Bubbler,7 V,43459.37,False,14,235,CT1-04-OT,False,False,,2015-08-06
+VO_6355e5c9fbaf1f6c6d8e,PE_42feb90a12eb2a1656cd,2015,4,2,CT,2015-08-07,Bubbler,7 V,2978.8,False,14,238,CT2-04-OT,False,False,,2015-08-07
+VO_5215893686b7c61276b6,PE_1994b95c4c5d89d54441,2015,5,1,CT,2015-08-16,Bubbler,7 V,23364.81,False,28,241,CT1-05-OT,False,False,"Analytical composite. Average of CT1 I 5 bottles 2, 4, 6, 8, 10",2015-08-16
+VO_cc82dde01f76622208d1,PE_01dfb8394999c3a08b1b,2015,5,2,CT,2015-08-17,Bubbler,7 V,28705.44,False,28,247,CT2-05-OT,False,False,"Analytical composite. Average of CT2 I 5 bottles 2, 4, 6, 8, 10",2015-08-17
+VO_53556fe3be39b9c7ea26,PE_1ad2a48558b8c9cdf0bb,2015,6,1,CT,2015-08-31,Bubbler,7 V,21438.24,False,28,253,CT1-06-OT,False,False,"Analytical composite. Average of CT1 I 6 bottles 1, 2, 3, 4, 5. Original NH4 values, 0.02,0,0,0,0",2015-08-31
+VO_d30908519303855fbe91,PE_eba40b08b5ce69421768,2015,6,2,CT,2015-09-01,Bubbler,7 V,18890.94,False,28,259,CT2-06-OT,False,False,"Analytical composite. Average of CT2 I 6 bottles 1, 2, 3, 4, 5",2015-09-01
+VO_ac7dac7a5c2662cdde91,PE_cf4508303fbec7c40fe5,2016,1,1,CT,2016-06-07,Bubbler,7 V,57325.34,False,28,265,CT1-01-OT,False,False,"Analytical composite. Average of CT1 I1 Time 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 7-D. TP, TKN, TSP average of CT I1 T1, 5, 10, 7-D. Original ammonium values, 0.77,0,0.01,0.01,0,0.06,0.05,0.11,0.05,0.03,0.04",2016-06-07
+VO_3d4f3bd65e3e9b96edee,PE_571c968894d925b12ac7,2016,1,2,CT,2016-06-08,Bubbler,7 V,27468.5,False,28,271,CT2-01-OT,False,False,"Analytical composite. Average of CT2 I1 Time 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 6-D. TP, TKN, TSP average of CT I1 T1, 2, 6, 10, 6-D. Original TKN values, 0.127,0.118,0.048,0.073,0",2016-06-08
+VO_d7d41b3afe4f268592d0,PE_796a63125680b03b1a47,2016,2,1,CT,2016-06-19,Bubbler,7 V,31999.53,False,28,277,CT1-02-OT,False,False,"Analytical composite. Average of CT1 I2 Time 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 6-D. TP, TKN, TSP average of CT I2 T1, 2, 5, 10.",2016-06-19
+VO_7f8a709d48e1c7a05955,PE_962807ecf486db3c765b,2016,2,2,CT,2016-06-20,Bubbler,7 V,36432.52,False,28,283,CT2-02-OT,False,False,"Analytical composite. Average of CT2 I2 Time 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 7D, 24D. TP, TKN, TSP average of CT2 I2 T1, 2, 4, 6, 12, 24-D.Original TP values, .004,0,.004,.027,.003,.003. Original TSP values, .002,0,.003,.002,.001,.001.",2016-06-20
+VO_765cbba307fc74c15ae1,PE_a249f721c9cded6ed477,2017,1,1,CT,2017-06-26,Bubbler,7 V,38145.23,False,42,289,CT1-01-FF,False,False,,2017-06-26
+VO_78260ac74e6bb56c08fc,PE_31bb29072ce592a58136,2017,1,2,CT,2017-06-27,Bubbler,7 V,123428.85,False,28,296,CT2-01-FF,False,False,,2017-06-27
+VO_4551de7b83b2b1e83ad7,PE_a86f0dd73b63a18791b9,2017,2,1,CT,2017-07-09,Bubbler,7 V,53141.4,False,42,303,CT1-02-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/10, lab reports 7/14, we suspect this to be out of hold time",2017-07-09
+VO_997cd48818b0aa154a5b,PE_c67a9e43f22b05bb8d70,2017,2,2,CT,2017-07-10,Bubbler,7 V,96275.26,False,28,310,CT2-02-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/10, lab reports 7/14, we suspect this to be out of hold time",2017-07-10
+VO_3fa5a2cb1591a6b552bd,PE_0db94b33091790ae448c,2017,3,1,CT,2017-07-20,Bubbler,7 V,36426.84,False,42,317,CT1-03-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/21, lab reports 7/27, we suspect this to be out of hold time",2017-07-20
+VO_32baccdf67567c327922,PE_c7e10f3a52f813c6a07a,2017,3,2,CT,2017-07-21,Bubbler,7 V,66112.6,False,28,324,CT2-03-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/21, lab reports 7/27, we suspect this to be out of hold time",2017-07-21
+VO_580aa2c3440790073e75,PE_c6a22d9daf9658c76f8d,2017,4,1,CT,2017-08-02,Bubbler,7 V,27895.45,False,42,331,CT1-04-FF,False,False,,2017-08-02
+VO_c4097c7db65c27bd9f8c,PE_f0acae9004db30c9f89b,2017,4,2,CT,2017-08-03,Bubbler,7 V,33186.88,False,28,338,CT2-04-FF,False,False,,2017-08-03
+VO_8a778dd545d5dcaedd15,PE_c0e9a65e116d987d3dfe,2017,5,1,CT,2017-08-21,Bubbler,7 V,13391.33,False,42,345,CT1-05-FF,False,False,,2017-08-21
+VO_9791b960e68ef08014cd,PE_20fd7645e8886a1975a0,2017,5,2,CT,2017-08-22,Bubbler,7 V,46407.89,False,28,352,CT2-05-FF,False,False,,2017-08-22
+VO_7b50bddda5a470d3baa3,PE_4a45291481f1020c04f7,2017,6,1,CT,2017-09-06,Bubbler,7 V,29114.22,False,42,358,CT1-06-FF,False,False,,2017-09-06
+VO_0a007883bbdaf3906735,PE_1286406ef8d51ffa7b89,2017,6,2,CT,2017-09-07,Bubbler,7 V,31529.05,False,28,365,CT2-06-FF,False,False,,2017-09-07
+VO_a1a023aa1c07dce8d9a0,PE_f112cb116ff39b0745d1,2020,3,1,CT,2020-07-13,Bubbler,7 V,20754.38,False,14,423,CT1-03-OT,False,False,,2020-07-13
+VO_eee13351fdb0cfd6bc1d,PE_5cea09f5406d83c18d64,2020,3,2,CT,2020-07-13,Bubbler,7 V,20754.38,False,14,424,CT1-03-OT-D,True,False,ORIGINAL SAMPLE ID: CT2-03-OT-D,2020-07-13
+VO_1bbddc4ec1f39133749e,PE_33074ef569f8079ca2c5,2021,1,1,CT,2021-06-23,Ruler,7 V,13473.77,False,28,468,CT1-01-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-06-23
+VO_c943d53851f3839149c4,PE_43f0020c0e87bb28cb4f,2021,1,2,CT,2021-06-24,Ruler,7 V,15554.78,False,28,474,CT2-01-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-06-24
+VO_2710595c7316476cd256,PE_21eb97240c4e244d59c9,2021,2,1,CT,2021-07-08,Ruler,7 V,21973.56,False,28,480,CT1-02-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-08
+VO_da547894a58ea4872f35,PE_a1506e8e5a02282cf157,2021,2,2,CT,2021-07-09,Ruler,7 V,6748.25,False,28,486,CT2-02-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-09
+VO_0a2d0b9bcd733b37a7a7,PE_e9ed7c0da6f350ec0ebd,2021,3,1,CT,2021-07-29,Ruler,7 V,12952.77,False,28,492,CT1-03-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-29
+VO_873e24767d50ca1619bf,PE_7131d35e8cd02b882d26,2023,1,1,CT,2023-07-17,Ruler,60 V Trap,49247.71,False,56,700,K-CT1-01-LC,False,False,,2023-07-17
+VO_6ede9003c2a954d040c4,PE_222b0b4beba254c530d7,2023,1,2,CT,2023-07-17,Ruler,60 V Trap,21017.36,False,56,714,K-CT2-01-LC,False,False,,2023-07-17
+VO_e198cb6d8cc8af50f9b2,PE_21ef5b6342274d9e3203,2023,2,1,CT,2023-08-16,Ruler,60 V Trap,73898.8,False,56,738,K-CT1-02-LC,False,False,,2023-08-16
+VO_a7d54c9217b5610b2648,PE_1607bd85c5b858754283,2023,2,2,CT,2023-08-16,Ruler,60 V Trap,73851.0,False,56,752,K-CT2-02-LC,False,False,,2023-08-16
+VO_6adfc1e446b8a93c8085,PE_f7a5e5b2a4c1c3239774,2023,3,1,CT,2023-08-23,Ruler,60 V Trap,36666.33,False,56,764,K-CT1-03-LC,False,False,,2023-08-23
+VO_7d940e4c3c1352d736f6,PE_ee0d84028e7204c9f8b6,2023,3,2,CT,2023-08-23,Ruler,60 V Trap,27515.49,False,56,777,K-CT2-03-LC,False,False,,2023-08-23
+VO_7e67bcf9019be4471118,PE_577d295e76e129c37688,2023,4,1,CT,2023-09-20,Ruler,60 V Trap,23145.08,False,56,790,K-CT1-04-LC,False,False,,2023-09-20
+VO_8db6a7c09215800b45c7,PE_5bf168b414e63b4f63f3,2023,4,2,CT,2023-09-20,Ruler,60 V Trap,19788.4,False,70,803,K-CT2-04-LC,False,False,"There are two samples with this same ID in  the 2023 TSS sheet, averaging results",2023-09-20
+VO_d6b5408d3dd840ba0579,PE_bf4d5c43e21a82c51f4f,2023,5,1,CT,2023-09-26,Ruler,60 V Trap,30266.86,False,56,816,K-CT1-05-LC,False,False,"Method: E300, Method: SM4500P E: ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered  estimated.""",2023-09-26
+VO_a465563a77b8e521d7b6,PE_17f8630aaa6312f3912a,2023,5,2,CT,2023-09-26,Ruler,60 V Trap,56738.31,False,56,828,K-CT2-05-LC,False,False,"Method: E300, Method: SM4500P E: ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered  estimated.""",2023-09-26
+VO_7f053a11199c6629b98f,PE_e01f96101de9649fe0a8,2024,1,1,CT,2024-05-15,Etape,60 V Trap,49274.84,False,28,841,K-CT1-01-OT-LC,False,False,,2024-05-15
+VO_cd22aa4df197553e2a06,PE_a354768a3ad269a40a28,2024,1,2,CT,2024-05-15,Etape,60 V Trap,50602.49,False,28,853,K-CT2-01-OT-LC,False,False,,2024-05-15
+VO_d864dcb6307dfdf717ac,PE_a354768a3ad269a40a28,2024,1,2,CT,2024-05-15,Bubbler,60 V Trap,39869.62,False,28,855,K-CT2-01-OT-ISC,False,False,Outflow volume cutoff at 7pm,2024-05-15
+VO_f34bcabdbcf3236c242e,PE_add35a9103c77e144288,2024,2,1,CT,2024-05-30,Etape,60 V Trap,52953.86,False,28,865,K-CT1-02-OT-LC,False,False,,2024-05-30
+VO_37ceb235bdfca32cadfc,PE_add35a9103c77e144288,2024,2,1,CT,2024-05-30,Bubbler,60 V Trap,41453.5,False,28,867,K-CT1-02-OT-ISC,False,False,,2024-05-30
+VO_52a83b4b00d588e9f23d,PE_828e337f2a8b9a9634d7,2024,3,1,CT,2024-06-12,Etape,60 V Trap,21784.86,False,28,889,K-CT1-03-OT-LC,False,False,"Method: SM4500P E: ""Sample was analyzed outside of the holding time at the request of the client. Results should be considered estimated""",2024-06-12
+VO_799e53db901f97237fb4,PE_3a4478840ec05680e176,2024,4,2,CT,2024-06-20,Etape,60 V Trap,80052.15,False,28,925,K-CT2-04-OT-LC,True,False,,2024-06-20
+VO_02e2b0ee87028aab4d63,PE_3a4478840ec05680e176,2024,4,2,CT,2024-06-20,Bubbler,60 V Trap,44388.43,False,28,927,K-CT2-04-OT-ISC,False,False,,2024-06-20
+VO_a94e975f6107889a158e,PE_41cebec90b66f3ef63c2,2025,1,1,CT,2025-06-30,Etape,60 V Trap,45385.43,False,28,937,K-CT1-01-OT-LC,False,False,,2025-06-30
+VO_6e3570c94863bf0ae1a1,PE_92e7ac2243498d97f3e0,2025,1,2,CT,2025-06-30,Etape,60 V Trap,30980.44,False,28,949,K-CT2-01-OT-LC,False,False,,2025-06-30
+VO_487c95b8b47e4e371ff1,PE_92e7ac2243498d97f3e0,2025,1,2,CT,2025-06-30,Bubbler,60 V Trap,36043.57,False,28,951,K-CT2-01-OT-ISC,False,False,,2025-06-30
+VO_1e36bc066609de111cf3,PE_961b16815e7ba5016bdb,2025,2,1,CT,2025-07-14,Etape,60 V Trap,52464.39,False,28,961,K-CT1-02-OT-LC,False,False,,2025-07-14
+VO_84a9c7fa5b23de230f7d,PE_30d8eee773ba85ed7ec9,2025,2,2,CT,2025-07-14,Etape,60 V Trap,39731.85,False,28,973,K-CT2-02-OT-LC,False,False,,2025-07-14
+VO_d16caed252d85f87b1d8,PE_30d8eee773ba85ed7ec9,2025,2,2,CT,2025-07-14,Bubbler,60 V Trap,52792.88,False,28,975,K-CT2-02-OT-ISC,False,False,,2025-07-14
+VO_e38cb5b8727b11f03f17,PE_85771b5590cb80ee80b1,2025,3,1,CT,2025-07-31,Etape,60 V Trap,63508.94,False,28,985,K-CT1-03-OT-LC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_6b01c798c880c134679b,PE_85771b5590cb80ee80b1,2025,3,1,CT,2025-07-31,Bubbler,60 V Trap,48014.28,False,28,987,K-CT1-03-OT-ISC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_23d798397dcc7ba90a8c,PE_79ea2eb78bef48e2d163,2025,3,2,CT,2025-07-31,Etape,60 V Trap,51762.19,False,28,997,K-CT2-03-OT-LC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_b8f9ccad82cf26c8d345,PE_79ea2eb78bef48e2d163,2025,3,2,CT,2025-07-31,Bubbler,60 V Trap,48378.31,False,28,999,K-CT2-03-OT-ISC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_e857abc5f608246a62ac,PE_bd4a80359ce1de5f5729,2025,4,1,CT,2025-08-11,Etape,60 V Trap,44112.36,False,28,1009,K-CT1-04-OT-LC,False,False,,2025-08-11
+VO_9da8c9251a20a8eb1be0,PE_bd4a80359ce1de5f5729,2025,4,1,CT,2025-08-11,Bubbler,60 V Trap,36259.61,False,28,1011,K-CT1-04-OT-ISC,False,False,,2025-08-11
+VO_99a0c428b5127951ad35,PE_72b83136bc50254a55a6,2025,4,2,CT,2025-08-11,Etape,60 V Trap,38777.88,False,28,1021,K-CT2-04-OT-LC,False,False,,2025-08-11
+VO_afb5c04fbece42a19784,PE_72b83136bc50254a55a6,2025,4,2,CT,2025-08-11,Bubbler,60 V Trap,39097.92,False,28,1023,K-CT2-04-OT-ISC,False,False,,2025-08-11
+VO_ec61a34f02351e4998ab,PE_73a092189bd19f7de823,2025,5,1,CT,2025-08-19,Etape,60 V Trap,36177.76,False,28,1033,K-CT1-05-OT-LC,False,False,,2025-08-19
+VO_010a793b6fd7fbfe5618,PE_73a092189bd19f7de823,2025,5,1,CT,2025-08-19,Bubbler,60 V Trap,50841.3,False,28,1035,K-CT1-05-OT-ISC,False,False,,2025-08-19
+VO_4cf06eacac37111ba082,PE_5c35b22fc4eba02df28c,2025,5,2,CT,2025-08-19,Etape,60 V Trap,61114.43,False,28,1045,K-CT2-05-OT-LC,False,False,,2025-08-19
+VO_59956df9d571559b3a21,PE_5c35b22fc4eba02df28c,2025,5,2,CT,2025-08-19,Bubbler,60 V Trap,68249.34,False,28,1047,K-CT2-05-OT-ISC,False,False,,2025-08-19
+VO_1e7246793e496e1f0fa6,PE_01024210b88310ac1815,2025,6,1,CT,2025-09-03,Etape,60 V Trap,44394.46,False,28,1057,K-CT1-06-OT-LC,False,False,,2025-09-03
+VO_0a0b0bf045f3d2f6b319,PE_01024210b88310ac1815,2025,6,1,CT,2025-09-03,Bubbler,60 V Trap,39692.42,False,28,1059,K-CT1-06-OT-ISC,False,False,,2025-09-03
+VO_cd3d21f81e1ff4838824,PE_ef5b618a3b1b8ffbd8e4,2025,6,2,CT,2025-09-03,Etape,60 V Trap,38869.78,False,28,1069,K-CT2-06-OT-LC,False,False,,2025-09-03
+VO_fc2048ae8f43e8d9599d,PE_ef5b618a3b1b8ffbd8e4,2025,6,2,CT,2025-09-03,Bubbler,60 V Trap,37671.65,False,28,1071,K-CT2-06-OT-ISC,False,False,,2025-09-03
+VO_857194122947b8f28918,PE_b85e98ea69e68f01ed00,2025,7,1,CT,2025-09-14,Etape,60 V Trap,37260.96,False,28,1081,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-14
+VO_91c514cb70ae7934ddf2,PE_b85e98ea69e68f01ed00,2025,7,1,CT,2025-09-14,Bubbler,60 V Trap,33950.0,False,28,1083,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-14
+VO_265248a2b8fa2623df7c,PE_d0b9f8548f96e312e4d0,2025,7,2,CT,2025-09-15,Bubbler,60 V Trap,53468.65,False,28,1095,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-15
+VO_d3caa976b3b78cc2954a,PE_60f1a6212ff620019a30,2011,1,1,MT,2011-06-30,Transducer,Weir,21021.89,False,14,1,NT1-01-OT,False,False,"OG Sample IDS: NT1-T1, NT1-T2, NT1-T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three. NT represents No Till",2011-06-30
+VO_fc3e3fb61cd72763e19c,PE_63934b6278a65a8216b9,2011,2,1,MT,2011-07-18,Transducer,Weir,30170.24,False,14,7,NT1-02-OT,False,False,"OG Sample IDS: NT1 I2 T1, NT1 I2 T2, NT1 I2 T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three. NT represents No Till  NT1 I2 T2 value used in this sheet is the average between the sample and its dupe",2011-07-18
+VO_3b485121fd8ba1ced92a,PE_2aaba42888d07cb12d22,2011,2,2,MT,2011-07-19,Transducer,Weir,36672.87,False,14,10,NT2-02-OT,False,False,"OG Sample IDS: NT2 I2 T1, NT2 I2 T2, NT2 I2 T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three. NT represents No Till",2011-07-19
+VO_484674b3167db9f033e2,PE_1959bad48333cbb7ac20,2011,3,1,MT,2011-07-28,Transducer,Weir,39550.81,False,14,13,,False,,,2011-07-28
+VO_ac121ade12a47539372b,PE_af262f79aa0ed033156d,2011,5,2,MT,2011-08-19,Transducer,Weir,19322.43,False,14,28,,False,,,2011-08-19
+VO_2b5f39de5d5dd8699a3c,PE_8822e7617a2395f5da78,2011,6,2,MT,2011-08-29,Transducer,Weir,23694.1,False,14,34,,False,,,2011-08-29
+VO_8e49c46dd6dcc2e51f73,PE_d8275d4734b8c69e5afc,2012,2,1,MT,2012-06-03,Transducer,10 V,0.0,True,1,14486,MT1-02-OT,False,True,,2012-06-03
+VO_23d4175c5fe2817df6b5,PE_81617f8b3e2986274802,2012,2,2,MT,2012-06-04,Transducer,10 V,0.0,True,1,14489,MT2-02-OT,False,True,,2012-06-04
+VO_f316f6254d1a6607551e,PE_f18d62b04bf4f3a25d7e,2012,3,1,MT,2012-06-11,Transducer,10 V,18448.0,False,14,49,MT1-03-OT,False,False,"The results are averages of the 3 samples taken at different times. Before cultivation. . No TSS results in the ""2012 sediment load excel file""",2012-06-11
+VO_b96ba4e2e40b37e05202,PE_04c02bec0f0f9a370498,2012,3,2,MT,2012-06-12,Transducer,10 V,24678.0,False,14,52,MT2-03-OT,False,False,"The results are averages of the 3 samples taken at different times. Before cultivation. . No TSS results in the ""2012 sediment load excel file""",2012-06-12
+VO_a98f7c12c87fcb475bb8,PE_8b5564238c223d972525,2012,4,1,MT,2012-06-26,Transducer,10 V,32998.0,False,14,55,MT1-04-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-06-26
+VO_962032738c21a1ba729e,PE_8dd5bcb659f488a967c1,2012,4,2,MT,2012-06-27,Transducer,10 V,10852.0,False,14,58,MT2-04-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-06-27
+VO_d676f270c31943479371,PE_860b95b364b2c2e3a6b5,2012,5,1,MT,2012-07-16,Transducer,10 V,23861.0,False,14,61,MT1-05-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-07-16
+VO_d63ee7f04811485f44c5,PE_c3c22e6072f6eeb66ac2,2012,6,2,MT,2012-07-25,Ruler,10 V,3672.0,False,14,70,MT2-06-OT,False,,,2012-07-25
+VO_64c19839eadcf01ebde4,PE_084268df6eb9d4246043,2012,7,1,MT,2012-07-31,Transducer,10 V,20356.0,False,14,73,MT1-07-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-07-31
+VO_899c9e946a5db92451e6,PE_681443548ef078be38f1,2012,7,2,MT,2012-08-01,Transducer,10 V,14799.0,False,14,76,MT2-07-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-08-01
+VO_65dca6f3ada9538196d2,PE_8844898dffe247398b01,2012,8,1,MT,2012-08-08,Transducer,10 V,19485.0,False,14,79,MT1-08-OT,False,,,2012-08-08
+VO_f90b34a6c077bc456415,PE_53bed9867f02ff579e2d,2012,8,2,MT,2012-08-09,Ruler,10 V,3890.0,False,14,82,MT2-08-OT,False,,,2012-08-09
+VO_74b068e860e0c2679e27,PE_7bc7d14f1d4cbbeee019,2012,9,1,MT,2012-08-19,Transducer,10 V,49284.0,False,14,85,MT1-09-OT,False,,,2012-08-19
+VO_387cc3afb56c8ed0ba55,PE_55dfff50a7b8f0a977d1,2012,9,2,MT,2012-08-20,Ruler,10 V,3839.0,False,14,88,MT2-09-OT,False,,,2012-08-20
+VO_c092d50cf417d2f8ceda,PE_d79901bee44e9d2ab8bc,2012,10,2,MT,2012-08-31,Ruler,10 V,3932.0,False,14,94,MT2-10-OT,False,,,2012-08-31
+VO_cff0430da7cb476cf5ec,PE_99b3a7e1248efb280745,2013,2,1,MT,2013-07-02,Transducer,10 V,22667.0,False,14,103,MT1-02-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-02
+VO_5177d303e4548e399707,PE_e9b4025c029d683e1a32,2013,2,2,MT,2013-07-03,Transducer,10 V,25396.0,False,14,106,MT2-02-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-03
+VO_a822552a2d679e1aa67b,PE_fe3dedee2de4a143e8fc,2013,3,1,MT,2013-07-11,Transducer,10 V,26640.0,False,14,109,,False,,"This date was determined by the ""2013_DataLogger"" file, assumed to be soil moisture sensors",2013-07-11
+VO_07ad0c53a0c83dac31fe,PE_a63568a97a8fde462031,2013,3,2,MT,2013-07-12,Transducer,10 V,26640.0,False,14,112,,False,,"This date was determined by the ""2013_DataLogger"" file, assumed to be soil moisture sensors",2013-07-12
+VO_437622f02a3c3afdbc5a,PE_2b276407ca9e7ade973b,2013,5,2,MT,2013-08-09,Transducer,10 V,43016.0,False,14,124,,False,,,2013-08-09
+VO_7c456ed650c095a0df8b,PE_12cbc4a228ce581574f5,2013,6,1,MT,2013-08-19,Transducer,10 V,29663.0,False,14,127,MT1-06-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-08-19
+VO_e45827674bee6fd2d1f5,PE_262bcdadb146dac989ae,2013,6,2,MT,2013-08-20,Transducer,10 V,22921.0,False,14,130,MT2-06-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-08-20
+VO_ad0a6ca20eaad6a95609,PE_6c6adaeedad01937f242,2013,7,1,MT,2013-08-28,Transducer,10 V,41842.0,False,14,133,,False,,,2013-08-28
+VO_fa4d4ba2742cc8d71763,PE_7f8b38f0a4ac5e96f77e,2013,7,2,MT,2013-08-29,Transducer,10 V,20403.0,False,14,136,,False,,,2013-08-29
+VO_0b00848923c3418695d5,PE_c29031fe1d291910e835,2014,1,1,MT,2014-07-01,Bubbler,10 V,0.0,True,8,142,MT1-FF-01-OT,False,True,TSS result is average of duplicate tests,2014-07-01
+VO_390ace07b19e4e2b2db1,PE_214aa9017327a70f135f,2014,1,2,MT,2014-07-02,Bubbler,10 V,0.0,True,8,152,MT2-FF-01-OT,False,True,OG sample ID is MT2 I1 S1,2014-07-02
+VO_adfb0a8002ba722e70bf,PE_c347d973d115e2a3ba3c,2014,2,1,MT,2014-07-21,Transducer,10 V,4532.54,False,14,159,,False,,,2014-07-21
+VO_26efe2c00243f101e351,PE_909a6e90f2a2fb0ccb86,2014,3,2,MT,2014-08-05,Bubbler,10 V,6588.17,False,14,177,MT2-FF-03-OT,False,False,,2014-08-05
+VO_dce6c54b1be0a01474de,PE_428d2603a778e905a134,2014,4,1,MT,2014-08-17,Transducer,10 V,25208.86,False,14,185,MT1-04-OT,False,False,,2014-08-17
+VO_81df7e095759abbd4bb9,PE_f2aa84d9058e29e106ef,2014,4,2,MT,2014-08-18,Transducer,10 V,46602.43,False,14,190,MT2-04-OT,False,False,,2014-08-18
+VO_9520c2b48888769194df,PE_0e378dd2a91d7df1a7a9,2015,1,1,MT,2015-07-06,Bubbler,10 V,1146.86,False,28,201,MT1-01-OT,False,False,"Analytical composite. Average of MT1 I1 bottles 2, 4, 6, 8",2015-07-06
+VO_e7b15779545d79e95960,PE_fc35961bbf4775b1838e,2015,1,2,MT,2015-07-07,Bubbler,10 V,12921.99,False,28,207,MT2-01-OT,False,False,"Analytical composite. Average of MT2 I1 bottles 2, 4, 6,10",2015-07-07
+VO_38779eed82ebadfdeb20,PE_bf6fc540566653c363a5,2015,2,1,MT,2015-07-20,Bubbler,10 V,9893.99,False,28,213,MT1-02-OT,False,False,"Analytical composite. Average of MT1 I 2 bottles 2, 4, 6, 8, 10. Original Ortho P values, 0.05,0.03,0.02,0.01,0. any average with a 0 or negative value is changed to U",2015-07-20
+VO_e11ad052b56b9bc9cec8,PE_bd8c84ec329021438849,2015,2,2,MT,2015-07-21,Bubbler,10 V,8482.19,False,28,219,MT2-02-OT,False,False,"Analytical composite. Average of MT2 I 2 bottles 2, 4, 6, 8. Original Ortho P values, 0.04,0.02,0.01,0.",2015-07-21
+VO_d726db7cac8af84f3989,PE_4ebf629c5dd531a50c12,2015,3,1,MT,2015-07-30,Bubbler,10 V,11668.16,False,28,225,MT1-03-OT,False,False,,2015-07-30
+VO_5b49bd842f1806b3463a,PE_9f67556e2848ccb24a85,2015,3,2,MT,2015-07-31,Bubbler,10 V,23614.62,False,28,231,MT2-03-OT,False,False,,2015-07-31
+VO_874be2331bf8c5ea2dc6,PE_74dfc686b20e794d29d3,2015,4,1,MT,2015-08-06,Bubbler,10 V,12104.43,False,14,236,MT1-04-OT,False,False,,2015-08-06
+VO_3b247a1a2cfd92c5e404,PE_09a938930ab837ebeb36,2015,4,2,MT,2015-08-07,Bubbler,10 V,25847.77,False,14,239,MT2-04-OT,False,False,,2015-08-07
+VO_b5b871dc5abe7370159f,PE_a98d09332522adfe618b,2015,5,1,MT,2015-08-16,Bubbler,10 V,6245.25,False,28,243,MT1-05-OT,False,False,"Analytical composite. Average of MT1 I 5 bottles 2, 4, 6, 8, 10",2015-08-16
+VO_7468295d830e84dc10cd,PE_f28eca55841e3590b19f,2015,5,2,MT,2015-08-17,Bubbler,10 V,10912.16,False,28,249,MT2-05-OT,False,False,"Analytical composite. Average of MT2 I 5 bottles 2, 4, 6, 8, 10",2015-08-17
+VO_d2625401eeb678e57170,PE_61227cf97dd057e6375a,2015,6,1,MT,2015-08-31,Bubbler,10 V,3092.35,False,28,255,MT1-06-OT,False,False,"Analytical composite. Average of MT1 I 6 bottles 1, 2, 3, 4. Original NH4 values, 0,0.01,0,0",2015-08-31
+VO_5e8ffbfda63feba2e0b2,PE_078b8edebaf25b47ca9c,2015,6,2,MT,2015-09-01,Bubbler,10 V,5268.72,False,28,261,MT2-06-OT,False,False,"Analytical composite. Average of MT2 I 6 bottles 1, 2, 3, 4. Original NH4 values, 0,0,0.01,0.01",2015-09-01
+VO_ed2c5d04eed2e312fc5a,PE_06726b0bbd436c0f2638,2016,1,1,MT,2016-06-07,Bubbler,10 V,9890.96,False,28,267,MT1-01-OT,False,False,"Analytical composite. Average of MT1 I1 Time 1, 2, 3, 4, 5, 6, 4-D. TP, TKN, TSP average of T 1, 2, 4, 6",2016-06-07
+VO_dc37932a6ce835e673cf,PE_2836684cbc95d298d128,2016,1,2,MT,2016-06-08,Bubbler,10 V,5164.63,False,28,273,MT2-01-OT,False,False,"Analytical composite. Average of MT2 I1 Time 1, 2, 3, 2-D. TP, TKN, TSP average of CT I1 T1, 2, 2-D",2016-06-08
+VO_62c25da5b46ba2f2e3f2,PE_1d9fa89274a5507fb9c3,2016,2,1,MT,2016-06-19,Bubbler,10 V,2988.26,False,28,279,MT1-02-OT,False,False,"Analytical composite. Average of MT1 I2 Time 1, 2, 2-D",2016-06-19
+VO_7a7cdda98ddc593d5f74,PE_e91aef82d1d0158c64de,2016,2,2,MT,2016-06-20,Bubbler,10 V,2597.65,False,28,285,MT2-02-OT,False,False,"Analytical composite. Average of ST2 I2 Time 1, 2, 3, 2-D. TP, TKN, TSP average of ST I1 T1, 2, 3.",2016-06-20
+VO_dd5e4b0114d2ef5d8dcb,PE_c9e73ef1dabab1e96c37,2017,1,1,MT,2017-06-26,Bubbler,10 V,16900.03,False,28,292,MT1-01-FF,False,False,,2017-06-26
+VO_e6b9e2de3c1e0e3d849d,PE_7563047765a1e3f047e6,2017,1,2,MT,2017-06-27,Bubbler,10 V,8724.43,False,28,298,MT2-01-FF,False,False,,2017-06-27
+VO_dc76b3fd137fe1478e2e,PE_01ef9362ba3276afc3a9,2017,2,1,MT,2017-07-09,Bubbler,10 V,34386.73,False,28,306,MT1-02-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/10, lab reports 7/14, we suspect this to be out of hold time",2017-07-09
+VO_66e32592c55c0ce45f1c,PE_3712d644db8e7505fd90,2017,2,2,MT,2017-07-10,Bubbler,10 V,43342.04,False,28,312,MT2-02-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/10, lab reports 7/14, we suspect this to be out of hold time",2017-07-10
+VO_a6a9a0a539feddacd772,PE_5f5cdcb0357234b8314a,2017,3,1,MT,2017-07-20,Bubbler,10 V,26706.96,False,28,320,MT1-03-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/21, lab reports 7/27, we suspect this to be out of hold time",2017-07-20
+VO_66dd8b621b2d81c925e4,PE_df9fe3439780c58ef619,2017,3,2,MT,2017-07-21,Bubbler,10 V,30317.85,False,28,326,MT2-03-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/21, lab reports 7/27, we suspect this to be out of hold time",2017-07-21
+VO_0efe268eb7639cb02c52,PE_283a79a4d7e1d99ea45c,2017,4,1,MT,2017-08-02,Bubbler,10 V,10374.69,False,28,334,MT1-04-FF,False,False,,2017-08-02
+VO_5fbdd100fffff361e2fe,PE_44c3319c1ae4491d3b22,2017,4,2,MT,2017-08-03,Bubbler,10 V,13258.86,False,28,340,MT2-04-FF,False,False,,2017-08-03
+VO_d0191a57fcc2bf459532,PE_72973ed7fd2fafa39b49,2017,5,1,MT,2017-08-21,Bubbler,10 V,1604.84,False,28,348,MT1-05-FF,False,False,,2017-08-21
+VO_292e688f7d0e71e78ad1,PE_ae6e7b1bd3de16ea6d0f,2017,5,2,MT,2017-08-22,Bubbler,10 V,1763.81,False,28,354,MT2-05-FF,False,False,,2017-08-22
+VO_a7c72983b2bf77678381,PE_fa68bde0c7a186695c73,2017,6,1,MT,2017-09-06,Bubbler,10 V,4307.33,False,28,361,MT1-06-FF,False,False,,2017-09-06
+VO_32b9e8c4049152e82b8f,PE_0d069e1b4f6cd76df6ac,2017,6,2,MT,2017-09-07,Bubbler,10 V,741.86,False,28,367,MT2-06-FF,False,False,,2017-09-07
+VO_156e4c18b4fcef925d1f,PE_55b3839d44d67304ba2d,2021,1,1,MT,2021-06-23,Ruler,10 V,5598.34,False,28,470,MT1-01-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-06-23
+VO_b63f52543837ca1606ee,PE_f544dd1f1224ddc9abde,2021,1,2,MT,2021-06-24,Ruler,10 V,12528.72,False,28,476,MT2-01-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-06-24
+VO_92cbc47581f456c21bdf,PE_936c12cc5ae17810e93e,2021,2,1,MT,2021-07-08,Ruler,10 V,5667.8,False,28,482,MT1-02-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-08
+VO_0ac0631cc0c2e11f50ed,PE_51b615c0027e4e29028e,2021,2,2,MT,2021-07-09,Ruler,10 V,10777.6,False,28,488,MT2-02-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-09
+VO_cf64f33e898106fa5359,PE_3b0275b6f31aa3c48b11,2021,3,1,MT,2021-07-29,Ruler,10 V,1388.06,False,28,494,MT1-03-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-29
+VO_fbd120ba7133835f51f0,PE_e31452c7a0ebfbfaf3f2,2021,5,2,MT,2021-08-26,Etape,10 V,26824.27,False,28,533,MT2-05-OT-LC,False,False,,2021-08-26
+VO_419dfaaf27a1a8d6d0f4,PE_248493668060338e72e6,2023,1,1,MT,2023-07-17,Ruler,60 V Trap,49629.58,False,84,704,K-MT1-01-LC,False,False,,2023-07-17
+VO_302d70534abca47e2e8b,PE_bf74455b1a7c48461768,2023,1,2,MT,2023-07-17,Ruler,60 V Trap,37255.19,False,56,718,K-MT2-01-LC,False,False,,2023-07-17
+VO_70f32036d50f8ddbfe6f,PE_a5dd6f772a1d2e7d821c,2023,2,1,MT,2023-08-16,Ruler,60 V Trap,65263.5,False,84,742,K-MT1-02-LC,False,False,,2023-08-16
+VO_5ffde2f92156ea56cd1b,PE_9d88eac30a91208d302b,2023,2,2,MT,2023-08-16,Ruler,60 V Trap,59257.88,False,56,756,K-MT2-02-LC,False,False,,2023-08-16
+VO_da638cf36a9afc9fa62c,PE_b6fd60d10e559978199b,2023,3,1,MT,2023-08-23,Ruler,60 V Trap,53461.96,False,70,768,K-MT1-03-LC,False,False,,2023-08-23
+VO_5877339f88b013f5ba6b,PE_acc7ee117e759ece44f9,2023,3,2,MT,2023-08-23,Ruler,60 V Trap,45232.25,False,70,781,K-MT2-03-LC,False,False,,2023-08-23
+VO_725233a8edac8209f0d5,PE_8d90127b55de039c6ab7,2023,4,1,MT,2023-09-20,Ruler,60 V Trap,30921.63,False,70,794,K-MT1-04-LC,False,False,,2023-09-20
+VO_0871687e0e442d483f70,PE_23621b170748f0fc60c2,2023,4,2,MT,2023-09-20,Ruler,60 V Trap,14914.65,False,56,808,K-MT2-04-LC,False,False,,2023-09-20
+VO_69a7ade82cd31ec915dc,PE_c4acde3ff39ca34f7f1d,2023,5,1,MT,2023-09-26,Ruler,60 V Trap,36706.6,False,56,820,K-MT1-05-LC,False,False,"Method: E300, Method: SM4500P E: ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered  estimated.""",2023-09-26
+VO_780983c9fc74e928a6cb,PE_7751232195de561530b0,2023,5,2,MT,2023-09-26,Ruler,60 V Trap,68568.81,False,56,832,K-MT2-05-LC,False,False,"Method: E300, Method: SM4500P E: ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered  estimated.""",2023-09-26
+VO_2e0d297b33ba9afb5b8c,PE_ba059ebbc29b11d1a3be,2024,1,2,MT,2024-05-15,Etape,60 V Trap,9815.09,False,28,857,K-MT2-01-OT-LC,False,False,Method: E300: Sample analyzed out of hold due to limited holding time after received in the lab,2024-05-15
+VO_b12bcb594c45ea11595e,PE_ba059ebbc29b11d1a3be,2024,1,2,MT,2024-05-15,Bubbler,60 V Trap,54522.86,False,28,859,K-MT2-01-OT-ISC,False,False,,2024-05-15
+VO_1c2f2b7a1f1674230df8,PE_e582d3221277d02f35d9,2024,2,2,MT,2024-05-30,Etape,60 V Trap,57106.04,False,28,881,K-MT2-02-OT-LC,False,False,"Method E300: ""Sample run out of holding time due to very limited time remaining from expiration""",2024-05-30
+VO_c1efd6f1a1602fec0125,PE_d0a561512025e1d2770d,2024,3,1,MT,2024-06-12,Bubbler,60 V Trap,78477.97,False,28,895,K-MT1-03-OT-ISC,False,False,"Method E300: ""Sample run out of holding time due to very limited time""",2024-06-12
+VO_ec6e3cd07a00dfc29178,PE_c918bf0b868668efb5e3,2024,3,2,MT,2024-06-12,Etape,60 V Trap,62188.97,False,28,905,K-MT2-03-OT-LC,False,False,"Method E300: ""Sample run out of holding time due to very limited time"" AND Method: SM4500P E: ""Sample was analyzed outside of the holding time at the request of the client. Results should be considered estimated""",2024-06-12
+VO_8f4d08196d1f1dfb6ee8,PE_7a793bda6ecab836d590,2024,4,1,MT,2024-06-20,Bubbler,60 V Trap,125801.11,False,28,919,K-MT1-04-OT-ISC,True,False,,2024-06-20
+VO_d8212d7c3da8ad31af56,PE_02b42436b7981ca07571,2024,4,2,MT,2024-06-20,Etape,60 V Trap,38338.45,False,28,929,K-MT2-04-OT-LC,False,False,,2024-06-20
+VO_2b0e33881d10b51deae3,PE_e6892c1c4df9f9956548,2025,1,1,MT,2025-06-30,Etape,60 V Trap,67358.12,False,28,941,K-MT1-01-OT-LC,False,False,,2025-06-30
+VO_8da8db6cf09e2a6db97b,PE_c63b91d3075e6834f32e,2025,1,2,MT,2025-06-30,Etape,60 V Trap,58942.28,False,28,953,K-MT2-01-OT-LC,False,False,,2025-06-30
+VO_0073e03af9330e24633e,PE_f2544036a8cdc2b562ca,2025,2,1,MT,2025-07-14,Etape,60 V Trap,42451.81,False,28,965,K-MT1-02-OT-LC,False,False,,2025-07-14
+VO_1a06bdb834c994670997,PE_6c85627a623e6c9dfbb4,2025,2,2,MT,2025-07-14,Etape,60 V Trap,63350.09,False,28,977,K-MT2-02-OT-LC,False,False,,2025-07-14
+VO_0487765be023d188ad2d,PE_a033c0958b5b88a75684,2025,3,1,MT,2025-07-31,Etape,60 V Trap,64818.28,False,28,989,K-MT1-03-OT-LC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_76861ddd5788bbf7d2f2,PE_a033c0958b5b88a75684,2025,3,1,MT,2025-07-31,Bubbler,60 V Trap,40617.85,False,28,991,K-MT1-03-OT-ISC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_6a56bdeced5c3d33983b,PE_39c8810e26ab4ca7933c,2025,3,2,MT,2025-07-31,Etape,60 V Trap,69867.62,False,28,1001,K-MT2-03-OT-LC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_7ad8664bb77fd279eace,PE_2314eec6a45e0be9e203,2025,4,1,MT,2025-08-11,Etape,60 V Trap,75021.46,False,28,1013,K-MT1-04-OT-LC,False,False,,2025-08-11
+VO_924f3508e2163248afa1,PE_2314eec6a45e0be9e203,2025,4,1,MT,2025-08-11,Bubbler,60 V Trap,35664.48,False,28,1015,K-MT1-04-OT-ISC,False,False,,2025-08-11
+VO_c91a6a2d9e066709a366,PE_7d221972180d28e4f760,2025,4,2,MT,2025-08-11,Etape,60 V Trap,61276.42,False,28,1025,K-MT2-04-OT-LC,False,False,,2025-08-11
+VO_11e6e01f887412f138da,PE_c1edec673d6e55fe03b0,2025,5,1,MT,2025-08-19,Etape,60 V Trap,70013.48,False,28,1037,K-MT1-05-OT-LC,False,False,,2025-08-19
+VO_ee3c8475030b1b1d23ef,PE_c1edec673d6e55fe03b0,2025,5,1,MT,2025-08-19,Bubbler,60 V Trap,47704.37,False,28,1039,K-MT1-05-OT-ISC,False,False,,2025-08-19
+VO_32ec07d0df219738e931,PE_ff8985d7bd1f94902d4e,2025,5,2,MT,2025-08-19,Bubbler,60 V Trap,65381.63,False,28,1051,K-MT2-05-OT-ISC,False,False,,2025-08-19
+VO_c36e2f2e6454e3f1678c,PE_676050582c291c72204b,2025,6,1,MT,2025-09-03,Etape,60 V Trap,40839.98,False,28,1061,K-MT1-06-OT-LC,False,False,,2025-09-03
+VO_cac907ee3179d92ea323,PE_676050582c291c72204b,2025,6,1,MT,2025-09-03,Bubbler,60 V Trap,30026.03,False,28,1063,K-MT1-06-OT-ISC,False,False,,2025-09-03
+VO_5e794f427a1ece840985,PE_a36448d6fe89c398bac0,2025,6,2,MT,2025-09-03,Etape,60 V Trap,53119.23,False,28,1073,K-MT2-06-OT-LC,False,False,,2025-09-03
+VO_3e15d7c2efcf4df1d135,PE_a36448d6fe89c398bac0,2025,6,2,MT,2025-09-03,Bubbler,60 V Trap,30233.38,False,28,1075,K-MT2-06-OT-ISC,False,False,,2025-09-03
+VO_f3441eb3edf470411157,PE_f0466175569500bfdf4d,2025,7,1,MT,2025-09-14,Bubbler,60 V Trap,51756.6,False,28,1087,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-14
+VO_eeccba194572ee0d7509,PE_7f8105e65bf5e18e6c6b,2025,7,2,MT,2025-09-14,Etape,60 V Trap,42626.49,False,28,1097,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time.",2025-09-14
+VO_6ba419697533f51ca92a,PE_7f8105e65bf5e18e6c6b,2025,7,2,MT,2025-09-14,Bubbler,60 V Trap,23050.31,False,28,1099,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time.",2025-09-14
+VO_138ba356bac9631296fd,PE_07b0e2786e6c6d7e52f2,2025,S1,2,MT,2025-09-23,Etape,60 V Trap,2499.6,False,14,1109,K-MT2-S1-OT-LC-4,False,,"Tried to sample this storm event, only got enough water from MT2 and ST2 LC samplers for TSS analysis",2025-09-23
+VO_82f4421aacd73a1121b6,PE_b29e09cdb7f952a1cdb0,2011,1,1,ST,2011-06-30,Ruler,Weir,4717.0,False,14,2,ST1-01-OT,False,False,"OG Sample IDS: ST1-T1, ST1-T2, ST1-T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-06-30
+VO_65fe3684bea44f9850b3,PE_e7adc6803f9ae278362b,2011,1,2,ST,2011-07-01,Ruler,Weir,5733.0,False,14,5,ST2-01-OT,False,False,"OG Sample IDS: ST2-T1, ST2-T2, ST2-T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-07-01
+VO_57d1c9d70e37b16c96c9,PE_95d3b43c79b8bf669652,2011,2,2,ST,2011-07-19,Transducer,Weir,32982.49,False,14,11,ST2-02-OT,False,False,"OG Sample IDS: ST2 I2 T1, ST2 I2 T2, ST2 I2 T3. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-07-19
+VO_b946bee1185e3e922f6f,PE_fcddf23162383dff810e,2011,3,1,ST,2011-07-28,Transducer,Weir,26177.06,False,14,14,,False,,,2011-07-28
+VO_f862ea153fa9aaa854d3,PE_dfd4f33e25a6c0f68606,2011,3,2,ST,2011-07-29,Transducer,Weir,43743.25,False,14,17,,False,,,2011-07-29
+VO_c280754ccee793f24896,PE_bbf4e95c02e1591047b4,2011,4,1,ST,2011-08-09,Transducer,Weir,48614.54,False,14,20,ST1-04-OT,False,False,"OG Sample IDs: ST1 T1 I4, ST1 T2 I4, ST1 T3 I4. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-08-09
+VO_c072e4fa17c562447eaf,PE_f5556b234e32459fa7a2,2011,4,2,ST,2011-08-10,Transducer,Weir,31332.23,False,14,23,ST2-04-OT,False,False,"OG Sample IDs: ST2 T1 I4, ST2 T2 I4, ST2 T3 I4. The sample ID has been modifed to fit with the ""modern"" IDs. The values represent the average between the three.",2011-08-10
+VO_8929a2fa1d028ad95dc4,PE_23fdec9b5d2f5aa45a05,2011,5,1,ST,2011-08-18,Transducer,Weir,29496.51,False,14,26,,False,,,2011-08-18
+VO_c2abac5ef4dc923ffa70,PE_32e6a0947406c0450241,2011,5,2,ST,2011-08-19,Transducer,Weir,18213.42,False,14,29,,False,,,2011-08-19
+VO_08d7cd64d819b125c058,PE_db00152d9902bdb511ab,2011,6,1,ST,2011-08-28,Transducer,Weir,25450.34,False,14,32,,False,,,2011-08-28
+VO_1cc5d5efdc6df29df452,PE_74d2b6cff9d0f8aad3cb,2011,6,2,ST,2011-08-29,Transducer,Weir,13379.98,False,14,35,,False,,,2011-08-29
+VO_6171abf2c7f37154754b,PE_c8cfe41007225eb1567a,2012,1,1,ST,2012-05-15,Transducer,7 V,0.0,True,1,14481,ST1-01-OT,False,True,,2012-05-15
+VO_cf7bf1f9b32a53560537,PE_1a7d8cf14d5d7a84cc49,2012,1,2,ST,2012-05-16,Transducer,7 V,0.0,True,1,14484,ST2-01-OT,False,True,,2012-05-16
+VO_7d711e3db25a0d72baed,PE_164e2c6f0b39eec70d00,2012,2,1,ST,2012-06-03,Transducer,7 V,0.0,True,2,4488,ST1-02-OT,False,True,". No TSS results in the ""2012 sediment load excel file""",2012-06-03
+VO_c2f04254c41defae8e44,PE_4c355f124b8d8c67fa55,2012,2,2,ST,2012-06-04,Transducer,7 V,0.0,True,1,14490,ST-02-OT,False,True,". No TSS results in the ""2012 sediment load excel file""",2012-06-04
+VO_aa5895e8544289a8992f,PE_248d74790d081f1ad247,2012,4,1,ST,2012-06-26,Transducer,7 V,9754.0,False,14,56,ST1-04-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-06-26
+VO_4985002219dff2627fce,PE_649006527ce5d1d1ff1f,2012,4,2,ST,2012-06-27,Transducer,7 V,8569.0,False,14,59,ST2-04-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-06-27
+VO_76b6aa51a29858fdd759,PE_e54a1b2fb0b2d2f3c583,2012,5,1,ST,2012-07-16,Transducer,7 V,16839.0,False,14,62,ST1-05-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-07-16
+VO_46b0deb58f1724e65965,PE_6c101e1953c53808bd4e,2012,5,2,ST,2012-07-17,Transducer,7 V,24920.0,False,14,65,ST2-05-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-07-17
+VO_0010c7cab405f6468116,PE_0e586fb82f46b37d94b4,2012,6,2,ST,2012-07-25,Ruler,7 V,8574.0,False,14,71,ST2-06-OT,False,,,2012-07-25
+VO_5e934e5a14f2e052cb49,PE_bf44e09ffc415b58c4a0,2012,7,2,ST,2012-08-01,Transducer,7 V,26014.0,False,14,77,ST2-07-OT,False,False,The results are averages of the 3 samples taken at different times. After cultivation.,2012-08-01
+VO_d69e1428608a6736adaf,PE_57bf938d5e71dc213f59,2012,8,1,ST,2012-08-08,Transducer,7 V,11995.0,False,14,80,ST1-08-OT,False,,,2012-08-08
+VO_e69a5d0d7c134745a010,PE_365d30de37f48e464de2,2012,8,2,ST,2012-08-09,Transducer,7 V,14368.0,False,14,83,ST2-08-OT,False,,,2012-08-09
+VO_35649e7d6e1a95871792,PE_57fa018badecf5410da3,2012,9,1,ST,2012-08-19,Transducer,7 V,19542.0,False,14,86,ST1-09-OT,False,,,2012-08-19
+VO_6bc651662365155cf665,PE_5a2398fb5beb05ecabaa,2012,9,2,ST,2012-08-20,Ruler,7 V,5051.0,False,14,89,ST2-09-OT,False,,,2012-08-20
+VO_3d01ee3247b2ede88459,PE_6975f3c079d281a511a0,2012,10,1,ST,2012-08-30,Transducer,7 V,25931.0,False,14,92,ST1-10-OT,False,,,2012-08-30
+VO_f616f036ac17f6a01fd9,PE_15badc81229f832de396,2012,10,2,ST,2012-08-31,Ruler,7 V,6600.0,False,14,95,ST2-10-OT,False,,,2012-08-31
+VO_e2d3c7132662296f0e6c,PE_b7ff1c1774876e409c04,2013,2,1,ST,2013-07-02,Transducer,7 V,9920.0,False,14,104,ST1-02-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-02
+VO_5ec9fdccc5ac869325a2,PE_3a1f801f634bfe189584,2013,2,2,ST,2013-07-03,Transducer,7 V,26049.0,False,14,107,ST2-02-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-03
+VO_ff53325be25cdf175126,PE_cb43e2ed756f1f7b6aba,2013,3,1,ST,2013-07-11,Transducer,7 V,27072.0,False,14,110,,False,,"This date was determined by the ""2013_DataLogger"" file, assumed to be soil moisture sensors",2013-07-11
+VO_921e210f303bdc25f46e,PE_18bc94a3d047891c182b,2013,3,2,ST,2013-07-12,Transducer,7 V,7774.0,False,14,113,,False,,"This date was determined by the ""2013_DataLogger"" file, assumed to be soil moisture sensors",2013-07-12
+VO_581619d8f6fa73ee8306,PE_f7fa36feaba1a3684ccf,2013,4,1,ST,2013-07-30,Transducer,7 V,21046.0,False,14,116,ST1-04-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-30
+VO_56176662400919d6c0a4,PE_06463f55c291ea1d15a9,2013,4,2,ST,2013-07-31,Transducer,7 V,9708.0,False,14,119,ST2-04-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-07-31
+VO_ca9dbfd02f244cb5ffc1,PE_a8e992311ac11ff1f6ab,2013,5,1,ST,2013-08-08,Transducer,7 V,26268.0,False,14,122,,False,,,2013-08-08
+VO_fd001b8c21761a385551,PE_d3818202a2c7c0979162,2013,5,2,ST,2013-08-09,Transducer,7 V,2800.0,False,14,125,,False,,,2013-08-09
+VO_e85a21b196db34d50b8d,PE_4ba63451b7dc89c0a556,2013,6,1,ST,2013-08-19,Transducer,7 V,35247.0,False,14,128,ST1-06-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-08-19
+VO_f391d0b5fb4f0f5c8ec6,PE_2b1a26b26247f7aaf591,2013,6,2,ST,2013-08-20,Transducer,7 V,7115.0,False,14,131,ST2-06-OT,False,False,The analyte values are averages of 6 samples over the irrigation period,2013-08-20
+VO_130b090d32e591879629,PE_7f513ba68b063af6e914,2013,7,1,ST,2013-08-28,Transducer,7 V,49191.0,False,14,134,,False,,,2013-08-28
+VO_774593ec246158265d5f,PE_5ff231543fda9ac6656d,2013,7,2,ST,2013-08-29,Transducer,7 V,4468.0,False,14,137,,False,,,2013-08-29
+VO_c092cbfb51a092e2da07,PE_e6f216bc2af9baf87adb,2014,1,1,ST,2014-07-01,Bubbler,7 V,31695.59,False,56,144,ST1-FF-01-OT,False,False,"OG sample ID ST1 I1 S1 - S1= the first first samplable water  through flume. There was not a result for ST1 S1 in ""Total Suspended Solids 2014""",2014-07-01
+VO_962352a38f9152c1bef2,PE_e5b7650f3b7e52f1a1bf,2014,1,2,ST,2014-07-02,Bubbler,7 V,7505.66,False,56,154,ST2-FF-01-OT,False,False,OG sample ID ST2 I1 S1 - S1= the first first samplable water  through flume.,2014-07-02
+VO_b248deaf983ce5b4a370,PE_670677b2cdea06c82d58,2014,2,1,ST,2014-07-21,Transducer,7 V,12295.95,False,14,160,,False,,,2014-07-21
+VO_6ccd868115fdbb529ba9,PE_92db572b305f7a8a1fcf,2014,2,2,ST,2014-07-22,Transducer,7 V,7202.48,False,14,163,,False,,,2014-07-22
+VO_3ccea155fe4e4c3b609d,PE_d1afac04920a2ee5af17,2014,3,1,ST,2014-08-04,Bubbler,7 V,34697.1,False,56,169,ST1-FF-03-OT,False,False,,2014-08-04
+VO_c1fdb92431a4a7217d4e,PE_99c4e1053e4376d0bed3,2014,3,2,ST,2014-08-05,Bubbler,7 V,4383.03,False,56,178,ST2-FF-03-OT,False,False,OG sample ID ST2 I3 S1 - S1= the first first samplable water  through flume.,2014-08-05
+VO_2aba77d089fe31da9047,PE_5d5cb3edcd99b5be75e6,2014,4,1,ST,2014-08-17,Transducer,7 V,17296.69,False,28,186,ST1-04-OT,False,False,"TSS value is an average of ST1 I4 S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S15,S16",2014-08-17
+VO_5b82220e688332955128,PE_be3da0eafc673da18d92,2014,4,2,ST,2014-08-18,Transducer,7 V,13116.54,False,14,191,ST2-04-OT,False,False,"TSS value  is an average of ST2 I4 S1, S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S15,S16",2014-08-18
+VO_cea1ca7e157ea156038a,PE_be3da0eafc673da18d92,2014,4,2,ST,2014-08-18,Transducer,8 V,13116.54,False,14,192,ST2-04-OT,False,False,OG sample ID ST2 I4 S15,2014-08-18
+VO_64a14debb5d0199b5c17,PE_ef16b92ac44718ed6fbe,2015,1,1,ST,2015-07-06,Bubbler,7 V,3376.22,False,28,203,ST1-01-OT,False,False,"Analytical composite. Average of ST1 I1 bottles 2, 4. TSS values ST1 T2, T2, -8 & 12, any average with a 0 or negative value is changed to U",2015-07-06
+VO_b92bca66bb69f042d4a8,PE_982e6a4e7c9174d09a3c,2015,1,2,ST,2015-07-07,Transducer,7 V,2837.99,False,28,209,ST2-01-OT,False,False,,2015-07-07
+VO_95dd8da4ae39a0c427c9,PE_64548a06be4bb873cda0,2015,2,1,ST,2015-07-20,Bubbler,7 V,4443.59,False,28,215,ST1-02-OT,False,False,"Analytical composite. Average of ST1 I 2 bottles 2, 4, 4D, 6",2015-07-20
+VO_49a2231ca9d4190f1ba7,PE_f98814c17b9da4b10046,2015,2,2,ST,2015-07-21,Bubbler,7 V,6589.69,False,28,221,ST2-02-OT,False,False,"Analytical composite. Average of ST2 I 2 bottles 2, 4, 6",2015-07-21
+VO_119f48128ed3ebdffcf9,PE_ab750944465b3b03a5ec,2015,3,1,ST,2015-07-30,Bubbler,7 V,15480.65,False,28,227,ST1-03-OT,False,False,,2015-07-30
+VO_e9e5999a55c0e9394874,PE_8b715eebc00f1d87b8e3,2015,3,2,ST,2015-07-31,Bubbler,7 V,3107.49,False,28,233,ST2-03-OT,False,False,,2015-07-31
+VO_95451622754152b19676,PE_e9d0921860cc7c87fefe,2015,4,1,ST,2015-08-06,Bubbler,7 V,23607.05,False,14,237,ST1-04-OT,False,False,,2015-08-06
+VO_864264c499f673f01d55,PE_61cbb9676a953528de2c,2015,4,2,ST,2015-08-07,Bubbler,7 V,13092.32,False,14,240,ST2-04-OT,False,False,,2015-08-07
+VO_2ffe0d2253063380a0ef,PE_27068e46a99396e37068,2015,5,1,ST,2015-08-16,Bubbler,7 V,14916.69,False,28,245,ST1-05-OT,False,False,"Analytical composite. Average of ST1 I 5 bottles 2, 4, 6, 8, 10",2015-08-16
+VO_96229daca8d641264dc1,PE_72bbe667892a258fbed0,2015,5,2,ST,2015-08-17,Bubbler,7 V,7040.1,False,28,251,ST2-05-OT,False,False,"Analytical composite. Average of ST2 I 5 bottles 2, 4, 6, 8, 10",2015-08-17
+VO_04a736c58a38f4178104,PE_2bc636c51bdfedd7a673,2015,6,1,ST,2015-08-31,Bubbler,7 V,10658.56,False,28,257,ST1-06-OT,False,False,"Analytical composite. Average of ST1 I 6 bottles 1, 2, 3, 4. Original NH4 values, 0.02,0.02,0,0",2015-08-31
+VO_e52624d9a567dc7aee83,PE_c173a335fbc6a1794117,2015,6,2,ST,2015-09-01,Bubbler,7 V,10037.82,False,28,263,ST2-06-OT,False,False,"Analytical composite. Average of ST2 I 6 bottles 1, 2, 3, 4",2015-09-01
+VO_c4012bbedb3b0a1fe68d,PE_518a902e850a37a6e1f7,2016,1,1,ST,2016-06-07,Bubbler,7 V,34697.1,False,28,269,ST1-01-OT,False,False,"Analytical composite. Average ofST1 I1 Time 1, 2, 3, 4, 5, 6, 7, 8, 5-D. TP, TKN, TSP average of T 1, 2, 5,  7, 8, 5-D",2016-06-07
+VO_33f0869a7ba077f442e4,PE_ed07163240c41f058ff7,2016,1,2,ST,2016-06-08,Bubbler,7 V,22526.43,False,28,275,ST2-01-OT,False,False,"Analytical composite. Average of ST2 I1 Time 1, 2, 3, 4, 5, 6. TSS, TP, TKN, TSP average of ST I1 T1, 2, 4, 4-D",2016-06-08
+VO_ca6afe26e50b421c32ec,PE_245bc6dafec7fe277df3,2016,2,1,ST,2016-06-19,Bubbler,7 V,16370.88,False,28,281,ST1-02-OT,False,False,"Analytical composite. Average of ST1 I2 Time 1, 2, 3, 4, 5, 6, 7, 8, 5-D. TP, TKN, TSP average of ST 1 I2 T 1, 2, 4, 6, 5-D. Original TKN values, 0.064,0.067,0.071, 0, 0.071",2016-06-19
+VO_531a04dfe94624c8c0f1,PE_7b17489d08fa900cd025,2016,2,2,ST,2016-06-20,Bubbler,7 V,4605.21,False,28,287,ST2-02-OT,False,False,"Analytical composite. Average of ST2 I2 Time 1, 2, 2-D.  TP, TKN, TSP average of ST I1 T1, 2.",2016-06-20
+VO_44aabb9344001d1d5486,PE_6ca81f85570cae0e0d9c,2017,1,1,ST,2017-06-26,Bubbler,7 V,23353.45,False,28,294,ST1-01-FF,False,False,,2017-06-26
+VO_1941f2852d52b07e73eb,PE_e8e143ce24098f6b3f6d,2017,1,2,ST,2017-06-27,Bubbler,7 V,5090.83,False,42,300,ST2-01-FF,False,False,,2017-06-27
+VO_abb71eb0defeab860bf9,PE_9be29822841d41a56b41,2017,2,1,ST,2017-07-09,Bubbler,7 V,19019.63,False,28,308,ST1-02-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/10, lab reports 7/14, we suspect this to be out of hold time",2017-07-09
+VO_6032d4008c90c5151853,PE_4998c6ec98ba5c91a95d,2017,2,2,ST,2017-07-10,Bubbler,7 V,2252.08,False,42,314,ST2-02-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/10, lab reports 7/14, we suspect this to be out of hold time",2017-07-10
+VO_84e6433ce16960afeceb,PE_20cdd4f089d2cb0bb73d,2017,3,1,ST,2017-07-20,Bubbler,7 V,32142.22,False,28,322,ST1-03-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/21, lab reports 7/27, we suspect this to be out of hold time",2017-07-20
+VO_07e8a091c61e0b8a7f24,PE_4d317db65fbb1df71b52,2017,3,2,ST,2017-07-21,Bubbler,7 V,11495.05,False,42,328,ST2-03-FF,False,False,"H flag, Ortho P. ISCO data says flow starts on 7/21, lab reports 7/27, we suspect this to be out of hold time",2017-07-21
+VO_ea06949fd9b2ccc49f24,PE_531c541dd4a3fff82f15,2017,4,1,ST,2017-08-02,Bubbler,7 V,31370.08,False,28,336,ST1-04-FF,False,False,,2017-08-02
+VO_89da85a2ffe1bb998875,PE_dd2eb9cbf33aadc76796,2017,4,2,ST,2017-08-03,Bubbler,7 V,3538.98,False,42,342,ST2-04-FF,False,False,,2017-08-03
+VO_c5340f08f9a758e8fbf4,PE_8b4c5aba46522be8a6ae,2017,5,1,ST,2017-08-21,Bubbler,7 V,8099.9,False,28,350,ST1-05-FF,False,False,,2017-08-21
+VO_8e94e7712dba58ec6fe1,PE_b0a6ff66d1c871b7754c,2017,5,2,ST,2017-08-22,Bubbler,7 V,5476.9,False,14,357,,False,,"There was no raw ISCO data for outflow volume, but 5476.90 was found in ""2017 Master Inflow_Outflow ISCO"" file, can not verify where this number came from, filled with NA. No concentration data can be found, assuming there was not enough sample water",2017-08-22
+VO_47b38d9b62215557707b,PE_568f0b5ec6deda07b9f9,2017,6,1,ST,2017-09-06,Bubbler,7 V,7850.09,False,28,363,ST1-06-FF,False,False,,2017-09-06
+VO_31e0b84d113c5b4ac13e,PE_fae3faa31fd03c716eb2,2017,6,2,ST,2017-09-07,Bubbler,7 V,5007.56,False,42,369,ST2-06-FF,False,False,,2017-09-07
+VO_75cd63c890ce5c60e6e6,PE_5ff3d0ad9d787e19a7ca,2020,2,1,ST,2020-07-06,Bubbler,7 V,55745.95,False,28,418,ST1-02-OT,False,False,"AJ and Lauryn found ISCO data starting 7/6/2020, confirming that ISCOs were installed for irr. 2 and beyond (rep 1)",2020-07-06
+VO_50d32160d94f6b898eda,PE_875be1f39b86704274b0,2020,3,1,ST,2020-07-13,Bubbler,7 V,33839.86,False,14,427,ST1-03-OT,False,False,,2020-07-13
+VO_28c64526ac4af5710659,PE_ee23dd5347fd2acef254,2020,3,2,ST,2020-07-13,Bubbler,7 V,33839.86,False,14,428,ST1-03-OT-D,True,False,ORIGINAL SAMPLE ID: ST2-03-OT-D,2020-07-13
+VO_bba7a93190e711535dbb,PE_fc822425df54345742cb,2020,4,1,ST,2020-07-22,Bubbler,7 V,14286.14,False,28,436,ST1-04-OT,False,False,,2020-07-22
+VO_3c1c2025ee2bb10e7ab0,PE_0b902961f965469f339e,2020,5,1,ST,2020-08-02,Bubbler,7 V,19448.92,False,28,445,ST1-05-OT,False,False,,2020-08-02
+VO_baf9f63c0deb41dfe82b,PE_49fb6cd53fdd5e458f64,2020,6,1,ST,2020-08-18,Bubbler,7 V,2052.15,False,28,454,ST1-06-OT,False,False,,2020-08-18
+VO_ff6f66b122d47fb494fe,PE_e92a1d87a3645647bd4e,2020,7,1,ST,2020-08-26,Bubbler,7 V,3945.96,False,28,463,ST1-07-OT,False,False,,2020-08-26
+VO_fb0b3d32d82b0fb700cb,PE_3d9e743a00f5613f6722,2021,1,1,ST,2021-06-23,Ruler,7 V,41723.91,False,28,472,ST1-01-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-06-23
+VO_9f7c04510ddca3da8d35,PE_6ee044c77bdf30366b5d,2021,1,2,ST,2021-06-24,Ruler,7 V,13690.21,False,28,478,ST2-01-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-06-24
+VO_8cad884f7ad931461e82,PE_47319afabf95ce33e7fd,2021,2,1,ST,2021-07-08,Ruler,7 V,23417.24,False,28,484,ST1-02-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-08
+VO_48d3736da7da569c8dea,PE_1a4143d14585d70064a4,2021,2,2,ST,2021-07-09,Ruler,7 V,2013.47,False,28,490,ST2-02-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-09
+VO_ea4630384c9b0b0f0a2c,PE_835c9b48606f6cdfa777,2021,3,1,ST,2021-07-29,Ruler,7 V,7673.99,False,28,496,ST1-03-OT-GB,False,False,LC samplers were not installed until 8/11/21,2021-07-29
+VO_b910bc8c3e32de65f394,PE_e416400520de7f5adc17,2021,4,1,ST,2021-08-12,Etape,7 V,3184.62,False,14,512,ST1-04-OT-LC,False,False,,2021-08-12
+VO_f2ea8a8e2de984ccbf7d,PE_78a548d4e3eef2a21ea3,2021,5,1,ST,2021-08-25,Etape,7 V,905.79,False,28,523,ST1-05-OT-LC,False,False,,2021-08-25
+VO_eeeb18f4d9267ce24f6e,PE_8a47f8b2785e361a0f5c,2023,1,1,ST,2023-07-17,Ruler,60 V Trap,35209.39,False,56,710,K-ST1-01-LC,False,False,,2023-07-17
+VO_407e9b0f6d3d0d85e958,PE_8f51b688686d8bdc2f79,2023,1,2,ST,2023-07-17,Ruler,60 V Trap,16560.5,False,56,722,K-ST2-01-LC,False,False,,2023-07-17
+VO_1bc1b260cf337654325e,PE_d0ce0a7aa7e876660808,2023,2,1,ST,2023-08-16,Ruler,60 V Trap,47586.82,False,56,748,K-ST1-02-LC,False,False,"Method E300 and Method SM4500P E ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered estimated.""",2023-08-16
+VO_cf9dffb70a1d7ee627dd,PE_e29fdc102c9f799e8e4f,2023,2,2,ST,2023-08-16,Ruler,60 V Trap,42812.59,False,56,760,K-ST2-02-LC,False,False,"Method E300 and Method SM4500P E ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered estimated.""",2023-08-16
+VO_0240559f79ddcf9b50b6,PE_bca2b67b03840bac2206,2023,3,1,ST,2023-08-23,Ruler,60 V Trap,37322.24,False,56,773,K-ST1-03-LC,False,False,,2023-08-23
+VO_c6709b00ab5d3602f430,PE_ada3010827131318b4a5,2023,3,2,ST,2023-08-23,Ruler,60 V Trap,19623.56,False,56,786,K-ST2-03-LC,False,False,,2023-08-23
+VO_e43e75bdf2a40d6f1ba3,PE_68d44a8c5ee2992c2c36,2023,4,1,ST,2023-09-20,Ruler,60 V Trap,45738.02,False,56,799,K-ST1-04-LC,False,False,"Method: E300: ""Sample was analyzed outside of the holding time due to laboratory error. Sample results should be considered estimated""",2023-09-20
+VO_ff4600ba2d9d7efdea9d,PE_fc1529c70189a30552dd,2023,4,2,ST,2023-09-20,Ruler,60 V Trap,20890.13,False,56,812,K-ST2-04-LC,False,False,"Method: E300: ""Sample was analyzed outside of the holding time due to laboratory error. Sample results should be considered estimated""",2023-09-20
+VO_a3d80c35a0fdc9dfcfe0,PE_c9875bdbbfec951204a7,2023,5,1,ST,2023-09-26,Ruler,60 V Trap,45547.39,False,56,824,K-ST1-05-LC,False,False,"Method: E300, Method: SM4500P E: ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered  estimated.""",2023-09-26
+VO_a8d178cbcf80a3c2b781,PE_78a0e5a12037218db30c,2023,5,2,ST,2023-09-26,Ruler,60 V Trap,59280.86,False,70,836,K-ST2-05-LC,False,False,"Method: E300, Method: SM4500P E: ""Sample holding time expired prior to sample receipt. It was analyzed at the request of the client. Results should be considered  estimated.""",2023-09-26
+VO_8979f85d1be89936c286,PE_f6579064c70952c33aa8,2024,1,1,ST,2024-05-15,Etape,60 V Trap,18306.95,False,28,849,K-ST1-01-OT-LC,False,False,linear interpolation between 8 timestamps since there was an unusual drop in level that we do not believe to be accurate,2024-05-15
+VO_68eeea6a85a54bd9a03f,PE_f6579064c70952c33aa8,2024,1,1,ST,2024-05-15,Bubbler,60 V Trap,57579.15,False,28,851,K-ST1-01-OT-ISC,False,False,,2024-05-15
+VO_d3c7c02a7d773248275a,PE_30f71765b192fa672ac6,2024,1,2,ST,2024-05-15,Etape,60 V Trap,28777.46,False,28,861,K-ST2-01-OT-LC,False,False,,2024-05-15
+VO_4612222eeae69ca54831,PE_30f71765b192fa672ac6,2024,1,2,ST,2024-05-15,Bubbler,60 V Trap,60860.44,False,28,863,K-ST2-01-OT-ISC,False,False,,2024-05-15
+VO_8198b162bfddf9608d5f,PE_6dfbf6a0b565de5536dd,2024,2,2,ST,2024-05-30,Etape,60 V Trap,30104.37,False,28,885,K-ST2-02-OT-LC,False,False,"Method E300: ""Sample run out of holding time due to very limited time remaining from expiration""",2024-05-30
+VO_87d65d7bc8465d8ee1c6,PE_6dfbf6a0b565de5536dd,2024,2,2,ST,2024-05-30,Bubbler,60 V Trap,94354.21,False,28,887,K-ST2-02-OT-ISC,False,False,"Method E300: ""Sample run out of holding time due to very limited time remaining from expiration""",2024-05-30
+VO_905f185ea6d1d126d404,PE_f0055d0fbf3bb2c0c279,2024,3,1,ST,2024-06-12,Bubbler,60 V Trap,65927.41,False,28,899,K-ST1-03-OT-ISC,False,False,,2024-06-12
+VO_bfefda932a369a72a060,PE_47021952abc7ade62c23,2024,3,2,ST,2024-06-12,Etape,60 V Trap,65481.3,False,28,909,K-ST2-03-OT-LC,False,False,,2024-06-12
+VO_083a872415336ea4ad13,PE_47021952abc7ade62c23,2024,3,2,ST,2024-06-12,Bubbler,60 V Trap,47501.02,False,28,911,K-ST2-03-OT-ISC,False,False,,2024-06-12
+VO_33af0b5d88cce691de07,PE_00b38906ec1907c7d0dc,2024,4,1,ST,2024-06-20,Bubbler,60 V Trap,71503.05,False,28,923,K-ST1-04-OT-ISC,True,False,,2024-06-20
+VO_cf5648059cfe2e58bce2,PE_d36d20c6bc7c067588be,2024,4,2,ST,2024-06-20,Etape,60 V Trap,55671.37,False,28,933,K-ST2-04-OT-LC,False,False,,2024-06-20
+VO_69cfda61730ad51d3ee0,PE_d36d20c6bc7c067588be,2024,4,2,ST,2024-06-20,Bubbler,60 V Trap,32644.33,False,28,935,K-ST2-04-OT-ISC,False,False,,2024-06-20
+VO_5bd0b6506be55b01c860,PE_69bf4666a40285ef26b8,2025,1,1,ST,2025-06-30,Etape,60 V Trap,31422.37,False,28,945,K-ST1-01-OT-LC,False,False,,2025-06-30
+VO_16d7e6a06ebd77403359,PE_69bf4666a40285ef26b8,2025,1,1,ST,2025-06-30,Bubbler,60 V Trap,56515.84,False,28,947,K-ST1-01-OT-ISC,False,False,,2025-06-30
+VO_ee907391871b9f7b5c0d,PE_326f1ee42ddcd2cd3c31,2025,1,2,ST,2025-06-30,Etape,60 V Trap,79238.53,False,28,957,K-ST2-01-OT-LC,False,False,,2025-06-30
+VO_d6f89c30b345f6b04dfb,PE_55ff1c1f21eee62bac5f,2025,2,1,ST,2025-07-14,Etape,60 V Trap,60141.61,False,28,969,K-ST1-02-OT-LC,False,False,,2025-07-14
+VO_3ff4c387e73ba4903f68,PE_55ff1c1f21eee62bac5f,2025,2,1,ST,2025-07-14,Bubbler,60 V Trap,60449.44,False,28,971,K-ST1-02-OT-ISC,False,False,,2025-07-14
+VO_294a680769b71029116e,PE_44d1a7f433fe780ac78b,2025,2,2,ST,2025-07-14,Etape,60 V Trap,69378.73,False,28,981,K-ST2-02-OT-LC,False,False,,2025-07-14
+VO_e97ad3c0c36ed7191b0a,PE_0373cedd6c6b07cdac38,2025,3,1,ST,2025-07-31,Etape,60 V Trap,57617.48,False,28,993,K-ST1-03-OT-LC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_dd2eef21e1fcdd558309,PE_0373cedd6c6b07cdac38,2025,3,1,ST,2025-07-31,Bubbler,60 V Trap,51799.86,False,28,995,K-ST1-03-OT-ISC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_6f3515a36ce59af817f6,PE_76eec8ae39fe2d6f5031,2025,3,2,ST,2025-07-31,Etape,60 V Trap,50365.34,False,28,1005,K-ST2-03-OT-LC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_7b628971c3538d1cb270,PE_76eec8ae39fe2d6f5031,2025,3,2,ST,2025-07-31,Bubbler,60 V Trap,43203.49,False,28,1007,K-ST2-03-OT-ISC,False,False,"Nitrate, Nitrite, H flag.",2025-07-31
+VO_bb78585c5b2f96dd9d8d,PE_6db16cd7a8da79e5651d,2025,4,1,ST,2025-08-11,Etape,60 V Trap,46994.11,False,28,1017,K-ST1-04-OT-LC,False,False,,2025-08-11
+VO_eafacea4ca9af5037663,PE_6db16cd7a8da79e5651d,2025,4,1,ST,2025-08-11,Bubbler,60 V Trap,47412.08,False,28,1019,K-ST1-04-OT-ISC,False,False,,2025-08-11
+VO_54a047477ec1749e2ff4,PE_a873c6f206750ebc6cd1,2025,4,2,ST,2025-08-11,Etape,60 V Trap,42782.33,False,28,1029,K-ST2-04-OT-LC,False,False,,2025-08-11
+VO_67791357f0fe9e26929a,PE_a873c6f206750ebc6cd1,2025,4,2,ST,2025-08-11,Bubbler,60 V Trap,34193.22,False,28,1031,K-ST2-04-OT-ISC,False,False,,2025-08-11
+VO_ac931815f538ba1054f3,PE_744bc567dc348be5d05b,2025,5,1,ST,2025-08-19,Etape,60 V Trap,57798.97,False,28,1041,K-ST1-05-OT-LC,False,False,,2025-08-19
+VO_d677091671945f4bf839,PE_744bc567dc348be5d05b,2025,5,1,ST,2025-08-19,Bubbler,60 V Trap,77722.88,False,28,1043,K-ST1-05-OT-ISC,False,False,,2025-08-19
+VO_128e89041e662421c863,PE_2000666922e9baf4491a,2025,5,2,ST,2025-08-19,Etape,60 V Trap,81844.82,False,28,1053,K-ST2-05-OT-LC,False,False,,2025-08-19
+VO_466ecb8d02f1ba5e33cc,PE_2000666922e9baf4491a,2025,5,2,ST,2025-08-19,Bubbler,60 V Trap,63981.31,False,28,1055,K-ST2-05-OT-ISC,False,False,,2025-08-19
+VO_78d95e2856d3dbaba9a3,PE_33b48c45a8f1d7ee984a,2025,6,1,ST,2025-09-03,Etape,60 V Trap,35473.3,False,28,1065,K-ST1-06-OT-LC,False,False,,2025-09-03
+VO_0d55b6a1ea1db960d958,PE_33b48c45a8f1d7ee984a,2025,6,1,ST,2025-09-03,Bubbler,60 V Trap,54489.44,False,28,1067,K-ST1-06-OT-ISC,False,False,,2025-09-03
+VO_0db1845a371c3f473af3,PE_0c2d197a5610b0bbb10e,2025,6,2,ST,2025-09-03,Etape,60 V Trap,40324.73,False,28,1077,K-ST2-06-OT-LC,False,False,,2025-09-03
+VO_3847c3358492cbab6a19,PE_0c2d197a5610b0bbb10e,2025,6,2,ST,2025-09-03,Bubbler,60 V Trap,42504.19,False,28,1079,K-ST2-06-OT-ISC,False,False,,2025-09-03
+VO_9c60d748e5db0b197556,PE_68f1adf13e8ebbd5338b,2025,7,2,ST,2025-09-14,Etape,60 V Trap,21364.74,False,28,1101,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-14
+VO_c808933db50a81bc01a5,PE_68f1adf13e8ebbd5338b,2025,7,2,ST,2025-09-14,Bubbler,60 V Trap,42138.16,False,28,1103,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-14
+VO_0f5153ce4fa137d73df5,PE_007bf9724431b43650d7,2025,7,1,ST,2025-09-15,Etape,60 V Trap,44234.87,False,28,1089,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-15
+VO_50ee1122e2c46576be74,PE_007bf9724431b43650d7,2025,7,1,ST,2025-09-15,Bubbler,60 V Trap,61511.08,False,28,1091,,False,,"This event was skipped because it occurred over the weekend. kerbel irrigated differently, ct1, mt2 at same time, mt1, st2 same time, st1, ct2 same time",2025-09-15
+VO_f9bc808910de69a2b64b,PE_7024c3ae50e63fc3a67a,2025,S1,2,ST,2025-09-23,Etape,60 V Trap,87.42,False,14,1110,K-ST2-S1-OT-LC-4,False,,"Tried to sample this storm event, only got enough water from MT2 and ST2 LC samplers for TSS analysis",2025-09-23

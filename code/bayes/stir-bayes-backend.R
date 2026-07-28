@@ -4,7 +4,7 @@
 # Kerbel Long-Term Tillage Impacts Project
 # Created by AJ Brown
 #
-# This file is definition-only when sourced. The active v3p0 workflow reads the
+# This file is definition-only when sourced. The active v3p1 workflow reads the
 # shared final model table, out/wq_cleaned.csv, directly in the Rmd.
 ################################################################################
 
@@ -190,7 +190,7 @@ clean_wq_stir <- function(wq_stir) {
   
 }
 
-# Do not load or transform data at source time. The active v3p0 Rmd loads
+# Do not load or transform data at source time. The active v3p1 Rmd loads
 # out/wq_cleaned.csv explicitly after validating the physical-event preflight.
 
 

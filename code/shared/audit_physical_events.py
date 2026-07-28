@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit-only v3p0 physical-event preflight (no fitting or prediction)."""
+"""Audit-only v3p1 physical-event preflight (no fitting or prediction)."""
 
 from __future__ import annotations
 
@@ -15,12 +15,16 @@ if __package__ in {None, ""}:
 
 from shared.physical_event import (  # noqa: E402
     CORRECTED_VERSION,
+    EVENT_DATE_COLUMN,
+    PHYSICAL_EVENT_CONFIG,
     PHYSICAL_EVENT_KEY,
     VOLUME_PROVENANCE_COLUMNS,
     _stable_id,
     add_concentration_observation_id,
     add_physical_event_id,
+    build_event_date_audit,
     build_volume_observation_table,
+    yearly_irrigation_roster,
 )
 
 
@@ -46,10 +50,33 @@ def main() -> None:
     raw = pd.read_csv(input_path, low_memory=False)
     rows = add_concentration_observation_id(add_physical_event_id(raw, allow_missing_key=True))
     volume_observations, reports = build_volume_observation_table(raw)
+    event_dates, multi_date_events, predictor_conflicts = build_event_date_audit(
+        rows, volume_observations
+    )
+    event_date_map = event_dates[["PhysicalEventID", "EventDate"]]
+    rows = rows.merge(
+        event_date_map,
+        on="PhysicalEventID",
+        how="left",
+        validate="many_to_one",
+    )
+    volume_observations = volume_observations.merge(
+        event_date_map,
+        on="PhysicalEventID",
+        how="left",
+        validate="many_to_one",
+    )
     available_provenance = [column for column in VOLUME_PROVENANCE_COLUMNS if column in raw]
 
     legacy_key = [
-        column for column in [*PHYSICAL_EVENT_KEY, "SampleID", "MeasureMethod"] if column in rows
+        column
+        for column in [
+            EVENT_DATE_COLUMN,
+            *PHYSICAL_EVENT_KEY,
+            "SampleID",
+            "MeasureMethod",
+        ]
+        if column in rows
     ]
     rows["LegacyEventVolumeID_v2"] = [
         _stable_id("LEGACY_EV", values)
@@ -76,6 +103,21 @@ def main() -> None:
         .reset_index()
     )
     physical_events = physical_events.merge(volume_counts, on="PhysicalEventID", how="left")
+    physical_events = physical_events.merge(
+        event_dates[
+            [
+                "PhysicalEventID",
+                "EventDate",
+                "EventDateResolution",
+                "ContributingDates",
+                "n_contributing_dates",
+                "HasBlockingPredictorConflict",
+            ]
+        ],
+        on="PhysicalEventID",
+        how="left",
+        validate="one_to_one",
+    )
     physical_events[["genuine_volume_observations", "volume_methods"]] = physical_events[
         ["genuine_volume_observations", "volume_methods"]
     ].fillna(0).astype(int)
@@ -83,6 +125,7 @@ def main() -> None:
     concentration_export_columns = [
         column for column in [
             "ConcentrationObservationID", "PhysicalEventID", *PHYSICAL_EVENT_KEY,
+            EVENT_DATE_COLUMN, "EventDate",
             "_wq_idx", "SampleID", "Duplicate", "Analyte", "analyte_abbr",
             "Result_mg_L", "Volume", *available_provenance, "NoRunoff",
         ] if column in rows
@@ -169,6 +212,17 @@ def main() -> None:
         )
         .reset_index()
     )
+    irrigation_roster = yearly_irrigation_roster(physical_events)
+    irrigation_roster_by_year = (
+        irrigation_roster.groupby("Year", dropna=False, as_index=False)
+        .agg(
+            expected_irrigation_labels=(
+                "Irrigation",
+                lambda values: ";".join(sorted(values.astype(str).unique())),
+            ),
+            expected_irrigation_count=("Irrigation", "nunique"),
+        )
+    )
 
     status = (
         rows.groupby(["PhysicalEventID", *PHYSICAL_EVENT_KEY], dropna=False)
@@ -192,17 +246,83 @@ def main() -> None:
         ("missing_physical_event_key", reports["missing_physical_key"]),
         ("ambiguous_same_provenance_volume", reports["ambiguous_volume_observations"]),
         ("zero_positive_conflict", reports["zero_missing_conflicts"]),
+        (
+            "missing_event_date",
+            event_dates.loc[event_dates["EventDate"].isna()],
+        ),
+        ("conflicting_event_level_predictor", predictor_conflicts),
     ]:
         if not table.empty:
             part = table.copy()
             part.insert(0, "BlockingFinding", finding)
             blocking_parts.append(part)
+    expected_roster = PHYSICAL_EVENT_CONFIG["corrected_roster"]
+    irrigation_numeric = pd.to_numeric(
+        physical_events["Irrigation"], errors="coerce"
+    )
+    roster_counts = {
+        "total": int(physical_events["PhysicalEventID"].nunique()),
+        "numeric": int(irrigation_numeric.notna().sum()),
+        "storm": int(irrigation_numeric.isna().sum()),
+    }
+    observed_storm_labels = sorted(
+        physical_events.loc[
+            irrigation_numeric.isna(), "Irrigation"
+        ].astype(str).unique()
+    )
+    configured_storm_labels = sorted(
+        str(value) for value in PHYSICAL_EVENT_CONFIG["storm_handling"]["labels"]
+    )
+    unexpected_storm_labels = sorted(
+        set(observed_storm_labels) - set(configured_storm_labels)
+    )
+    if unexpected_storm_labels:
+        blocking_parts.append(
+            pd.DataFrame(
+                [
+                    {
+                        "BlockingFinding": "unexpected_nonnumeric_irrigation_label",
+                        "PhysicalEventID": pd.NA,
+                        "unexpected_labels": ";".join(unexpected_storm_labels),
+                        "configured_storm_labels": ";".join(
+                            configured_storm_labels
+                        ),
+                    }
+                ]
+            )
+        )
+    expected_counts = {
+        "total": int(expected_roster["expected_total_events"]),
+        "numeric": int(expected_roster["expected_numeric_irrigation_events"]),
+        "storm": int(expected_roster["expected_storm_events"]),
+    }
+    if roster_counts != expected_counts:
+        blocking_parts.append(
+            pd.DataFrame(
+                [
+                    {
+                        "BlockingFinding": "corrected_roster_count_mismatch",
+                        "PhysicalEventID": pd.NA,
+                        "observed_total_events": roster_counts["total"],
+                        "expected_total_events": expected_counts["total"],
+                        "observed_numeric_irrigation_events": roster_counts["numeric"],
+                        "expected_numeric_irrigation_events": expected_counts["numeric"],
+                        "observed_storm_events": roster_counts["storm"],
+                        "expected_storm_events": expected_counts["storm"],
+                    }
+                ]
+            )
+        )
     blocking_review = pd.concat(blocking_parts, ignore_index=True, sort=False) if blocking_parts else pd.DataFrame(columns=["BlockingFinding"])
 
     summary_records = [
         ("workflow_version", CORRECTED_VERSION),
         ("cleaned_rows", len(raw)),
         ("physical_events", physical_events["PhysicalEventID"].nunique()),
+        ("numeric_irrigation_events", roster_counts["numeric"]),
+        ("storm_events", roster_counts["storm"]),
+        ("multi_date_physical_events", len(multi_date_events)),
+        ("event_level_predictor_conflicts", len(predictor_conflicts)),
         ("concentration_observations", len(concentration_observations)),
         ("nonmissing_concentration_observations", int(pd.to_numeric(raw["Result_mg_L"], errors="coerce").notna().sum())),
         ("volume_candidate_rows_before_dedup", candidate_rows_before),
@@ -232,6 +352,19 @@ def main() -> None:
     _write(status, output_dir, "zero_missing_volume_status.csv")
     _write(legacy_mapping, output_dir, "legacy_event_id_mapping.csv")
     _write(multiplicity, output_dir, "event_multiplicity_by_year.csv")
+    _write(irrigation_roster, output_dir, "yearly_irrigation_roster.csv")
+    _write(
+        irrigation_roster_by_year,
+        output_dir,
+        "yearly_irrigation_roster_summary.csv",
+    )
+    _write(event_dates, output_dir, "event_date_audit.csv")
+    _write(multi_date_events, output_dir, "multi_date_event_audit.csv")
+    _write(
+        predictor_conflicts,
+        output_dir,
+        "event_level_predictor_conflicts.csv",
+    )
     _write(blocking_review, output_dir, "BLOCKING_REVIEW.csv")
     metadata = {
         "workflow_version": CORRECTED_VERSION,
@@ -239,6 +372,20 @@ def main() -> None:
         "audit_only": True,
         "input": str(input_path),
         "physical_event_key": PHYSICAL_EVENT_KEY,
+        "date_is_physical_event_identity": False,
+        "event_date_selection_rule": PHYSICAL_EVENT_CONFIG["event_date"][
+            "selection_rule"
+        ],
+        "physical_events": roster_counts["total"],
+        "numeric_irrigation_events": roster_counts["numeric"],
+        "storm_events": roster_counts["storm"],
+        "observed_storm_labels": observed_storm_labels,
+        "multi_date_physical_events": len(multi_date_events),
+        "event_level_predictor_conflicts": len(predictor_conflicts),
+        "irrigation_roster_rule": expected_roster["irrigation_roster_rule"],
+        "seasonal_stir": PHYSICAL_EVENT_CONFIG["seasonal_stir"],
+        "storm_handling": PHYSICAL_EVENT_CONFIG["storm_handling"],
+        "annual_reporting": PHYSICAL_EVENT_CONFIG["annual_reporting"],
         "volume_provenance_columns_available": available_provenance,
         "ready_for_model_execution": blocking_review.empty,
         "blocking_rows": len(blocking_review),
@@ -247,11 +394,15 @@ def main() -> None:
     (output_dir / "preflight_metadata.json").write_text(
         json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
     )
-    audit_readme = f"""# Physical-event v3p0 preflight audit
+    audit_readme = f"""# Physical-event v3p1 preflight audit
 
 Input: `{input_path}`
 
 - Physical events: {physical_events['PhysicalEventID'].nunique():,}
+- Numeric-irrigation events: {roster_counts['numeric']:,}
+- Recorded S1/S2 storm events: {roster_counts['storm']:,}
+- Multi-date physical events: {len(multi_date_events):,}
+- Event-level predictor conflicts: {len(predictor_conflicts):,}
 - Concentration rows: {len(concentration_observations):,}
 - Genuine volume observations: {len(volume_observations):,}
 - Copied volume rows removed: {copied_candidate_rows:,}
@@ -259,19 +410,29 @@ Input: `{input_path}`
 - Blocking review rows: {len(blocking_review):,}
 - Ready for model execution: `{str(blocking_review.empty).lower()}`
 
-`PhysicalEventID` uses `{' + '.join(PHYSICAL_EVENT_KEY)}`. `VolumeObservationID`
-uses that physical-event key plus available measurement provenance and the exact
-recorded value. `SampleID` is not used to manufacture volume observations.
+`PhysicalEventID` uses `{' + '.join(PHYSICAL_EVENT_KEY)}`; Date is observation
+metadata and does not change the identity. `EventDate` uses the date of a unique
+genuine volume observation when available and otherwise the earliest valid
+contributing date. `VolumeObservationID` uses the physical-event identity,
+observation Date, available measurement provenance, and exact recorded value.
+`SampleID` is not used to manufacture volume observations.
 
 Review `BLOCKING_REVIEW.csv` before model execution. Detailed source rows for
 copied values are in `copied_volume_values.csv`; they remain concentration rows
 but contribute only one genuine volume observation per deterministic identity.
+The full multi-date merge provenance is in `multi_date_event_audit.csv`.
+
+`Season_STIR_toDate` uses
+`{PHYSICAL_EVENT_CONFIG['seasonal_stir']['interval']}`: post-harvest and
+pre-plant operations are assigned to the following crop. The first observed
+season is explicitly left-censored because its preceding harvest date is not
+available.
 """
     (output_dir / "AUDIT_README.md").write_text(audit_readme, encoding="utf-8")
     print(summary.to_string(index=False))
     print(f"\nPreflight outputs: {output_dir}")
     if not blocking_review.empty:
-        print("BLOCKED: review BLOCKING_REVIEW.csv before any v3p0 model execution.")
+        print("BLOCKED: review BLOCKING_REVIEW.csv before any v3p1 model execution.")
 
 
 if __name__ == "__main__":

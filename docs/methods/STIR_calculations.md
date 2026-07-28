@@ -80,9 +80,14 @@ Supported formats:
 
 The script normalizes the file into long format internally.
 
-### 3. Crop Records (`crop_records.csv`, optional)
+### 3. Crop Records (`crop records.csv`)
 
-If provided, crop harvest dates are used to compute cumulative STIR values between harvest events. Each record should contain at least a `Date` column and one field identifying harvest events.
+The active downstream seasonal merge requires `plant date`, `harvest date`, and
+`crop`. Crop labels are attached to runoff observations between planting and
+harvest. For each following crop, `Season_STIR_toDate` sums treatment-specific
+STIR after the preceding crop's named harvest operation through the runoff
+observation date, thereby retaining same-day follow-up, post-harvest, and
+pre-plant operations.
 
 ---
 
@@ -94,8 +99,12 @@ All outputs are written to the directory specified by `--outdir`.
 | --------------------------------- | ----------------------------------------------------------------------------- |
 | **stir_events_long.csv**          | Long-format table of every operation with computed STIR and mapper parameters |
 | **stir_daily_system_wide.csv**    | Daily STIR sums per system (CT/ST/MT) pivoted to wide format                  |
-| **stir_events_long_windowed.csv** | (Optional) Cumulative STIR between harvest events if crop data provided       |
 | **unmapped_ops.csv**              | Operations from the records not matched to the mapper table                   |
+
+The downstream seasonal merge writes
+`out/pipeline_csvs/wq_with_stir_by_season.csv`, including
+`PreviousHarvestDate`, `Season_STIR_toDate`, and the independent
+`CumAll_STIR_toDate` running total.
 
 ---
 
@@ -121,7 +130,7 @@ python .\stir_pipeline.py `
 
 ## Interpretation and Use
 
-The computed STIR values allow comparison of soil disturbance among management systems, years, or tillage operations. When aggregated by crop year or between harvests, cumulative STIR provides a measure of **mechanical soil impact intensity** that can be related to observed changes in residue cover, infiltration, and water-quality responses.
+The computed STIR values allow comparison of soil disturbance among management systems, years, or tillage operations. The model-facing seasonal total resets after the preceding harvest rather than at January 1 or planting, so tillage performed while no irrigation runoff is being sampled still contributes to the following crop's exposure. The all-years total remains a separate long-term cumulative measure.
 
 Because the workflow draws directly from MOSES and RUSLE2 calibration data, the resulting STIR values are standardized and reproducible across studies. This alignment ensures that subsequent analyses (e.g., legacy tillage effects, cumulative disturbance modeling) are directly comparable with national datasets used in NRCS conservation planning and erosion modeling.
 

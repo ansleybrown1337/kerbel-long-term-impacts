@@ -1,150 +1,180 @@
-# Ready-to-run physical-event workflows: v3p0 handoff
+# Ready-to-run physical-event workflows: v3p1 handoff
 
 ## Status
 
-The code, shared schema, audit utility, output contracts, documentation, and
-synthetic tests are prepared. The corrected end-to-end pipeline and physical-
-event audit completed successfully. The current preflight has zero blocking
-rows and `ready_for_model_execution: true`.
+The v3p1 source, shared schema, preflight, documentation, and focused tests are prepared. The corrected preflight reports exactly 528 physical events (510 numeric-irrigation events and 18 S1/S2 storm events), zero unresolved predictor conflicts, zero blocking rows, and `ready_for_model_execution: true`.
 
-No Bayesian model was compiled or sampled. No R Markdown document was rendered. No CatBoost model was fitted, calibrated, or used for Monte Carlo reconstruction. No full Bayesian-versus-ML comparison was run during this refactor.
+No Stan compilation or sampling, ML LOYO fitting, CatBoost full-record recalibration, Monte Carlo reconstruction, comparison regeneration, or publication-figure regeneration was run while preparing v3p1.
 
 ## Scientific contract
 
-`PhysicalEventID = Date + Year + Irrigation + Rep + Treatment`. Concentration observations remain row-level. Genuine volume observations remain observation-level and map to one physical-event volume. Copied volume repetitions do not become measurements. Missing volume creates no Bayesian observation-likelihood row; confirmed zero remains observed. Final load is unique by `PhysicalEventID × Analyte × Draw` after prediction resolution.
+- `PhysicalEventID = Year + Irrigation + Rep + Treatment`.
+- `Date` is observation metadata. `EventDate` is the unique genuine-volume observation date when one exists; otherwise it is the earliest valid contributing date.
+- Legitimate concentration and genuine runoff-volume observations are retained across dates. Unresolved event-predictor conflicts are blocking.
+- `Season_STIR_toDate` starts after the preceding crop's named harvest operation; same-day follow-up, post-harvest, and pre-plant operations apply to the following crop rather than resetting on January 1.
+- S1/S2 remain distinct Irrigation levels. Bayes maps them to 11/12 for the existing linear irrigation term; ML treats them categorically. This framework difference is a limitation, not a v3p1 redesign.
+- Model annual and cumulative results are means per treatment plot: sum within Rep, average replicate plot totals within each draw, and then summarize treatment-mean draws.
+- CT-relative percentages are calculated within draw from treatment-mean loads.
+- Event-level calibration metrics remain in their existing event-level units.
+- Observed annual completeness is assessed independently for each replicate plot from the year's actual Irrigation roster. Replicate ranges are descriptive, not confidence intervals.
 
-Bayesian and ML corrected versions are both `v3p0_physical_event`. Default prediction resolution is median; mean is available. Method priority is available only when the currently empty hierarchy is explicitly configured.
+## Corrected preflight findings
 
-## Preflight findings on current `out/wq_cleaned.csv`
+- Cleaned rows: 15,366.
+- Corrected physical events: 528.
+- Numeric-irrigation plot events: 510.
+- Recorded storm plot events: 18.
+- Multi-date corrected events: 7.
+- Genuine runoff-volume observations: 372.
+- Copied volume rows excluded from the observation count: 9,395.
+- Events with at least one volume observation: 333.
+- Events without a volume observation: 195.
+- Confirmed-zero volume observations: 12.
+- Unresolved event-level predictor conflicts: 0.
+- Blocking rows: 0.
+- Harvest-anchored seasonal STIR conflicts within corrected physical events: 0.
+- First-season left-censored rows: 504 (2011; preceding 2010 harvest date unavailable).
+- Known-boundary physical events differing from the legacy calendar reset: 460 of 492 (436 previously undercounted, 24 previously overcounted).
+- Physical events receiving same-harvest-date stalk-shredding/baling carryover: 36; carryover STIR is 30.7125 for each affected 2015 plot event.
 
-- 15,366 cleaned/concentration rows and 535 physical-event groups.
-- 9,767 nonmissing copied volume candidate rows before deduplication.
-- 372 genuine `VolumeObservationID` rows after deterministic deduplication; 9,395 copied rows removed from the observation count.
-- 333 events with at least one volume observation and 202 events with no volume observation.
-- 12 genuine confirmed-zero volume observations.
-- Zero blocking rows and zero blocking physical events.
-- Source storm-event labels `S1`/`S2` are preserved through final cleaning rather than being erased by numeric coercion.
-- Two confirmed lab-duplicate transcription errors were corrected at source and logged in `data/source_corrections_v3p0.csv`: MT duplicate volume 1389.06 to 1388.06 L and ST duplicate volume 7674.99 to 7673.99 L.
+The seven multi-date events are 2020 Irrigation 3 Rep 2 for CT/MT/ST, 2020 Irrigation 7 Rep 1 for CT, and 2022 Irrigation 7 Rep 2 for CT/MT/ST. CT and ST in the 2020 Irrigation 3 group use 2020-07-13 because each has a unique genuine volume-observation date. The other five use their earliest valid contributing date (2020-07-13, 2020-08-25, or 2022-08-23 as applicable). All contributing dates and concentration/volume observation IDs are retained in `multi_date_event_audit.csv`; the audit found no blocking predictor conflicts.
 
-`validation/preflight/physical_event_v3p0/BLOCKING_REVIEW.csv` is currently empty except for its header. Any future source-data change must rerun the pipeline and audit; do not bypass the gate or resolve conflicts through silent averaging.
+## Ordered PowerShell production runbook
 
-## Verification completed
+Run each block from the repository root. Stop at a failed command or checkpoint.
 
-- Python `compileall`: passed.
-- 27 focused synthetic/static tests: passed, including the requested
-  invariance/split/refusal cases, deterministic point-ledger uniqueness,
-  point-versus-draw center separation, pooled analyte-plus-volume NRMSE,
-  empirical calibration-residual propagation enforcement, shared final-input
-  enforcement, storm-label preservation, batch-runner single-pass enforcement,
-  version-folder isolation, date-ID stability, LOYO-ledger separation, explicit
-  absent-year coverage, Bayesian annual-draw sensitivity, and observed-plot
-  ledger checks.
-- Extracted R code from the Bayesian R Markdown: parse passed without rendering.
-- Static Stan interface: `J_VOL`, `VOL_obs`, `VOL_event_id`, mapped likelihood, and absence of method-specific volume parameters passed.
-- The end-to-end data pipeline completed successfully and wrote the repository-root `out/` products. It reported one nonfatal warning that the optional STIR crop-window cumulative helper expected a `Date` column in the crop table; the required season merge completed with zero unmatched rows.
-- The audit utility ran successfully, wrote the preflight directory, and marked the current dataset ready for model execution.
-
-No scientific runtime validation is claimed until the manual model sequence below is completed.
-
-## Exact manual sequence
-
-Run from the repository root in PowerShell.
-
-### 1. Preflight audit
+### 1. Preprocessing
 
 ```powershell
-C:\Users\ansle\anaconda3\python.exe code\shared\audit_physical_events.py --input out\wq_cleaned.csv --output-dir validation\preflight\physical_event_v3p0
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\pipeline\run_pipeline.py --debug
 ```
 
-Checkpoint: open `AUDIT_README.md`, `preflight_summary.csv`, `BLOCKING_REVIEW.csv`, `physical_events_by_year_treatment.csv`, `concentration_observation_counts.csv`, `copied_volume_values.csv`, `events_with_multiple_volume_methods.csv`, `ambiguous_volume_observations.csv`, `zero_missing_volume_status.csv`, and `event_multiplicity_by_year.csv`. Proceed only when the metadata says ready and the blocking table is empty. Expected runtime is seconds.
+Expected success: exit code 0, the merge command visibly includes `--season postharvest`, the merge reports the harvest-operation/same-day carry-forward definition, the seasonal-definition audit reports `460/492` known-boundary physical runoff events differ from the legacy calendar reset, and `[OK] Wrote wq_cleaned.csv -> out\wq_cleaned.csv`. Review `out/pipeline_csvs/seasonal_stir_definition_audit.csv` and do not continue if the cleaned output is missing.
 
-### 2. Bayesian v3p0
+### 2. Corrected preflight
 
 ```powershell
-& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' code\bayes\stir-bayes-load_v3p0_physical_event.R
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\shared\audit_physical_events.py --input out\wq_cleaned.csv --output-dir validation\preflight\physical_event_v3p1
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' -c "import json; from pathlib import Path; p=Path('validation/preflight/physical_event_v3p1/preflight_metadata.json'); m=json.loads(p.read_text()); assert m['workflow_version']=='v3p1_physical_event'; assert m['physical_events']==528; assert m['numeric_irrigation_events']==510; assert m['storm_events']==18; assert m['observed_storm_labels']==['S1','S2']; assert m['event_level_predictor_conflicts']==0; assert m['blocking_rows']==0; assert m['ready_for_model_execution'] is True; print('v3p1 preflight gate: PASS')"
 ```
 
-Checkpoint: inspect `results/bayes/v3p0_physical_event/run_manifest_bayes_v3p0_physical_event.json`, `results/bayes/v3p0_physical_event/overall_diagnostics_bayes_v3p0_physical_event.csv`, the saved CmdStan dashboard, posterior predictive checks, row/volume diagnostics, event provenance, the unique event-analyte-draw ledger, annual summaries, and `figures/bayes/v3p0_physical_event/`. This may take hours; record actual hardware/runtime. The Rmd remains an optional exploratory interface rather than the production runner.
+Expected success: the audit prints `ready_for_model_execution: True`, and the gate prints `v3p1 preflight gate: PASS`. Check:
 
-### 3. Bayesian post-run validation
+- `preflight_metadata.json`
+- `BLOCKING_REVIEW.csv` (header only)
+- `event_date_audit.csv`
+- `multi_date_event_audit.csv`
+- `event_level_predictor_conflicts.csv` (header only)
+- `yearly_irrigation_roster.csv`
+
+### 3. Bayesian fit and post-processing
 
 ```powershell
-C:\Users\ansle\anaconda3\python.exe -c "import json,pandas as p; from pathlib import Path; d=Path('results/bayes/v3p0_physical_event'); m=json.loads((d/'run_manifest_bayes_v3p0_physical_event.json').read_text()); x=p.read_csv(d/'event_analyte_draw_ledger_bayes_v3p0_physical_event.csv'); assert m['workflow_version']=='v3p0_physical_event'; assert m['event_unit']=='PhysicalEventID'; assert sorted(x.Year.unique())==list(range(2011,2026)); assert not x.duplicated(['PhysicalEventID','Analyte','Draw']).any(); print('Bayesian v3p0 ledger validation: PASS')"
+& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' code\bayes\stir-bayes-load_v3p1_physical_event.R
 ```
 
-Checkpoint: do not proceed if the command or scientific diagnostics fail.
+Expected success: final `[OK] Wrote:` messages, `Saved overall diagnostics to:`, and exit code 0. Check:
 
-### 4. ML v3p0
+- `results/bayes/v3p1_physical_event/run_manifest_bayes_v3p1_physical_event.json`
+- `results/bayes/v3p1_physical_event/overall_diagnostics_bayes_v3p1_physical_event.csv`
+- `results/bayes/v3p1_physical_event/event_analyte_draw_ledger_bayes_v3p1_physical_event.csv`
+- `results/bayes/v3p1_physical_event/annual_load_draws_bayes_v3p1_physical_event.csv`
+- sampler diagnostics, posterior predictive checks, event/row diagnostics, and `figures/bayes/v3p1_physical_event/`
+
+The Bayes prediction table must cover all 10,984 cleaned-data rows for the 10
+prespecified study analytes (`OP`, `TP`, `NO3`, `TN`, `TSS`, `TKN`, `NH4`,
+`Se`, `NO2`, and `TDS`) and all 528 physical events. `ICP`, `TSP`, `NPOC`,
+and `NOx` are intentionally ML-only targets. Observed outcomes are retained as
+likelihood inputs and reference points but must not replace modeled predictions.
+
+Do not proceed on sampling failures, unacceptable diagnostics, duplicate ledger keys, or missing 2011–2025 coverage.
+
+### 4. ML training and calibration
 
 ```powershell
-C:\Users\ansle\anaconda3\envs\wq_ml\python.exe code\ml\ml_catboost_conformal_loyo_v3p0_physical_event.py --repo .
-C:\Users\ansle\anaconda3\envs\wq_ml\python.exe code\ml\ml_postprocess_plots_v3p0_physical_event.py --repo .
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_catboost_conformal_loyo_v3p1_physical_event.py --repo . --no-impute_missing --no-figures
 ```
 
-Checkpoint: inspect `results/ml/v3p0_physical_event/run_manifest_ml_v3p0_physical_event.json`,
-volume training observations, event-balanced weights, LOYO metrics/coverage,
-row residuals/standardized discrepancies, feature importance, the point-load
-resolution audits, and the separately named point and uncertainty-draw ledgers.
-The ML annual line must equal the saved physical-event point total, not the
-median of the propagated draws. The uncertainty draws must report weighted
-resampling of signed log-scale calibration residuals; the superseded uniform
-sampling between conformal endpoints must be false in the manifest. Record
-actual runtime; CatBoost plus reconstruction may take hours.
+Expected success: `[DONE] Revised physical-event workflow outputs written to ...`, exit code 0, saved LOYO outputs, and `results/ml/v3p1_physical_event/run_manifest_ml_v3p1_physical_event.json`. This command deliberately does not save final full-record models or create reconstructed values. Check LOYO exclusions, physical-event calibration splits, event-balanced weights, coverage, residuals, and event-date audits. The manifest must report:
 
-### 5. ML post-run validation
+- `workflow_version = v3p1_physical_event`
+- `calibration_split_unit = PhysicalEventID`
+- `annual_reporting_unit = mean_per_treatment_plot`
+- `primary_ml_central_estimate = mean_of_replicate_annual_plot_totals`
+- `full_record_models_saved = false`
+- `final_model_fit_deferred = true`
+
+### 5. Final full-record model fit and calibration
 
 ```powershell
-C:\Users\ansle\anaconda3\envs\wq_ml\python.exe -c "import json,pandas as p; from pathlib import Path; d=Path('results/ml/v3p0_physical_event'); m=json.loads((d/'run_manifest_ml_v3p0_physical_event.json').read_text()); assert m['workflow_version']=='v3p0_physical_event'; assert m['calibration_split_unit']=='PhysicalEventID'; assert m['primary_ml_central_estimate']=='sum_of_physical_event_point_loads'; assert m['legacy_uniform_between_conformal_bounds_used'] is False; [(_ for _ in ()).throw(AssertionError(f'duplicate draw ledger: {f}')) if p.read_csv(f).duplicated(['PhysicalEventID','Analyte','Draw']).any() else None for f in [d/'event_analyte_draw_ledger_ml_v3p0.csv',d/'event_analyte_draw_ledger_full_record_model_only.csv',d/'event_analyte_draw_ledger_observed_plus_imputed_sensitivity.csv']]; [(_ for _ in ()).throw(AssertionError(f'duplicate point ledger: {f}')) if p.read_csv(f).duplicated(['PhysicalEventID','Analyte']).any() else None for f in [d/'event_analyte_point_ledger_full_record_model_only.csv',d/'event_analyte_point_ledger_observed_plus_imputed_sensitivity.csv']]; print('ML v3p0 point/draw ledger validation: PASS')"
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_catboost_conformal_loyo_v3p1_physical_event.py --repo . --fit_final_models_only --no-figures
 ```
 
-### 6. Comparison v3p0
+Expected success: `[DONE] Final full-record CatBoost models and calibration residuals saved; reconstruction not started.`, exit code 0, two `.cbm` files and matching metadata under `results/ml/v3p1_physical_event/models/`, plus `calibration_residual_distribution_logC.csv` and `calibration_residual_distribution_logV.csv`. This command does not repeat LOYO and does not generate reconstructed values.
+
+### 6. Full-record prediction from saved models
 
 ```powershell
-C:\Users\ansle\anaconda3\envs\wq_ml\python.exe code\comparison\bayes_ml_comparison_v3p0_physical_event.py --repo .
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_regenerate_from_saved_models_v3p1.py --repo . --no-figures
 ```
 
-Checkpoint: inspect the comparison manifest and every raw table before publication tables/figures. Confirm no missing years, no zero substitution, coherent units, Spearman sample sizes, within-draw CT-relative calculations, sensitivity labels, and disagreement rows.
+Expected success: `[DONE] Full-record predictions regenerated from saved event-level models.`, exit code 0, and full-record point/draw ledgers. Check:
 
-### 7. Final static and synthetic checks
+- `event_analyte_point_ledger_full_record_model_only.csv`
+- `event_analyte_draw_ledger_full_record_model_only.csv`
+- `annual_load_summary_full_record_model_only.csv`
+- point-load resolution audits
+
+The primary ML row table must contain model predictions for all 15,366 eligible
+concentration rows across all 14 analytes, and the volume table must cover all
+528 physical events.
+Observed outcomes are reference/evaluation values and must not replace the
+primary predictions. All point ledgers must be unique by
+`PhysicalEventID × Analyte`; draw ledgers must be unique by
+`PhysicalEventID × Analyte × Draw`.
+
+### 7. Comparison tables
 
 ```powershell
-C:\Users\ansle\anaconda3\python.exe -m compileall -q code tests
-C:\Users\ansle\anaconda3\python.exe -m pytest -q tests\test_physical_event_v3p0.py
-& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' -e "f <- tempfile(fileext='.R'); knitr::purl('code/bayes/stir-bayes-load_v3p0_physical_event.Rmd', output=f, documentation=0, quiet=TRUE); parse(file=f); unlink(f); cat('R parse: PASS\n')"
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\comparison\bayes_ml_comparison_v3p1_physical_event.py --repo . --skip-figures
 ```
 
-## Organization and path changes
+Expected success: `[DONE] Corrected comparison outputs written to ...`, exit code 0, and `results/comparison/v3p1_physical_event/run_manifest_comparison_v3p1_physical_event.json`. Inspect raw tables before publication tables. Confirm mean-per-plot units, all 2011–2025 years, CT-relative within-draw calculations, no zero insertion for missing years, primary TSS/TP/TN plus runoff-volume products, and separate incomplete-observed subtotals.
 
-The user confirmed that the complete pre-correction repository baseline was
-pushed before this refactor. The active predecessors and all path changes are
-listed in `refactor_path_inventory_v3p0.md`; no Git operation was performed in
-this task.
+### 8. Figures
 
-New or modified handoff files are:
+```powershell
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_postprocess_plots_v3p1_physical_event.py --repo .
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\comparison\bayes_ml_comparison_v3p1_physical_event.py --repo . --figures-only
+```
 
-- shared contract and audit: `config/physical_event_v3p0.json`,
-  `code/shared/__init__.py`, `code/shared/physical_event.py`, and
-  `code/shared/audit_physical_events.py`;
-- moved/updated pipeline: every file under `code/pipeline/`;
-- moved/updated Bayes: `code/bayes/stir-bayes-load_v3p0_physical_event.R`,
-  `code/bayes/stir-bayes-load_v3p0_physical_event.Rmd`,
-  `code/bayes/m_stir_mogp_v3p0_physical_event.stan`,
-  `code/bayes/stir-bayes-backend.R`, and `code/bayes/stir_bayes_backend.py`;
-- moved/updated ML: all three files under `code/ml/`;
-- moved/rebuilt comparison:
-  `code/comparison/bayes_ml_comparison_v3p0_physical_event.py`;
-- tests: `tests/test_physical_event_v3p0.py`;
-- audit artifacts: every CSV, JSON, and Markdown file under
-  `validation/preflight/physical_event_v3p0/`;
-- workflow/method/reproducibility documentation: every Markdown/R Markdown
-  file under `docs/workflows/`, `docs/methods/`, and `docs/reproducibility/`;
-- release/runtime metadata: `README.md`, `.gitignore`, `CITATION.cff`, and
-  `environment/README.md`;
-- dedicated corrected output roots under versioned subfolders in
-  `results/{bayes,ml,comparison}/` and `figures/{bayes,ml,comparison}/`.
+Expected success: `[DONE] v3p1 physical-event post-processing figures created.`, `[DONE] Corrected comparison figures regenerated from saved tables in ...`, both commands exit 0, and refreshed `figures/ml/v3p1_physical_event/` and `figures/comparison/v3p1_physical_event/`. Visually inspect every primary figure. Observed n=2 points must show the replicate minimum-to-maximum range; n=1 must use an x marker with no interval; n=0 must show no point.
 
-Active pipeline, Bayesian, ML, comparison, and shared code are separated under `code/`. Corrected outputs target `results/` and `figures/`. Redundant Zenodo scaffolding and superseded active source copies were removed; the complete move/create/remove inventory is in `refactor_path_inventory_v3p0.md`.
+## Post-run checks
 
-Legacy artifacts were moved without deletion into workflow/version folders; see
-`legacy_artifact_migration_v3p0.md`. Follow `repository_cleanup_plan.md` and
-`github_release_checklist.md` after corrected runs are validated.
+```powershell
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' -m py_compile code\pipeline\merge_wq_stir_by_season.py code\pipeline\run_pipeline.py code\shared\physical_event.py code\shared\audit_physical_events.py code\ml\ml_catboost_conformal_loyo_v3p1_physical_event.py code\ml\ml_regenerate_from_saved_models_v3p1.py code\ml\ml_postprocess_plots_v3p1_physical_event.py code\comparison\bayes_ml_comparison_v3p1_physical_event.py
+& 'C:\Users\ansle\anaconda3\python.exe' -m pytest -q tests\test_seasonal_stir.py tests\test_physical_event_v3p1.py
+& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' -e "invisible(parse(file='code/bayes/stir-bayes-load_v3p1_physical_event.R')); f <- tempfile(fileext='.R'); knitr::purl('code/bayes/stir-bayes-load_v3p1_physical_event.Rmd', output=f, documentation=0, quiet=TRUE); invisible(parse(file=f)); unlink(f); cat('R and Rmd parse: PASS\n')"
+```
+
+Expected success: Python compilation exits 0, pytest reports all focused tests passed, and R prints `R and Rmd parse: PASS`. The `wq_ml` environment currently supplies the scientific runtime; the base Anaconda interpreter is used for pytest because pytest is not installed in `wq_ml`.
+
+## Output namespaces
+
+Active v3p1 outputs:
+
+- `results/bayes/v3p1_physical_event/`
+- `results/ml/v3p1_physical_event/`
+- `results/comparison/v3p1_physical_event/`
+- matching `figures/{bayes,ml,comparison}/v3p1_physical_event/`
+- `validation/preflight/physical_event_v3p1/`
+
+Accepted v3p0 artifacts remain archived under:
+
+- `old_code/versions/v3p0_physical_event/`
+- `results/{bayes,ml,comparison}/old_versions/v3p0_physical_event/`
+- `figures/{bayes,ml,comparison}/old_versions/v3p0_physical_event/`
+- `validation/preflight/old_versions/physical_event_v3p0/`
+
+No files are staged or committed by this migration.

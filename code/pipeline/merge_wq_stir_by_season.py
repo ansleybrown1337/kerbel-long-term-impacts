@@ -7,10 +7,14 @@ Purpose
 -------
 Merge water-quality (WQ) long-format data with STIR event data (long format),
 and compute two "to date" STIR metrics for each WQ sample:
-  1) Season_STIR_toDate: cumulative STIR from the season PlantDate up to the sample Date
+  1) Season_STIR_toDate: cumulative STIR after the preceding crop's named
+     harvest operation through the sample Date
   2) CumAll_STIR_toDate: cumulative STIR from the first available STIR event up to the sample Date
 
-Season windows are defined by crop records (PlantDate -> HarvestDate), joined by Treatment.
+Crop labels are attached within PlantDate -> HarvestDate windows. The seasonal
+STIR exposure uses the preceding named harvest operation as its reset boundary
+so same-day follow-up, post-harvest, and pre-plant operations are attributed to
+the following crop.
 
 Assumptions / Inputs
 --------------------
@@ -120,6 +124,35 @@ def read_stir(path: str, debug: bool=False) -> pd.DataFrame:
     df["System"] = df[sys_col].astype(str).str.strip().str.upper()
     df["STIR_val"] = pd.to_numeric(df[stir_col], errors="coerce")
 
+    operation_candidates = [
+        "Operation (verbatim)",
+        "Operation",
+    ]
+    operation_col = next(
+        (candidate for candidate in operation_candidates if candidate in df.columns),
+        None,
+    )
+    if operation_col is not None:
+        is_harvest_operation = df[operation_col].astype(str).str.contains(
+            r"\bharvest\b",
+            case=False,
+            na=False,
+            regex=True,
+        )
+        df["STIR_nonharvest_same_day"] = df["STIR_val"].where(
+            ~is_harvest_operation,
+            0.0,
+        )
+    else:
+        # Without operation identity, use the conservative strict-date rule:
+        # all STIR on a recorded HarvestDate stays with the preceding crop.
+        df["STIR_nonharvest_same_day"] = 0.0
+        if debug:
+            print(
+                "[WARN] STIR input lacks an operation-name column; "
+                "same-day post-harvest carryover cannot be distinguished."
+            )
+
     # ---- Critical cleanup: remove unusable rows and collapse to daily ----
     n0 = len(df)
     n_nan = int(df["STIR_val"].isna().sum())
@@ -132,9 +165,15 @@ def read_stir(path: str, debug: bool=False) -> pd.DataFrame:
 
     df = df[df["STIR_val"].notna()].copy()
 
-    # Sum multiple same-day operations per System to a single row
-    df = (df.groupby(["System", "Date"], as_index=False, sort=False)["STIR_val"]
-            .sum())
+    # Sum multiple same-day operations per System to a single row while
+    # preserving non-harvest operations recorded on a harvest boundary date.
+    df = (
+        df.groupby(["System", "Date"], as_index=False, sort=False)
+        .agg(
+            STIR_val=("STIR_val", "sum"),
+            STIR_nonharvest_same_day=("STIR_nonharvest_same_day", "sum"),
+        )
+    )
 
     # Sorted for asof/cumsum downstream
     df = df.sort_values(["System", "Date"], kind="mergesort").reset_index(drop=True)
@@ -314,9 +353,21 @@ def attach_season_windows(dfw: pd.DataFrame, dfc: pd.DataFrame, debug: bool = Fa
         dfc.loc[swapped, "HarvestDate"] = tmp
 
     
-    # ------------------------------------------------------------
-    # Previous crop (rotation) feature
-    # ------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Previous harvest boundary and previous-crop rotation feature
+    # -----------------------------------------------------------------
+    # The seasonal STIR exposure for a crop is defined on
+    # the period after the preceding named harvest operation through the WQ
+    # Date. This assigns same-day follow-up, fall, and pre-plant operations
+    # after the prior crop's harvest to the following crop.
+    dfc = dfc.sort_values(
+        ["Treatment", "SeasonYear", "PlantDate", "HarvestDate"],
+        kind="mergesort",
+    )
+    dfc["PreviousHarvestDate"] = (
+        dfc.groupby("Treatment", dropna=False)["HarvestDate"].shift(1)
+    )
+
     # previous_crop is defined at the season level (crop-records table),
     # within each Treatment, as the prior season's Crop.
     #
@@ -328,7 +379,6 @@ def attach_season_windows(dfw: pd.DataFrame, dfc: pd.DataFrame, debug: bool = Fa
     # rows within each season after the join.
     if "Crop" in dfc.columns and "SeasonYear" in dfc.columns and "Treatment" in dfc.columns:
         dfc["Crop"] = dfc["Crop"].astype("string")
-        dfc = dfc.sort_values(["Treatment", "SeasonYear", "PlantDate"], kind="mergesort")
         dfc["previous_crop"] = dfc.groupby("Treatment", dropna=False)["Crop"].shift(1)
         # Fill the first season per Treatment with the known prior crop assumption
         dfc["previous_crop"] = dfc["previous_crop"].fillna("grain corn")
@@ -397,19 +447,35 @@ def merge_stir_with_wq(
     wq_seasoned: pd.DataFrame,
     stir_cum: pd.DataFrame,
     debug: bool = False,
-    season_anchor: str = "calendar",  # "plant" (PlantDate..HarvestDate) or "calendar" (Jan 1..Dec 31)
+    season_anchor: str = "postharvest",
 ) -> pd.DataFrame:
     """
     Attach:
       - CumAll_STIR_toDate: cumulative STIR to the WQ sample date
       - Season_STIR_toDate: cumulative STIR since season anchor
-        * season_anchor="plant"   -> since PlantDate (your original behavior)
-        * season_anchor="calendar"-> since Jan 1 of sample's calendar year
+        * season_anchor="postharvest" -> after the preceding named harvest
+          operation through the sample date (production definition)
+        * season_anchor="plant"       -> since PlantDate (legacy diagnostic)
+        * season_anchor="calendar"    -> since January 1 (legacy diagnostic)
+
+    For the first observed crop season, PreviousHarvestDate is unavailable.
+    Its seasonal STIR is left-censored and includes every available STIR
+    operation from the start of the STIR record through the sample date.
     """
     wq = wq_seasoned.copy()
     sc_all = stir_cum.copy()
 
-    for need in ["Treatment", "Date", "PlantDate", "HarvestDate", "SeasonYear"]:
+    valid_anchors = {"postharvest", "plant", "calendar"}
+    season_anchor = season_anchor.lower()
+    if season_anchor not in valid_anchors:
+        raise ValueError(
+            f"season_anchor must be one of {sorted(valid_anchors)}; got {season_anchor!r}."
+        )
+
+    for need in [
+        "Treatment", "Date", "PlantDate", "HarvestDate", "PreviousHarvestDate",
+        "SeasonYear",
+    ]:
         if need not in wq.columns:
             raise KeyError(f"[WQ] Missing required column: {need}")
     for need in ["System", "Date", "STIR_cum_all"]:
@@ -417,7 +483,7 @@ def merge_stir_with_wq(
             raise KeyError(f"[STIR] Missing required column: {need}")
 
     # Datetime coercions
-    for col in ["Date", "PlantDate", "HarvestDate"]:
+    for col in ["Date", "PlantDate", "HarvestDate", "PreviousHarvestDate"]:
         wq[col] = pd.to_datetime(wq[col], errors="coerce")
     sc_all["Date"] = pd.to_datetime(sc_all["Date"], errors="coerce")
 
@@ -433,6 +499,9 @@ def merge_stir_with_wq(
     # Prepare outputs
     wq["CumAll_STIR_toDate"] = np.nan
     wq["Season_STIR_toDate"] = np.nan
+    wq["Season_STIR_StartDate"] = pd.NaT
+    wq["Season_STIR_LeftCensored"] = False
+    wq["Season_STIR_BoundaryDayCarryover"] = 0.0
 
     eps = pd.to_timedelta(1, unit="us")
     out_pieces = []
@@ -455,24 +524,63 @@ def merge_stir_with_wq(
         )
         wq_t["CumAll_STIR_toDate"] = merge_all["STIR_cum_all"].to_numpy()
 
-        # Baseline cumulative just BEFORE the season anchor
-        if season_anchor.lower() == "calendar":
+        # Baseline cumulative at the selected season boundary.
+        if season_anchor == "calendar":
             # Jan 1 of the WQ sample year
             anchor = pd.to_datetime(wq_t["Date"].dt.year.astype(int).astype(str) + "-01-01")
-        else:
-            # PlantDate anchor (original behavior)
+            baseline_date = anchor - eps
+            left_censored = pd.Series(False, index=wq_t.index)
+        elif season_anchor == "plant":
+            # Legacy PlantDate anchor.
             anchor = wq_t["PlantDate"]
+            baseline_date = anchor - eps
+            left_censored = pd.Series(False, index=wq_t.index)
+        else:
+            # Production definition: reset immediately after the preceding
+            # harvest, so operations on the prior HarvestDate remain with the
+            # preceding crop and operations on later dates belong to this crop.
+            anchor = wq_t["PreviousHarvestDate"]
+            left_censored = anchor.isna()
+            baseline_date = anchor.copy()
 
-        anchor_minus = (anchor - eps).rename("Date")
+            # merge_asof does not accept NaT left keys. The replacement date is
+            # only a merge aid; the corresponding baselines are explicitly set
+            # to zero below for the left-censored first observed season.
+            first_available = sc_t["Date"].min() - eps
+            baseline_date = baseline_date.fillna(first_available)
+
+        baseline_date = baseline_date.rename("Date")
         base_all = pd.merge_asof(
-            anchor_minus.to_frame(), sc_t[["Date","STIR_cum_all"]],
+            baseline_date.to_frame(), sc_t[["Date","STIR_cum_all"]],
             left_on="Date", right_on="Date",
             direction="backward", allow_exact_matches=True
         )["STIR_cum_all"].fillna(0)
+        if season_anchor == "postharvest":
+            if "STIR_nonharvest_same_day" in sc_t.columns:
+                boundary_carryover = (
+                    anchor.map(
+                        sc_t.set_index("Date")["STIR_nonharvest_same_day"]
+                    )
+                    .fillna(0)
+                    .astype(float)
+                )
+            else:
+                boundary_carryover = pd.Series(0.0, index=wq_t.index)
+
+            # The named harvest operation closes the preceding crop. Other
+            # operations recorded on that same boundary date (the 2014
+            # shredding/baling case) are treated as post-harvest and carried
+            # into the following crop.
+            base_all = base_all - boundary_carryover.to_numpy()
+            base_all.loc[left_censored.to_numpy()] = 0
+            wq_t["Season_STIR_BoundaryDayCarryover"] = (
+                boundary_carryover.to_numpy()
+            )
 
         # Season value = current cumAll - baseline
         wq_t["Season_STIR_toDate"] = wq_t["CumAll_STIR_toDate"] - base_all.to_numpy()
-
+        wq_t["Season_STIR_StartDate"] = anchor.to_numpy()
+        wq_t["Season_STIR_LeftCensored"] = left_censored.to_numpy()
 
         out_pieces.append(wq_t)
 
@@ -482,6 +590,14 @@ def merge_stir_with_wq(
         n_nan_all = int(merged["CumAll_STIR_toDate"].isna().sum())
         n_nan_season = int(merged["Season_STIR_toDate"].isna().sum())
         print(f"[INFO] CumAll_STIR_toDate NaN rows: {n_nan_all} | Season_STIR_toDate NaN rows: {n_nan_season}")
+        if season_anchor == "postharvest":
+            n_left = int(merged["Season_STIR_LeftCensored"].sum())
+            print(
+                "[INFO] Seasonal STIR definition: "
+                "after the previous harvest operation through sample Date; "
+                "same-day non-harvest operations carry forward | "
+                f"left-censored first-season rows: {n_left}"
+            )
 
     return merged
 
@@ -561,9 +677,14 @@ def main():
     ap.add_argument("--debug", action="store_true")
     ap.add_argument(
         "--season",
-        choices=["plant", "calendar"],
-        default="calendar",
-        help="Anchor for Season_STIR_toDate: 'plant' (Plant→Harvest) or 'calendar' (Jan 1→sample date)."
+        choices=["postharvest", "plant", "calendar"],
+        default="postharvest",
+        help=(
+            "Anchor for Season_STIR_toDate. Production default 'postharvest' "
+            "sums operations after the previous named harvest operation "
+            "through the sample Date. "
+            "'plant' and 'calendar' are retained only for legacy diagnostics."
+        ),
     )
 
     args = ap.parse_args()
@@ -589,17 +710,92 @@ def main():
     stir_cum = compute_cumulative_stir(stir)
 
     # 4) Merge STIR cumulatives to the season-tagged WQ table
-    merged = merge_stir_with_wq(wq_seasoned, stir_cum, debug=debug)
+    merged = merge_stir_with_wq(
+        wq_seasoned,
+        stir_cum,
+        debug=debug,
+        season_anchor=args.season,
+    )
 
     # 5) Write outputs
     out_dir = args.out
     os.makedirs(out_dir, exist_ok=True)
     merged_out = os.path.join(out_dir, "wq_with_stir_by_season.csv")
     unmatched_out = os.path.join(out_dir, "wq_with_stir_unmatched.csv")
+    seasonal_audit_out = os.path.join(
+        out_dir,
+        "seasonal_stir_definition_audit.csv",
+    )
 
     merged.to_csv(merged_out, index=False)
     if debug:
         print(f"[INFO] Merged rows written: {len(merged)} -> {merged_out}")
+
+    if args.season == "postharvest":
+        # Retain a compact, reproducible comparison against both legacy reset
+        # choices. These diagnostic alternatives never enter model input.
+        legacy_calendar = merge_stir_with_wq(
+            wq_seasoned,
+            stir_cum,
+            season_anchor="calendar",
+        )[["_wq_idx", "Season_STIR_toDate"]].rename(
+            columns={"Season_STIR_toDate": "Season_STIR_CalendarLegacy"}
+        )
+        legacy_plant = merge_stir_with_wq(
+            wq_seasoned,
+            stir_cum,
+            season_anchor="plant",
+        )[["_wq_idx", "Season_STIR_toDate"]].rename(
+            columns={"Season_STIR_toDate": "Season_STIR_PlantLegacy"}
+        )
+        audit_columns = [
+            "_wq_idx", "Date", "Year", "Irrigation", "Rep", "Treatment",
+            "PlantDate", "HarvestDate", "PreviousHarvestDate", "SeasonYear",
+            "Crop", "previous_crop", "Season_STIR_toDate",
+            "Season_STIR_StartDate", "Season_STIR_LeftCensored",
+            "Season_STIR_BoundaryDayCarryover",
+        ]
+        audit_columns = [col for col in audit_columns if col in merged.columns]
+        seasonal_audit = (
+            merged[audit_columns]
+            .merge(legacy_calendar, on="_wq_idx", how="left", validate="one_to_one")
+            .merge(legacy_plant, on="_wq_idx", how="left", validate="one_to_one")
+            .rename(columns={"Season_STIR_toDate": "Season_STIR_PostHarvest"})
+        )
+        seasonal_audit["PostHarvest_minus_CalendarLegacy"] = (
+            seasonal_audit["Season_STIR_PostHarvest"]
+            - seasonal_audit["Season_STIR_CalendarLegacy"]
+        )
+        seasonal_audit["PostHarvest_minus_PlantLegacy"] = (
+            seasonal_audit["Season_STIR_PostHarvest"]
+            - seasonal_audit["Season_STIR_PlantLegacy"]
+        )
+        physical_event_key = [
+            col for col in ["Year", "Irrigation", "Rep", "Treatment"]
+            if col in seasonal_audit.columns
+        ]
+        seasonal_audit = (
+            seasonal_audit
+            .sort_values(physical_event_key + ["Date", "_wq_idx"], kind="mergesort")
+            .drop_duplicates(physical_event_key)
+            .drop(columns="_wq_idx")
+        )
+        seasonal_audit.to_csv(seasonal_audit_out, index=False)
+        if debug:
+            known = ~seasonal_audit["Season_STIR_LeftCensored"].astype(bool)
+            changed = (
+                seasonal_audit.loc[
+                    known,
+                    "PostHarvest_minus_CalendarLegacy",
+                ].abs()
+                > 1e-9
+            )
+            print(
+                "[INFO] Seasonal STIR definition audit written: "
+                f"{len(seasonal_audit)} runoff-date plot events; "
+                f"{int(changed.sum())}/{int(known.sum())} known-boundary events "
+                f"differ from the legacy calendar reset -> {seasonal_audit_out}"
+            )
 
     # QC: "unmatched" = rows inside a season window but missing STIR metrics
     in_season_mask = merged["PlantDate"].notna()

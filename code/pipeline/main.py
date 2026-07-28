@@ -213,7 +213,8 @@ def run_all(
                "--wq", str(wq_long),
                "--stir", str(stir_events),
                "--crops", str(crops),
-               "--out", str(csv_dir)]
+               "--out", str(csv_dir),
+               "--season", "postharvest"]
         if debug:
             cmd.append("--debug")
         durations["Merge WQ+STIR"] = _run(cmd, "Merge WQ+STIR")

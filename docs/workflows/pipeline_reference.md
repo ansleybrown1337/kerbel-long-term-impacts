@@ -22,7 +22,7 @@ At a high level, the pipeline:
 
 1. Converts raw WQ data from wide → long format (one row per Date × Rep × Treatment × Analyte).
 2. Computes STIR at the tillage-operation level, then cumulative totals through time.
-3. Merges WQ observations with cumulative STIR by crop-season windows.
+3. Merges WQ observations with cumulative STIR by crop-season windows; seasonal STIR resets immediately after the preceding harvest.
 4. **Merges residue measurements** onto the experimental unit (Year × Treatment × Rep) and broadcasts them to all analyte rows.
 5. Applies Bayesian-model “backend” cleaning and transformations (flag handling, factor enforcement, standardized predictors) and writes the final dataset.
 
@@ -89,13 +89,14 @@ out/pipeline_csvs/stir_events_long.csv
 ### Step C. Seasonal merge (WQ × STIR)
 **Script:** `code/pipeline/merge_wq_stir_by_season.py`
 
-**Purpose:** Attach crop-season windows and merge cumulative STIR values to each WQ observation.
+**Purpose:** Attach crop-season windows and merge cumulative STIR values to each WQ observation. `Season_STIR_toDate` starts after the preceding crop's named harvest operation, so same-day follow-up, fall, and pre-plant operations apply to the following crop rather than being lost at a January 1 or planting-date reset.
 
 **Outputs:**
 ```
 out/pipeline_csvs/wq_with_stir_by_season.csv
 out/pipeline_csvs/wq_with_stir_unmatched.csv
 out/pipeline_csvs/wq_outside_crop_windows.csv
+out/pipeline_csvs/seasonal_stir_definition_audit.csv
 ```
 
 ---
@@ -184,6 +185,7 @@ This table documents the columns expected in `out/wq_cleaned.csv`. Some residue 
 | `Crop` | factor/str | Crop type for the season (from crop records). |
 | `PlantDate` | date | Crop planting date used to define the season window. |
 | `HarvestDate` | date | Crop harvest date used to define the season window. |
+| `PreviousHarvestDate` | date | Harvest date of the preceding crop and exclusive reset boundary for seasonal STIR. Missing only for the first observed crop season. |
 | `InflowOutflow` | str | Indicates OUT rows are retained in the longified dataset (pipeline currently outputs OUT only). |
 | `SampleID` | str | Sample identifier. |
 | `FF` | bool | QA/QC field flag (as provided). |
@@ -214,7 +216,10 @@ This table documents the columns expected in `out/wq_cleaned.csv`. Some residue 
 | `RL_mg_L` | float | RL converted/normalized to mg/L (if possible). |
 | `RLMDL_Source` | str | Source used to populate RL/MDL when assumed. |
 | `RLMDL_Assumed` | bool | TRUE if RL/MDL were filled using assumptions rather than directly provided. |
-| `Season_STIR_toDate` | float | Cumulative STIR within the current crop season up to the sample date. |
+| `Season_STIR_toDate` | float | Treatment-specific cumulative STIR after the preceding named harvest operation through the observation date; post-harvest and pre-plant operations are assigned to the following crop. |
+| `Season_STIR_StartDate` | date | The preceding crop's harvest date used as the seasonal STIR boundary. |
+| `Season_STIR_LeftCensored` | bool | TRUE for the first observed season because the preceding harvest date is unavailable; all available STIR through the sample is retained. |
+| `Season_STIR_BoundaryDayCarryover` | float | Non-harvest STIR recorded on the preceding HarvestDate and carried into the following crop. |
 | `CumAll_STIR_toDate` | float | Long-term cumulative STIR (all years) up to the sample date. |
 | `cout_z` | float | Per-analyte standardized OUT concentration (z-score within analyte). |
 | `cin_z` | float | Per-analyte standardized inflow concentration (z-score within analyte). |
