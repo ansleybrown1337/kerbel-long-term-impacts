@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
+BAYES_V3P1_ARCHIVE = REPO / "old_code" / "versions" / "v3p1_physical_event"
 sys.path.insert(0, str(REPO / "code"))
 
 from shared.physical_event import (  # noqa: E402
@@ -27,7 +28,7 @@ from shared.physical_event import (  # noqa: E402
     validate_corrected_artifact_metadata,
     yearly_irrigation_roster,
 )
-from comparison.bayes_ml_comparison_v3p1_physical_event import (  # noqa: E402
+from comparison.bayes_ml_comparison_v3p2_physical_event import (  # noqa: E402
     STUDY_YEARS,
     attach_primary_centers,
     bayes_negative_sensitivity,
@@ -274,6 +275,40 @@ def test_comparison_refuses_legacy_and_incomplete_year_metadata(tmp_path: Path) 
         validate_corrected_artifact_metadata([incomplete], expected_years=[2020, 2021])
 
 
+def test_comparison_accepts_explicit_bayes_v3p2_ml_v3p1_pairing(
+    tmp_path: Path,
+) -> None:
+    bayes = tmp_path / "bayes.json"
+    ml = tmp_path / "ml.json"
+    bayes.write_text(
+        json.dumps(
+            {
+                "workflow_version": "v3p2_physical_event",
+                "event_unit": "PhysicalEventID",
+                "years": [2020],
+            }
+        )
+    )
+    ml.write_text(
+        json.dumps(
+            {
+                "workflow_version": "v3p1_physical_event",
+                "event_unit": "PhysicalEventID",
+                "years": [2020],
+            }
+        )
+    )
+    records = validate_corrected_artifact_metadata(
+        [bayes, ml],
+        expected_years=[2020],
+        expected_versions=["v3p2_physical_event", "v3p1_physical_event"],
+    )
+    assert [record["workflow_version"] for record in records] == [
+        "v3p2_physical_event",
+        "v3p1_physical_event",
+    ]
+
+
 def test_concentration_observation_ids_remain_row_unique() -> None:
     identified = add_concentration_observation_id(rows())
     assert identified["ConcentrationObservationID"].nunique() == len(identified)
@@ -453,7 +488,10 @@ def test_v3p1_model_entrypoints_share_final_cleaned_input() -> None:
         encoding="utf-8"
     )
     rmd = (
-        REPO / "code" / "bayes" / "stir-bayes-load_v3p1_physical_event.Rmd"
+        BAYES_V3P1_ARCHIVE
+        / "code"
+        / "bayes"
+        / "stir-bayes-load_v3p1_physical_event.Rmd"
     ).read_text(encoding="utf-8")
     ml = (
         REPO / "code" / "ml" / "ml_catboost_conformal_loyo_v3p1_physical_event.py"
@@ -462,7 +500,8 @@ def test_v3p1_model_entrypoints_share_final_cleaned_input() -> None:
     assert 'load_wq_stir <- function(path = "out/wq_cleaned.csv"' in backend
     assert "wq_with_stir_by_season.csv" not in backend
     assert "if (interactive())" not in backend
-    assert 'file.path(repo_root, "out", "wq_cleaned.csv")' in rmd
+    assert "stir-bayes-load_v3p1_physical_event.R" in rmd
+    assert "source(batch_script, chdir = FALSE)" in rmd
     assert 'repo / "out" / "wq_cleaned.csv"' in ml
 
 
@@ -475,7 +514,10 @@ def test_final_cleaning_preserves_storm_event_labels() -> None:
 
 def test_bayesian_batch_runner_is_single_pass_and_uses_final_input() -> None:
     batch = (
-        REPO / "code" / "bayes" / "stir-bayes-load_v3p1_physical_event.R"
+        BAYES_V3P1_ARCHIVE
+        / "code"
+        / "bayes"
+        / "stir-bayes-load_v3p1_physical_event.R"
     ).read_text(encoding="utf-8")
 
     assert batch.startswith("#!/usr/bin/env Rscript")
@@ -484,13 +526,53 @@ def test_bayesian_batch_runner_is_single_pass_and_uses_final_input() -> None:
     assert "force_recompile = .batch_force_recompile" in batch
     assert batch.count("cmdstan_dashboard(fit)") == 1
     assert 'Sys.getenv("BAYES_REUSE_FIT", "false")' in batch
+    assert 'Sys.getenv("BAYES_REUSE_QUICK_DIAGNOSTICS", "false")' in batch
     assert "fit <- readRDS(fit_rds_path)" in batch
     assert "as_plain_numeric_matrix" in batch
-    assert "as.numeric(V_mean + V_sd * muV_z_ev)" in batch
-    assert "as.numeric(c_mean + c_sd * muC_z)" in batch
+    assert "post$C_true_event" in batch
+    assert "post$V_true_event" in batch
+    assert "concentration_mg_L <- pmax(" in batch
+    assert "volume_L <- pmax(" in batch
+    assert "Load_g = .data$Concentration_mg_L * .data$Volume_L / 1000" in batch
+    assert "quick_sampling_diagnostics" in batch
+    assert "rhat_threshold = 1.04" in batch
+    assert '"total_parameters"' in batch
+    assert '"parameters_rhat_gt_1p04"' in batch
+    assert '"parameters_rhat_at_or_below_1p04"' in batch
+    assert "make_key_parameter_map" in batch
+    assert '"beta_res_V", "Residue effect on runoff volume"' in batch
+    assert "attachments = c(quick_dashboard_png, quick_diagnostics_csv)" in batch
+    assert "if (sampled_new_fit)" in batch
+    assert "Reusing compact diagnostics already generated" in batch
     assert "pick_key_vars_v3p1" not in batch
     assert "bad_pars <-" not in batch
     assert "overall_diagnostics_bayes_v3p1_physical_event.csv" in batch
+    assert "quantile_color =" not in batch
+    assert "quantile_linetype =" not in batch
+    assert "quantile_linewidth =" not in batch
+    assert batch.count('vline_colour = "black"') == 6
+    assert "event_prediction_base <- physical_event_tbl %>%" in batch
+    assert "write_csv_retry <- function" in batch
+    assert "readr::write_csv(" not in batch
+    assert 'filter(as.character(.data$source) == "Modeled")' in batch
+
+
+def test_saved_fit_residue_diagnostic_is_read_only_and_targeted() -> None:
+    diagnostic = (
+        BAYES_V3P1_ARCHIVE / "code" / "bayes" / "diagnose_saved_fit_v3p1.R"
+    ).read_text(encoding="utf-8")
+
+    assert "readRDS(fit_path)" in diagnostic
+    assert "mod$sample(" not in diagnostic
+    assert "cmdstan_model(" not in diagnostic
+    assert '"beta_res_V"' in diagnostic
+    assert '"residue_parameter_diagnostics_v3p1_physical_event.csv"' in diagnostic
+    assert '"residue_chain_diagnostics_v3p1_physical_event.csv"' in diagnostic
+    assert '"residue_volume_by_divergence_v3p1_physical_event.csv"' in diagnostic
+    assert (
+        '"residue_volume_parameter_correlations_v3p1_physical_event.csv"'
+        in diagnostic
+    )
 
 
 def test_v3p1_outputs_are_isolated_in_version_folders() -> None:
@@ -504,6 +586,11 @@ def test_v3p1_outputs_are_isolated_in_version_folders() -> None:
         "bayesian_figures": "figures/bayes/v3p1_physical_event",
         "ml_figures": "figures/ml/v3p1_physical_event",
         "comparison_figures": "figures/comparison/v3p1_physical_event",
+    }
+    assert config["bayesian_prediction_resolution"] == {
+        "concentration": "latent_event_analyte_truth",
+        "volume": "latent_physical_event_truth",
+        "observed_values": "likelihood_and_reference_only",
     }
 
 
@@ -657,7 +744,7 @@ def test_complete_v3p1_figure_suites_are_wired_to_entrypoints() -> None:
         REPO / "code" / "ml" / "ml_catboost_conformal_loyo_v3p1_physical_event.py"
     ).read_text(encoding="utf-8")
     comparison = (
-        REPO / "code" / "comparison" / "bayes_ml_comparison_v3p1_physical_event.py"
+        REPO / "code" / "comparison" / "bayes_ml_comparison_v3p2_physical_event.py"
     ).read_text(encoding="utf-8")
     assert "generate_postprocess_figure_suite(repo, output_dir, figure_dir, data_path, args)" in ml
     assert '"--figures-only"' in comparison
@@ -702,7 +789,7 @@ def test_primary_models_predict_observed_and_missing_points_without_substitution
         REPO / "code" / "ml" / "ml_postprocess_plots_v3p1_physical_event.py"
     ).read_text(encoding="utf-8")
     comparison = (
-        REPO / "code" / "comparison" / "bayes_ml_comparison_v3p1_physical_event.py"
+        REPO / "code" / "comparison" / "bayes_ml_comparison_v3p2_physical_event.py"
     ).read_text(encoding="utf-8")
 
     assert '"primary_uses_observed_value_substitution": False' in ml
@@ -717,32 +804,82 @@ def test_bayes_models_prespecified_ten_analytes_and_all_subset_rows() -> None:
         "TKN", "NH4", "Se", "NO2", "TDS",
     }
     ml_only = {"ICP", "TSP", "NPOC", "NOx"}
-    for relative in [
-        "code/bayes/stir-bayes-load_v3p1_physical_event.R",
-        "code/bayes/stir-bayes-load_v3p1_physical_event.Rmd",
-    ]:
-        source = (REPO / relative).read_text(encoding="utf-8")
-        active_analytes = source.split("analytes_keep <- c(", 1)[1].split(")", 1)[0]
-        assert all(f'"{analyte}"' in active_analytes for analyte in expected)
-        assert all(f'"{analyte}"' not in active_analytes for analyte in ml_only)
-        assert "observed_values_substituted_into_modeled_products = FALSE" in source
-        assert "row for the 10 prespecified study analytes." in source
-        assert "d_pred_source <- wq_clean %>%" in source
-        assert "drop_unmapped_analytes = FALSE" in source
-        assert "drop_missing_c_stats = FALSE" in source
+    source = (
+        BAYES_V3P1_ARCHIVE
+        / "code"
+        / "bayes"
+        / "stir-bayes-load_v3p1_physical_event.R"
+    ).read_text(encoding="utf-8")
+    active_analytes = source.split("analytes_keep <- c(", 1)[1].split(")", 1)[0]
+    assert all(f'"{analyte}"' in active_analytes for analyte in expected)
+    assert all(f'"{analyte}"' not in active_analytes for analyte in ml_only)
+    assert "observed_values_substituted_into_modeled_products = FALSE" in source
+    assert "complete 528 physical events x 10 prespecified Bayes analytes" in source
+    assert "tidyr::crossing(" in source
+    assert "nrow(d_pred) == E_n * A_n" in source
+    assert "drop_unmapped_analytes = FALSE" in source
+    assert "drop_missing_c_stats = FALSE" in source
 
     stan = (
-        REPO / "code" / "bayes" / "m_stir_mogp_v3p1_physical_event.stan"
+        BAYES_V3P1_ARCHIVE
+        / "code"
+        / "bayes"
+        / "m_stir_mogp_v3p1_physical_event.stan"
     ).read_text(encoding="utf-8")
-    assert "vector[N] C_true" in stan
+    assert "matrix[E_n, A_n] C_true_event" in stan
+    assert "cholesky_factor_corr[A_n] L_corr_C_event" in stan
+    assert "vector[EA_n] CIN_EA" in stan
     assert "if (is_C_miss[i] == 0)" in stan
 
 
+def test_bayes_v3p1_prior_and_observation_layers_match_approved_structure() -> None:
+    stan = (
+        BAYES_V3P1_ARCHIVE
+        / "code"
+        / "bayes"
+        / "m_stir_mogp_v3p1_physical_event.stan"
+    ).read_text(encoding="utf-8")
+    batch = (
+        BAYES_V3P1_ARCHIVE
+        / "code"
+        / "bayes"
+        / "stir-bayes-load_v3p1_physical_event.R"
+    ).read_text(encoding="utf-8")
+
+    parameters = stan.split("parameters {", 1)[1].split(
+        "transformed parameters {", 1
+    )[0]
+    concentration_process = stan.split(
+        "mu_C_event[e, a] = alpha[a]", 1
+    )[1].split("C_true_event =", 1)[0]
+
+    assert "vector[A_n] beta_vol;" in stan
+    assert "real mu_beta_vol;" in parameters
+    assert "real<lower=0> sigma_beta_vol;" in parameters
+    assert "cholesky_factor_corr[A_n] L_corr_C_event;" in parameters
+    assert "matrix[E_n, A_n] Z_C_event;" in parameters
+    assert "gamma_B[a, B[r]]" in concentration_process
+    assert "gamma_S" not in concentration_process
+    assert "gamma_F" not in concentration_process
+    assert "beta_dup" not in concentration_process
+    assert "+ beta_dup[A[i]] * DUP[i]" in stan
+    assert "+ gamma_S[A[i], S[i]]" in stan
+    assert "+ gamma_F[A[i], Fu[i]]" in stan
+    assert "Lab" not in stan
+    assert "MeasureMethod" not in stan
+    assert "CIN_EA_impute ~ std_normal();" in stan
+    assert "VIN_event_impute ~ std_normal();" in stan
+    assert "C_cens_limit[censored_idx] <- (" in batch
+    assert batch.count("C_cens_limit[censored_idx] <- (") == 1
+    assert "do not calculate censoring a second time" in batch
+
+
 def test_bayes_postprocessing_uses_exported_volume_column_name() -> None:
-    for relative in [
-        "code/bayes/stir-bayes-load_v3p1_physical_event.R",
-        "code/bayes/stir-bayes-load_v3p1_physical_event.Rmd",
-    ]:
-        source = (REPO / relative).read_text(encoding="utf-8")
-        assert "plot_volume_L = sum(.data$Volume_L)" in source
-        assert "plot_volume_L = sum(.data$volume_L)" not in source
+    source = (
+        BAYES_V3P1_ARCHIVE
+        / "code"
+        / "bayes"
+        / "stir-bayes-load_v3p1_physical_event.R"
+    ).read_text(encoding="utf-8")
+    assert "plot_volume_L = sum(.data$Volume_L)" in source
+    assert "plot_volume_L = sum(.data$volume_L)" not in source

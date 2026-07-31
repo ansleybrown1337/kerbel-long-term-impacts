@@ -1,0 +1,23 @@
+DisplayTarget,Method,Evaluation,n,NRMSE_percent,IntervalCoverage,diagnostic_basis
+NH4,Bayes,posterior_predictive_fit,82,17.5%,100.0%,Bayesian posterior-predictive diagnostics
+NH4,ML,full_record_physical_event_reconstruction,42,78.8%,NA,Full-record physical-event reconstruction points
+NO3,Bayes,posterior_predictive_fit,831,15.2%,95.2%,Bayesian posterior-predictive diagnostics
+NO3,ML,full_record_physical_event_reconstruction,356,12.9%,NA,Full-record physical-event reconstruction points
+NO2,Bayes,posterior_predictive_fit,440,55.6%,98.4%,Bayesian posterior-predictive diagnostics
+NO2,ML,full_record_physical_event_reconstruction,129,63.3%,NA,Full-record physical-event reconstruction points
+OP,Bayes,posterior_predictive_fit,811,100.1%,91.6%,Bayesian posterior-predictive diagnostics
+OP,ML,full_record_physical_event_reconstruction,335,77.0%,NA,Full-record physical-event reconstruction points
+Se,Bayes,posterior_predictive_fit,215,12.9%,94.0%,Bayesian posterior-predictive diagnostics
+Se,ML,full_record_physical_event_reconstruction,101,513.5%,NA,Full-record physical-event reconstruction points
+TDS,Bayes,posterior_predictive_fit,368,10.4%,98.4%,Bayesian posterior-predictive diagnostics
+TDS,ML,full_record_physical_event_reconstruction,97,10.3%,NA,Full-record physical-event reconstruction points
+TKN,Bayes,posterior_predictive_fit,739,91.2%,96.1%,Bayesian posterior-predictive diagnostics
+TKN,ML,full_record_physical_event_reconstruction,313,59.0%,NA,Full-record physical-event reconstruction points
+TN,Bayes,posterior_predictive_fit,172,33.8%,98.3%,Bayesian posterior-predictive diagnostics
+TN,ML,full_record_physical_event_reconstruction,104,20.3%,NA,Full-record physical-event reconstruction points
+TP,Bayes,posterior_predictive_fit,815,189.2%,93.0%,Bayesian posterior-predictive diagnostics
+TP,ML,full_record_physical_event_reconstruction,361,73.9%,NA,Full-record physical-event reconstruction points
+TSS,Bayes,posterior_predictive_fit,894,156.3%,88.9%,Bayesian posterior-predictive diagnostics
+TSS,ML,full_record_physical_event_reconstruction,400,56.0%,NA,Full-record physical-event reconstruction points
+Volume,Bayes,posterior_predictive_fit,372,51.5%,90.1%,Bayesian posterior-predictive diagnostics
+Volume,ML,full_record_physical_event_reconstruction,333,41.6%,NA,Full-record physical-event reconstruction points

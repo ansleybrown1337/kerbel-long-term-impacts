@@ -1,0 +1,10 @@
+Year,Treatment,RepScope,FurrowTireCompaction,AnchorDate,AnchorOperation,Timing,DateStatus,ProvenanceNote
+2021,ST,both,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,user-confirmed ST-only follow-on tractor pass
+2022,MT,both,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,user-confirmed MT and ST follow-on tractor pass
+2022,ST,both,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,user-confirmed MT and ST follow-on tractor pass
+2023,MT,both,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,user-confirmed MT and ST follow-on tractor pass
+2023,ST,both,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,user-confirmed MT and ST follow-on tractor pass
+2024,MT,both,1,,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user-confirmed MT and ST compaction with no logged anchor date
+2024,ST,both,1,,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user-confirmed MT and ST compaction with no logged anchor date
+2025,MT,both,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,user-confirmed MT and ST follow-on tractor pass
+2025,ST,both,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,user-confirmed MT and ST follow-on tractor pass

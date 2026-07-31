@@ -762,16 +762,31 @@ def validate_corrected_artifact_metadata(
     metadata_paths: Sequence[str | Path],
     *,
     expected_years: Sequence[int] | None = None,
+    expected_versions: Sequence[str] | None = None,
 ) -> list[Mapping[str, object]]:
-    """Refuse legacy, absent, or incomplete comparison inputs."""
+    """Refuse legacy, absent, or incomplete comparison inputs.
+
+    ``expected_versions`` permits an explicitly versioned mixed-model
+    comparison, such as Bayesian v3p2 paired with the still-current ML v3p1
+    data contract. Omitting it preserves the shared v3p1 default.
+    """
 
     records: list[Mapping[str, object]] = []
-    for path_like in metadata_paths:
+    if expected_versions is not None and len(expected_versions) != len(metadata_paths):
+        raise ValueError(
+            "expected_versions must contain one workflow version per metadata path."
+        )
+    for index, path_like in enumerate(metadata_paths):
         path = Path(path_like)
         if not path.is_file():
             raise FileNotFoundError(f"Required corrected artifact metadata is absent: {path}")
         record = json.loads(path.read_text(encoding="utf-8"))
-        if record.get("workflow_version") != CORRECTED_VERSION:
+        expected_version = (
+            expected_versions[index]
+            if expected_versions is not None
+            else CORRECTED_VERSION
+        )
+        if record.get("workflow_version") != expected_version:
             raise ValueError(f"Legacy or incompatible artifact refused: {path}")
         if record.get("event_unit") != "PhysicalEventID":
             raise ValueError(f"Artifact does not declare the physical-event contract: {path}")

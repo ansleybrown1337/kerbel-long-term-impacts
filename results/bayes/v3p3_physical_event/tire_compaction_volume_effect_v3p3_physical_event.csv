@@ -1,0 +1,2 @@
+parameter,posterior_mean_standardized,posterior_median_standardized,lower_95_standardized,upper_95_standardized,probability_positive,posterior_mean_kL_per_event,posterior_median_kL_per_event,lower_95_kL_per_event,upper_95_kL_per_event
+beta_tire_comp_V,1.01018467475,1.00976,0.77099605,1.2449744999999999,1,22.389608811277643,22.380196372381874,17.088261568422944,27.593461603359152

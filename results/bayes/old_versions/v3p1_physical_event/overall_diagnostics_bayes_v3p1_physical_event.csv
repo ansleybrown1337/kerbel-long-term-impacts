@@ -1,0 +1,2 @@
+n_parameters,n_parameters_with_finite_rhat,max_rhat,mean_rhat,median_rhat,n_rhat_at_or_below_1_04,n_rhat_gt_1_04,percent_rhat_at_or_below_1_04,min_ess_bulk,min_ess_tail,median_ess_bulk,median_ess_tail
+139269,117314,1.6281078306064427,NA,NA,105742,11572,90.13587466116576,6.797265063569801,15.693766208861591,2288.3816239124517,NA

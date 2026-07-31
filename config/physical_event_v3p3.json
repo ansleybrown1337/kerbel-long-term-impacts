@@ -1,0 +1,113 @@
+{
+  "workflow_version": "v3p3_physical_event",
+  "versions": {
+    "bayesian": "v3p3_physical_event",
+    "ml": "v3p3_physical_event",
+    "comparison": "v3p3_physical_event"
+  },
+  "output_roots": {
+    "bayesian_results": "results/bayes/v3p3_physical_event",
+    "ml_results": "results/ml/v3p3_physical_event",
+    "comparison_results": "results/comparison/v3p3_physical_event",
+    "bayesian_figures": "figures/bayes/v3p3_physical_event",
+    "ml_figures": "figures/ml/v3p3_physical_event",
+    "comparison_figures": "figures/comparison/v3p3_physical_event"
+  },
+  "data_contract": {
+    "workflow_version": "v3p1_physical_event",
+    "preflight_directory": "validation/preflight/physical_event_v3p1",
+    "reason": "v3p3 adds the documented event-level furrow tire-compaction predictor to the Bayesian and ML runoff-volume models only; the corrected 528-event input and v3p1 preflight contract are unchanged"
+  },
+  "physical_event_key": ["Year", "Irrigation", "Rep", "Treatment"],
+  "event_date": {
+    "source_column": "Date",
+    "output_column": "EventDate",
+    "selection_rule": "date_of_unique_genuine_volume_observation_else_earliest_valid_date"
+  },
+  "event_level_predictor_columns": [
+    "PlantDate",
+    "HarvestDate",
+    "PreviousHarvestDate",
+    "SeasonYear",
+    "Crop",
+    "previous_crop",
+    "CumAll_STIR_toDate",
+    "Season_STIR_toDate",
+    "Season_STIR_StartDate",
+    "Season_STIR_LeftCensored",
+    "Season_STIR_BoundaryDayCarryover",
+    "Residue_PercentCover",
+    "Residue_DryMass_kg_m2",
+    "ResidueMeasurementDate",
+    "ResidueModelDate",
+    "ResidueModelDateSource",
+    "Residue_STIR_toMeasurement",
+    "residue_prop",
+    "residue_obs",
+    "stir_season_z",
+    "stir_cumall_z",
+    "Inflow_Volume",
+    "inflow_volume_z",
+    "IRR_z",
+    "FurrowTireCompaction"
+  ],
+  "furrow_tire_compaction": {
+    "source_file": "data/furrow_tire_compaction_records.csv",
+    "assignment_key": ["Year", "Treatment"],
+    "event_field": "FurrowTireCompaction",
+    "default_unexposed_value": 0,
+    "affected_replicates": "both",
+    "timing": "after residue measurement and before the first runoff event",
+    "model_scope": "runoff volume only",
+    "carryover": "none; the indicator applies to runoff events in the documented treatment-year",
+    "expected_compacted_events": 120,
+    "expected_compacted_events_with_genuine_volume": 70
+  },
+  "seasonal_stir": {
+    "definition": "sum treatment-specific STIR after the preceding crop's named harvest operation through the runoff observation date",
+    "interval": "(previous named harvest operation, Date]",
+    "same_day_rule": "the named harvest operation closes the preceding crop; other operations recorded on that HarvestDate carry into the following crop",
+    "postharvest_and_preplant_operations_apply_to": "following crop",
+    "first_observed_season": "left-censored because the preceding 2010 HarvestDate is unavailable; includes all STIR records available through each 2011 observation",
+    "bayesian_v3p3_usage": "Season_STIR_toDate is used for runoff-volume and concentration; residue uses post-harvest seasonal STIR accumulated through the actual residue measurement date when known and PlantDate otherwise",
+    "ml_v3p3_usage": "both Season_STIR_toDate and CumAll_STIR_toDate are candidate features in concentration and runoff-volume models; FurrowTireCompaction is a candidate feature in runoff volume only"
+  },
+  "corrected_roster": {
+    "expected_total_events": 528,
+    "expected_numeric_irrigation_events": 510,
+    "expected_storm_events": 18,
+    "irrigation_roster_rule": "derive distinct Irrigation labels independently within each Year"
+  },
+  "concentration_resolution": "median",
+  "volume_resolution": "median",
+  "method_priority": [],
+  "bayesian_prediction_resolution": {
+    "concentration": "latent_event_analyte_truth",
+    "volume": "latent_physical_event_truth",
+    "observed_values": "likelihood_and_reference_only"
+  },
+  "event_balanced_training_weights": true,
+  "volume_provenance_columns": ["MeasureMethod", "FlumeMethod"],
+  "annual_reporting": {
+    "unit": "mean_per_treatment_plot",
+    "hierarchy": [
+      "sum physical-event values within Year + Treatment + Rep + Analyte + Draw",
+      "average replicate-specific annual plot totals within Year + Treatment + Analyte + Draw",
+      "summarize treatment-mean draws"
+    ],
+    "replicate_range_is_confidence_interval": false,
+    "primary_manuscript_targets": ["TSS", "TP", "TN", "RunoffVolume"]
+  },
+  "storm_handling": {
+    "labels": ["S1", "S2"],
+    "bayesian": "retained as distinct Irrigation levels and mapped to numeric codes 11 and 12 for the existing linear irrigation-effect term",
+    "ml": "retained as distinct categorical Irrigation levels",
+    "limitation": "Bayes v3p3 and ML v3p3 retain framework-specific storm representations; they are not harmonized"
+  },
+  "load_units": {
+    "concentration": "mg/L",
+    "volume": "L",
+    "load": "kg",
+    "formula": "concentration_mg_L * volume_L / 1000000"
+  }
+}

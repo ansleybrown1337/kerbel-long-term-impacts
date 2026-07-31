@@ -3,12 +3,12 @@
 ## Current structure
 
 Active source is separated under `code/pipeline`, `code/bayes`, `code/ml`,
-`code/comparison`, and `code/shared`. Active v3p1 outputs use dedicated version
-folders:
+`code/comparison`, and `code/shared`. Bayes v3p2 and ML/data-contract v3p1
+outputs use dedicated version folders:
 
-- `results/bayes/v3p1_physical_event/`
+- `results/bayes/v3p2_physical_event/`
 - `results/ml/v3p1_physical_event/`
-- `results/comparison/v3p1_physical_event/`
+- `results/comparison/v3p2_physical_event/`
 - matching paths under `figures/`
 
 The `out/` directory is reserved for pipeline/model-input products, including
@@ -37,13 +37,19 @@ The `out/` directory is reserved for pipeline/model-input products, including
   `code/out_cmdstanr/` into their matching Bayesian version folders.
 - Retained `README.md`, `LICENSE`, and `CITATION.cff` as the release metadata
   surface.
+- Moved superseded Bayes v3p1 source and documentation to
+  `old_code/versions/v3p1_physical_event/`.
+- Moved Bayes v3p1 results and figures to their respective
+  `old_versions/v3p1_physical_event/` folders while retaining the active v3p1
+  ML workflow and 528-event data contract.
 
-See `old_code/versions/v3p0_physical_event/ARCHIVE_MANIFEST.md` for the exact
-archive map.
+See the `ARCHIVE_MANIFEST.md` files under
+`old_code/versions/v3p0_physical_event/` and
+`old_code/versions/v3p1_physical_event/` for the exact archive maps.
 
 ## Remaining release review
 
-After successful v3p1 model and comparison runs, retain the historical
+After successful current model and comparison runs, retain the historical
 `old_versions/` folders unless a separately reviewed release policy explicitly
 changes that decision.
 

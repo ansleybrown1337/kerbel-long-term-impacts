@@ -23,7 +23,9 @@ At a high level, the pipeline:
 1. Converts raw WQ data from wide → long format (one row per Date × Rep × Treatment × Analyte).
 2. Computes STIR at the tillage-operation level, then cumulative totals through time.
 3. Merges WQ observations with cumulative STIR by crop-season windows; seasonal STIR resets immediately after the preceding harvest.
-4. **Merges residue measurements** onto the experimental unit (Year × Treatment × Rep) and broadcasts them to all analyte rows.
+4. **Assigns residue measurements** to the spring-planted crop they describe,
+   then merges them by planting-season unit and broadcasts them to all analyte
+   rows.
 5. Applies Bayesian-model “backend” cleaning and transformations (flag handling, factor enforcement, standardized predictors) and writes the final dataset.
 
 Each step is implemented as a standalone script for transparency and reuse, and orchestrated by a single runner.
@@ -104,19 +106,31 @@ out/pipeline_csvs/seasonal_stir_definition_audit.csv
 ### Step D. Residue merge (WQ × STIR × Residue)
 **Script:** `code/pipeline/merge_residue.py`
 
-**Purpose:** Merge residue measurements at the experimental-unit level and broadcast to all analyte rows.
+**Purpose:** Associate spring residue observations with the crop being planted,
+merge them at the planting-season experimental-unit level, and broadcast them
+to all corresponding analyte rows.
 
 **Merge keys:**
-- `Year`
+- `PlantDate`
+- `SeasonYear`
 - `Treatment`
 - `Rep`
+- `Crop`
+- `previous_crop`
 
-Residue data are often collected as multiple spatial subsamples (e.g., Location = N/M/S) and/or multiple throws. This script aggregates (means) across those subsamples within `Year × Treatment × Rep` before merging.
+The confirmed 2018-05-22 measurement belongs only to dry beans planted in
+2018, and the confirmed 2023-05-01 measurement belongs only to silage corn
+planted in 2023. Winter-wheat seasons are not populated from those spring
+measurements. Residue data are averaged across spatial subsamples within the
+assigned planting-season unit. `Residue_STIR_toMeasurement` accumulates
+seasonal STIR through the measurement date; if a date is unavailable, the
+planting date is the documented proxy.
 
 **Outputs:**
 ```
 out/pipeline_csvs/wq_with_stir_by_season_with_residue.csv
 out/pipeline_csvs/residue_agg_by_year_trt_rep.csv
+out/pipeline_csvs/residue_assignment_audit_v3p1.csv
 ```
 
 ---

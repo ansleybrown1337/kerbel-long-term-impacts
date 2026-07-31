@@ -8,7 +8,7 @@ Do not create the release until every item below is complete.
 - [ ] Review all seven multi-date events and confirm `event_level_predictor_conflicts.csv` has no data rows.
 - [ ] Run Bayesian v3p1; inspect sampler diagnostics, posterior predictive diagnostics, event provenance, and ledger uniqueness.
 - [ ] Run ML v3p1; inspect LOYO held-out exclusion, event splits, weights, calibration, residuals, feature importance, and all reconstruction/sensitivity ledgers.
-- [ ] Run comparison v3p1; inspect raw tables before publication tables, confirm all 2011–2025 years, and confirm the mean-per-treatment-plot hierarchy.
+- [ ] Run comparison v3p2 (Bayes v3p2 plus ML v3p1); inspect raw tables before publication tables, confirm all 2011–2025 years, and confirm the mean-per-treatment-plot hierarchy.
 - [ ] Confirm observed n=2 points use descriptive replicate ranges, n=1 uses a distinct marker without an interval, and n=0 is absent.
 - [ ] Confirm primary annual exports include TSS, TP, TN, and runoff volume, while technical exports retain all analytes.
 - [ ] Rerun synthetic tests and static parse checks.

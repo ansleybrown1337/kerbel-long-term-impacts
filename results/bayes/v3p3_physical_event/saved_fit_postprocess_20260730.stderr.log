@@ -1,0 +1,80 @@
+CmdStan path set to: C:/Users/ansle/anaconda3/envs/stan/Library/bin/cmdstan
+[v3p3 batch] Started: 2026-07-30 05:49:38 MDT
+[v3p3 batch] Force Stan recompile: FALSE
+[v3p3 batch] Reuse serialized Stan fit: TRUE
+[v3p3 batch] Reuse compact diagnostics: TRUE
+[v3p3 batch] Preflight only: FALSE
+Loading required package: cmdstanr
+This is cmdstanr version 0.9.0.9000
+- CmdStanR documentation and vignettes: mc-stan.org/cmdstanr
+- CmdStan path: C:/Users/ansle/anaconda3/envs/stan/Library/bin/cmdstan
+- CmdStan version: 2.36.0
+
+A newer version of CmdStan is available. See ?install_cmdstan() to install it.
+To disable this check set option or environment variable cmdstanr_no_ver_check=TRUE.
+Loading required package: posterior
+Warning: package 'posterior' was built under R version 4.4.3
+This is posterior version 1.6.1
+
+Attaching package: 'posterior'
+
+The following objects are masked from 'package:stats':
+
+    mad, sd, var
+
+The following objects are masked from 'package:base':
+
+    %in%, match
+
+Loading required package: parallel
+rethinking (Version 2.42)
+
+Attaching package: 'rethinking'
+
+The following object is masked from 'package:stats':
+
+    rstudent
+
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+Warning: package 'ggridges' was built under R version 4.4.3
+Warning: package 'readr' was built under R version 4.4.3
+
+Attaching package: 'purrr'
+
+The following object is masked from 'package:rethinking':
+
+    map
+
+100 ND rows have no documented reporting limit and will be modeled as missing rather than as exact zero or a fabricated censor threshold. Audit: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/censored_rows_unknown_limits_modeled_missing_v3p3.csv
+[v3p3 batch] Loaded saved fit; Stan compilation and sampling were skipped: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/fit_mogp_v3p3_physical_event.rds
+[v3p3 batch] Reusing compact diagnostics already generated from this saved fit: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/quick_diagnostics_v3p3_physical_event.csv
+[v3p3 batch] Reusing existing CmdStan dashboard PNG: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/figures/bayes/v3p3_physical_event/cmdstan_dashboard_v3p3_physical_event.png
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/observed_annual_plot_completeness_bayes_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/observed_annual_load_plot_completeness_bayes_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/observed_annual_volume_plot_completeness_bayes_v3p3_physical_event.csv
+[v3p3 reconstruction] Starting direct latent-truth reconstruction.
+[v3p3 reconstruction] Building 1500 draws x 5280 event-analyte cells.
+[v3p3 reconstruction] Binding event-analyte draw ledger.
+[v3p3 reconstruction] Direct latent-truth reconstruction finished.
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/figures/bayes/v3p3_physical_event/annual_volume_obs_vs_modeled_v3p3_physical_event.jpg
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/annual_volume_kL_wide_modeled_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/annual_volume_kL_wide_modeled_pub_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/annual_volume_kL_wide_observed_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/annual_volume_kL_wide_observed_pub_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/annual_load_summary_bayes_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/annual_load_summary_bayes_plus_observed_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/annual_load_draws_bayes_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/study_period_total_loads_kg_with_pct_reductions_v3p3_physical_event.csv
+[OK] Wrote: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/study_period_total_loads_kg_pub_v3p3_physical_event.csv
+Saved overall diagnostics to: C:/Users/ansle/OneDrive/Documents/GitHub/kerbel-long-term-impacts/results/bayes/v3p3_physical_event/overall_diagnostics_bayes_v3p3_physical_event.csv
+[v3p3 batch] Completed: 2026-07-30 05:53:57 MDT | elapsed: 4.3 minutes

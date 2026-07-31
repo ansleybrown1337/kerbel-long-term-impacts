@@ -1,0 +1,12 @@
+metric,value
+R_n_residue_units,90
+nonmissing_row_level_residue,7449
+nonmissing_residue_units,54
+approximate_old_residue_repetition_factor,137.94444444444446
+conflicting_residue_units,0
+rows_per_residue_unit_min,30
+rows_per_residue_unit_median,110
+rows_per_residue_unit_mean,122.04444444444445
+rows_per_residue_unit_max,290
+missing_RES_unit,36
+R_bounds_ok,1

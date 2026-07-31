@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.3.0 — furrow tire-compaction runoff-volume pathway
+
+- Added a documented Boolean `FurrowTireCompaction` exposure for 2021 ST and
+  2022–2025 MT/ST, both replicates, applying to runoff events after the
+  post-residue, pre-irrigation tractor pass.
+- Kept the unlogged tractor pass separate from STIR and added one global
+  `beta_tire_comp_V ~ normal(0, 1)` coefficient to runoff volume only.
+- Added hard-checked event and Year × Treatment exposure audits, confirming
+  120 exposed physical events and 70 exposed events with genuine volume
+  observations under the unchanged 528-event roster.
+- Added compaction-specific R-hat/ESS reporting, posterior correlations,
+  original-scale kL-per-event summaries, annual counterfactual contrasts, and
+  density/trace diagnostics.
+- Preserved all v3p2 source and outputs. Completed the Bayes v3p3 sampling run
+  (4,000 post-warmup draws), regenerated the remaining Bayes outputs from the
+  serialized fit without recompiling or resampling, and saved the expanded
+  convergence and residue/compaction diagnostics.
+- Added and completed ML v3p3 with `FurrowTireCompaction` restricted to the
+  runoff-volume feature set; retained the 3,000-iteration CatBoost settings,
+  outer leave-one-year-out validation, full-record reconstruction, and
+  all-point prediction ledgers.
+- Completed the Bayes-versus-ML v3p3 comparison tables and publication figures
+  using only v3p3 manifests and ledgers, with no legacy fallback or missing-year
+  zero fill.
+
 ## 3.1.0 — physical-event and mean-per-plot correction
 
 - Changed `PhysicalEventID` to `Year + Irrigation + Rep + Treatment`; `Date` is retained as observation metadata and deterministic `EventDate` is used for event predictors.

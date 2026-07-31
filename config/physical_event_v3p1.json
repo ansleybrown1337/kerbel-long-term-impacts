@@ -33,6 +33,10 @@
     "Season_STIR_BoundaryDayCarryover",
     "Residue_PercentCover",
     "Residue_DryMass_kg_m2",
+    "ResidueMeasurementDate",
+    "ResidueModelDate",
+    "ResidueModelDateSource",
+    "Residue_STIR_toMeasurement",
     "residue_prop",
     "residue_obs",
     "stir_season_z",
@@ -47,7 +51,7 @@
     "same_day_rule": "the named harvest operation closes the preceding crop; other operations recorded on that HarvestDate carry into the following crop",
     "postharvest_and_preplant_operations_apply_to": "following crop",
     "first_observed_season": "left-censored because the preceding 2010 HarvestDate is unavailable; includes all STIR records available through each 2011 observation",
-    "bayesian_v3p1_usage": "Season_STIR_toDate only; standardized as stir_season_z and used in residue, runoff-volume, and concentration processes",
+    "bayesian_v3p1_usage": "Season_STIR_toDate is used for runoff-volume and concentration; residue uses post-harvest seasonal STIR accumulated through the actual residue measurement date when known and PlantDate otherwise",
     "ml_v3p1_usage": "both Season_STIR_toDate and CumAll_STIR_toDate are candidate features in concentration and runoff-volume models"
   },
   "corrected_roster": {
@@ -59,6 +63,11 @@
   "concentration_resolution": "median",
   "volume_resolution": "median",
   "method_priority": [],
+  "bayesian_prediction_resolution": {
+    "concentration": "latent_event_analyte_truth",
+    "volume": "latent_physical_event_truth",
+    "observed_values": "likelihood_and_reference_only"
+  },
   "event_balanced_training_weights": true,
   "volume_provenance_columns": ["MeasureMethod", "FlumeMethod"],
   "annual_reporting": {

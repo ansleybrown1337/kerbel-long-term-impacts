@@ -1,4 +1,4 @@
-Year,Treatment,Rep,Residue_PercentCover,Residue_DryMass_kg_m2,Residue_n
+ResidueYear,Treatment,Rep,Residue_PercentCover,Residue_DryMass_kg_m2,Residue_n
 2011,CT,1,,0.03242,0
 2011,CT,2,,0.04188333333333333,0
 2011,MT,1,,0.469572,0

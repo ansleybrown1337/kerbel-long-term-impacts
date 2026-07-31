@@ -1,0 +1,49 @@
+category,metric,value,parameter,label,threshold,status,ess_bulk,ess_tail
+global,total_parameters,139269,NA,NA,NA,NA,NA,NA
+global,parameters_with_finite_rhat,117314,NA,NA,NA,NA,NA,NA
+global,parameters_rhat_at_or_below_1p04,105742,NA,NA,1.04,NA,NA,NA
+global,parameters_rhat_gt_1p04,11572,NA,NA,1.04,NA,NA,NA
+global,percent_parameters_rhat_at_or_below_1p04,90.13587466116576,NA,NA,1.04,NA,NA,NA
+global,max_rhat,1.6281078306064427,NA,NA,1.04,NA,NA,NA
+global,min_bulk_ess,6.797265063569801,NA,NA,NA,NA,NA,NA
+global,median_bulk_ess,2288.3816239124517,NA,NA,NA,NA,NA,NA
+global,min_tail_ess,15.693766208861593,NA,NA,NA,NA,NA,NA
+global,divergences,31,NA,NA,NA,NA,NA,NA
+global,max_treedepth_hits,0,NA,NA,NA,NA,NA,NA
+global,min_ebfmi,0.6526029363796634,NA,NA,NA,NA,NA,NA
+key_parameter,rhat,1.0197005290208014,b_V,STIR effect on runoff volume,1.04,at_or_below_1.04,185.89387765211976,809.2238412142012
+key_parameter,rhat,1.0399428014997745,beta_res_V,Residue effect on runoff volume,1.04,at_or_below_1.04,101.44575720420075,902.1630572251026
+key_parameter,rhat,1.011364549105127,b_res_stir,STIR effect on residue,1.04,at_or_below_1.04,1017.695695883658,1889.6200849503266
+key_parameter,rhat,1.002844047652125,res_base,Baseline residue proportion,1.04,at_or_below_1.04,1148.4231661477472,1750.6754784196792
+key_parameter,rhat,1.0081117448229138,sigma_PCr_res,Previous-crop residue variation,1.04,at_or_below_1.04,386.9858130444941,417.5945606793789
+key_parameter,rhat,1.0037462758847455,sigma_res_obs,Residue observation variation,1.04,at_or_below_1.04,1034.9584765488867,1870.66432817453
+key_parameter,rhat,1.0121721785305138,beta_stir[1],STIR effect on concentration (NH4),1.04,at_or_below_1.04,1159.1232006477596,1672.623138610758
+key_parameter,rhat,1.047680221746756,beta_stir[2],STIR effect on concentration (NO3),1.04,above_1.04,62.493572288464414,118.10041511541739
+key_parameter,rhat,1.0105234385646604,beta_stir[3],STIR effect on concentration (NO2),1.04,at_or_below_1.04,1394.6306870364904,2000.3523737170592
+key_parameter,rhat,1.0070112529754411,beta_stir[4],STIR effect on concentration (OP),1.04,at_or_below_1.04,600.9882558074413,1944.0046508047028
+key_parameter,rhat,1.0681594927290972,beta_stir[5],STIR effect on concentration (Se),1.04,above_1.04,42.784203557572006,1197.2763212592213
+key_parameter,rhat,1.018936041081909,beta_stir[6],STIR effect on concentration (TDS),1.04,at_or_below_1.04,350.5606435889724,2234.0561260132213
+key_parameter,rhat,1.0271867351613897,beta_stir[7],STIR effect on concentration (TKN),1.04,at_or_below_1.04,140.09913461571128,2103.7059350704963
+key_parameter,rhat,1.0244541891515802,beta_stir[8],STIR effect on concentration (TN),1.04,at_or_below_1.04,191.9795938229939,958.9953525233391
+key_parameter,rhat,1.0484022510733455,beta_stir[9],STIR effect on concentration (TP),1.04,above_1.04,67.66025076369647,911.5449333387064
+key_parameter,rhat,1.1422039441000171,beta_stir[10],STIR effect on concentration (TSS),1.04,above_1.04,19.66155568025144,65.14846997308487
+key_parameter,rhat,1.0024638242874537,beta_res_C[1],Residue effect on concentration (NH4),1.04,at_or_below_1.04,1463.752997369757,2206.495275776476
+key_parameter,rhat,1.03211434596225,beta_res_C[2],Residue effect on concentration (NO3),1.04,at_or_below_1.04,242.047754955946,346.02143644207973
+key_parameter,rhat,1.0117314526924672,beta_res_C[3],Residue effect on concentration (NO2),1.04,at_or_below_1.04,751.7970801672171,2293.147231157852
+key_parameter,rhat,1.049597768790558,beta_res_C[4],Residue effect on concentration (OP),1.04,above_1.04,71.87060009542526,799.72835179734
+key_parameter,rhat,1.047369376099071,beta_res_C[5],Residue effect on concentration (Se),1.04,above_1.04,66.69364401435398,61.55554996057502
+key_parameter,rhat,1.0059772958156148,beta_res_C[6],Residue effect on concentration (TDS),1.04,at_or_below_1.04,652.0882507962997,1158.554388987872
+key_parameter,rhat,1.0390059472785242,beta_res_C[7],Residue effect on concentration (TKN),1.04,at_or_below_1.04,103.82214701835487,242.52347558442187
+key_parameter,rhat,1.0031296075050942,beta_res_C[8],Residue effect on concentration (TN),1.04,at_or_below_1.04,542.3752704056157,1175.373144120721
+key_parameter,rhat,1.1075025036554673,beta_res_C[9],Residue effect on concentration (TP),1.04,above_1.04,25.720503253075503,41.95520188666548
+key_parameter,rhat,1.0279776773666305,beta_res_C[10],Residue effect on concentration (TSS),1.04,at_or_below_1.04,226.41845456905202,115.22707586793513
+key_parameter,rhat,1.0870770348959349,beta_vol[1],Runoff-volume effect on concentration (NH4),1.04,above_1.04,419.71207811832664,244.4033597281417
+key_parameter,rhat,1.3791765689099302,beta_vol[2],Runoff-volume effect on concentration (NO3),1.04,above_1.04,9.189073716744781,48.38017428221115
+key_parameter,rhat,1.0799095751161443,beta_vol[3],Runoff-volume effect on concentration (NO2),1.04,above_1.04,43.19216038790258,123.12986099685511
+key_parameter,rhat,1.3434075891448123,beta_vol[4],Runoff-volume effect on concentration (OP),1.04,above_1.04,9.854478586550767,87.83941487315924
+key_parameter,rhat,1.2497979313630811,beta_vol[5],Runoff-volume effect on concentration (Se),1.04,above_1.04,12.23045625229629,15.693766208861593
+key_parameter,rhat,1.590714573914337,beta_vol[6],Runoff-volume effect on concentration (TDS),1.04,above_1.04,6.857807300365127,35.4625238063744
+key_parameter,rhat,1.478554089620543,beta_vol[7],Runoff-volume effect on concentration (TKN),1.04,above_1.04,7.925340400931627,27.088010589273697
+key_parameter,rhat,1.1095837486732802,beta_vol[8],Runoff-volume effect on concentration (TN),1.04,above_1.04,26.07941984239066,502.09830237313315
+key_parameter,rhat,1.6050100038359034,beta_vol[9],Runoff-volume effect on concentration (TP),1.04,above_1.04,6.953406350272733,28.96991521455404
+key_parameter,rhat,1.6281078306064427,beta_vol[10],Runoff-volume effect on concentration (TSS),1.04,above_1.04,6.797265063569801,29.93704156525879

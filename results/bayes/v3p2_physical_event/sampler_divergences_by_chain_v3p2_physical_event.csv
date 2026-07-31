@@ -1,0 +1,5 @@
+chain,divergences,iterations,divergence_percent
+1,0,1000,0
+2,4,1000,0.4
+3,0,1000,0
+4,12,1000,1.2

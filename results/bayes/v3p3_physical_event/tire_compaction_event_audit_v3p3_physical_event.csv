@@ -1,0 +1,529 @@
+physical_event_index,PhysicalEventID,Year,Irrigation,Rep,Treatment,EventDate,FurrowTireCompaction,AnchorDate,AnchorOperation,Timing,DateStatus,TimingValidation,CompactionExposureSource,n_genuine_volume_observations,ProvenanceNote
+280,PE_8372856d847ab29e3d55,2011,1,1,CT,2011-06-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+119,PE_35e13c2714d6ea95f5d3,2011,2,1,CT,2011-07-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+403,PE_c33b54f99c0ede44173e,2011,3,1,CT,2011-07-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+329,PE_9b06b2640ba03d9fa7c4,2011,4,1,CT,2011-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+239,PE_7025ca38701f624e1713,2011,5,1,CT,2011-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+107,PE_2fff192166fb6a1b5884,2011,6,1,CT,2011-08-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+262,PE_7ab5d22c48132f848099,2011,1,2,CT,2011-07-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+332,PE_9e155a06de6d2a36ed95,2011,2,2,CT,2011-07-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+432,PE_d16ac2ea89bbe98196a0,2011,3,2,CT,2011-07-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+191,PE_57effa7ea94a4868513b,2011,4,2,CT,2011-08-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+158,PE_478d3c0884b4f50a8523,2011,5,2,CT,2011-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+132,PE_3da987b4bbd059aa3b87,2011,6,2,CT,2011-08-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+206,PE_60f1a6212ff620019a30,2011,1,1,MT,2011-06-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+210,PE_63934b6278a65a8216b9,2011,2,1,MT,2011-07-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+58,PE_1959bad48333cbb7ac20,2011,3,1,MT,2011-07-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+161,PE_49484da33f0ea698b83b,2011,4,1,MT,2011-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+45,PE_13b97df6b79444e8e9e5,2011,5,1,MT,2011-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+253,PE_759e17ed54a412339741,2011,6,1,MT,2011-08-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+287,PE_883a7658077d89fcf49d,2011,1,2,MT,2011-07-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+97,PE_2aaba42888d07cb12d22,2011,2,2,MT,2011-07-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+304,PE_90c1ad0a7f83e0b230a6,2011,3,2,MT,2011-07-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+393,PE_bf4999981e8b30465343,2011,4,2,MT,2011-08-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+366,PE_af262f79aa0ed033156d,2011,5,2,MT,2011-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+286,PE_8822e7617a2395f5da78,2011,6,2,MT,2011-08-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+372,PE_b29e09cdb7f952a1cdb0,2011,1,1,ST,2011-06-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+182,PE_556f24afddcf35c92237,2011,2,1,ST,2011-07-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+525,PE_fcddf23162383dff810e,2011,3,1,ST,2011-07-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+383,PE_bbf4e95c02e1591047b4,2011,4,1,ST,2011-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+82,PE_23fdec9b5d2f5aa45a05,2011,5,1,ST,2011-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+443,PE_db00152d9902bdb511ab,2011,6,1,ST,2011-08-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+473,PE_e7adc6803f9ae278362b,2011,1,2,ST,2011-07-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+314,PE_95d3b43c79b8bf669652,2011,2,2,ST,2011-07-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+456,PE_dfd4f33e25a6c0f68606,2011,3,2,ST,2011-07-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+509,PE_f5556b234e32459fa7a2,2011,4,2,ST,2011-08-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+114,PE_32e6a0947406c0450241,2011,5,2,ST,2011-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+250,PE_74d2b6cff9d0f8aad3cb,2011,6,2,ST,2011-08-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+454,PE_df9469438e8cb790e7af,2012,1,1,CT,2012-05-15,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+106,PE_2efa629b1e4ba707bca1,2012,10,1,CT,2012-08-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+148,PE_42eb29bd3d8b55596b0d,2012,2,1,CT,2012-06-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+462,PE_e36c37e82bf0717de103,2012,3,1,CT,2012-06-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+289,PE_8926ae228cc15db54f23,2012,4,1,CT,2012-06-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+322,PE_9990eb3a8c35bbfe0d52,2012,5,1,CT,2012-07-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+241,PE_7105f0f414cf84b7ea78,2012,6,1,CT,2012-07-24,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+320,PE_980f4b8e6c4ad4f916f0,2012,7,1,CT,2012-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+55,PE_17730c5643d948b203ad,2012,8,1,CT,2012-08-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+498,PE_f0826e18d2e4817478f5,2012,9,1,CT,2012-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+397,PE_c022cac1f55e539686af,2012,1,2,CT,2012-05-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+112,PE_32cf57061f68ffb1c9cf,2012,10,2,CT,2012-08-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+318,PE_964f9e60ef2ea5038dae,2012,2,2,CT,2012-06-04,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+233,PE_6dd6e0481282dc87af9e,2012,3,2,CT,2012-06-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+311,PE_93fc10203fe8e4c919ea,2012,4,2,CT,2012-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+422,PE_cbed8a7088e045d7b553,2012,5,2,CT,2012-07-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+518,PE_fa3605fec991b5fdcb5e,2012,6,2,CT,2012-07-25,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+33,PE_0d403a1dbd25bf378957,2012,7,2,CT,2012-08-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+328,PE_9a4ef4ab7be905b67891,2012,8,2,CT,2012-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+49,PE_15c01ebd332fd5d41b39,2012,9,2,CT,2012-08-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+388,PE_bdf17111cc35249ef7aa,2012,1,1,MT,2012-05-15,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+140,PE_406a96629a182935cae7,2012,10,1,MT,2012-08-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+442,PE_d8275d4734b8c69e5afc,2012,2,1,MT,2012-06-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+502,PE_f18d62b04bf4f3a25d7e,2012,3,1,MT,2012-06-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+292,PE_8b5564238c223d972525,2012,4,1,MT,2012-06-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+283,PE_860b95b364b2c2e3a6b5,2012,5,1,MT,2012-07-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+224,PE_69e7705e30f4fa9b6143,2012,6,1,MT,2012-07-24,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+24,PE_084268df6eb9d4246043,2012,7,1,MT,2012-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+288,PE_8844898dffe247398b01,2012,8,1,MT,2012-08-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+266,PE_7bc7d14f1d4cbbeee019,2012,9,1,MT,2012-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+6,PE_01ea2f88880fff50efcb,2012,1,2,MT,2012-05-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+441,PE_d79901bee44e9d2ab8bc,2012,10,2,MT,2012-08-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+276,PE_81617f8b3e2986274802,2012,2,2,MT,2012-06-04,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+11,PE_04c02bec0f0f9a370498,2012,3,2,MT,2012-06-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+298,PE_8dd5bcb659f488a967c1,2012,4,2,MT,2012-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+198,PE_5d3101462bb3db890b29,2012,5,2,MT,2012-07-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+406,PE_c3c22e6072f6eeb66ac2,2012,6,2,MT,2012-07-25,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+218,PE_681443548ef078be38f1,2012,7,2,MT,2012-08-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+180,PE_53bed9867f02ff579e2d,2012,8,2,MT,2012-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+184,PE_55dfff50a7b8f0a977d1,2012,9,2,MT,2012-08-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+416,PE_c8cfe41007225eb1567a,2012,1,1,ST,2012-05-15,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+222,PE_6975f3c079d281a511a0,2012,10,1,ST,2012-08-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+52,PE_164e2c6f0b39eec70d00,2012,2,1,ST,2012-06-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+130,PE_3b419c0bdb22b2b7c315,2012,3,1,ST,2012-06-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+85,PE_248d74790d081f1ad247,2012,4,1,ST,2012-06-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+466,PE_e54a1b2fb0b2d2f3c583,2012,5,1,ST,2012-07-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+526,PE_fe2c74881a28e96903f0,2012,6,1,ST,2012-07-24,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+424,PE_cc5627c91253785c0d98,2012,7,1,ST,2012-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+190,PE_57bf938d5e71dc213f59,2012,8,1,ST,2012-08-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+192,PE_57fa018badecf5410da3,2012,9,1,ST,2012-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+62,PE_1a7d8cf14d5d7a84cc49,2012,1,2,ST,2012-05-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+48,PE_15badc81229f832de396,2012,10,2,ST,2012-08-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+168,PE_4c355f124b8d8c67fa55,2012,2,2,ST,2012-06-04,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+349,PE_a828a4cd4628108e4701,2012,3,2,ST,2012-06-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+214,PE_649006527ce5d1d1ff1f,2012,4,2,ST,2012-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+226,PE_6c101e1953c53808bd4e,2012,5,2,ST,2012-07-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+36,PE_0e586fb82f46b37d94b4,2012,6,2,ST,2012-07-25,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+392,PE_bf44e09ffc415b58c4a0,2012,7,2,ST,2012-08-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+120,PE_365d30de37f48e464de2,2012,8,2,ST,2012-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+193,PE_5a2398fb5beb05ecabaa,2012,9,2,ST,2012-08-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+96,PE_2a0d4bf170744820dad9,2013,1,1,CT,2013-06-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+14,PE_0609bb3a38fc48d18c44,2013,2,1,CT,2013-07-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+47,PE_1486d363f9b911e8c7c4,2013,3,1,CT,2013-07-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+270,PE_7dbc678d30fda2bb0d2c,2013,4,1,CT,2013-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+301,PE_8fc624aa7b0c0a5ff950,2013,5,1,CT,2013-08-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+448,PE_dc649077fd49ff457e31,2013,6,1,CT,2013-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+307,PE_91e7db994d29b3cdcef3,2013,7,1,CT,2013-08-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+447,PE_dc2b363282afea49f001,2013,1,2,CT,2013-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+18,PE_06846811b2896d804676,2013,2,2,CT,2013-07-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+127,PE_3aa6f9c73e9503f289eb,2013,3,2,CT,2013-07-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+105,PE_2e9d58711c9824497c11,2013,4,2,CT,2013-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+511,PE_f631c0023156acc8f2cb,2013,5,2,CT,2013-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+348,PE_a814ea72d8a79e5ce612,2013,6,2,CT,2013-08-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+173,PE_5084a07101a28e5fba2b,2013,7,2,CT,2013-08-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+405,PE_c3597e2837d70a1714cc,2013,1,1,MT,2013-06-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+323,PE_99b3a7e1248efb280745,2013,2,1,MT,2013-07-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+527,PE_fe3dedee2de4a143e8fc,2013,3,1,MT,2013-07-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+64,PE_1bd1f8a68c1dc49b3965,2013,4,1,MT,2013-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+440,PE_d7412eb08e900574222a,2013,5,1,MT,2013-08-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+44,PE_12cbc4a228ce581574f5,2013,6,1,MT,2013-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+227,PE_6c6adaeedad01937f242,2013,7,1,MT,2013-08-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+297,PE_8dc09b4135fb27916f26,2013,1,2,MT,2013-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+478,PE_e9b4025c029d683e1a32,2013,2,2,MT,2013-07-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+346,PE_a63568a97a8fde462031,2013,3,2,MT,2013-07-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+42,PE_113a8b8781b7a42b7a0c,2013,4,2,MT,2013-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+99,PE_2b276407ca9e7ade973b,2013,5,2,MT,2013-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+87,PE_262bcdadb146dac989ae,2013,6,2,MT,2013-08-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+275,PE_7f8b38f0a4ac5e96f77e,2013,7,2,MT,2013-08-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+177,PE_51d1d65a49a273a7a6a4,2013,1,1,ST,2013-06-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+377,PE_b7ff1c1774876e409c04,2013,2,1,ST,2013-07-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+421,PE_cb43e2ed756f1f7b6aba,2013,3,1,ST,2013-07-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+514,PE_f7fa36feaba1a3684ccf,2013,4,1,ST,2013-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+353,PE_a8e992311ac11ff1f6ab,2013,5,1,ST,2013-08-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+167,PE_4ba63451b7dc89c0a556,2013,6,1,ST,2013-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+273,PE_7f513ba68b063af6e914,2013,7,1,ST,2013-08-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+30,PE_0c5f6cae2ecb3b88339a,2013,1,2,ST,2013-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+125,PE_3a1f801f634bfe189584,2013,2,2,ST,2013-07-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+57,PE_18bc94a3d047891c182b,2013,3,2,ST,2013-07-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+15,PE_06463f55c291ea1d15a9,2013,4,2,ST,2013-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+435,PE_d3818202a2c7c0979162,2013,5,2,ST,2013-08-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+98,PE_2b1a26b26247f7aaf591,2013,6,2,ST,2013-08-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+203,PE_5ff231543fda9ac6656d,2013,7,2,ST,2013-08-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+458,PE_e1f06f083d001c899062,2014,1,1,CT,2014-07-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+358,PE_ab1e5addf2e00bc003a1,2014,2,1,CT,2014-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+38,PE_0f2c1b5db3c1949d1f74,2014,3,1,CT,2014-08-04,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+169,PE_4c80e607422dec97f0c9,2014,4,1,CT,2014-08-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+354,PE_a929afd926dcc59da1cd,2014,5,1,CT,2014-09-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+39,PE_0f6804c5fdc4da7fb4f7,2014,1,2,CT,2014-07-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+381,PE_bb21dc13f44e7cae1045,2014,2,2,CT,2014-07-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+31,PE_0c873ebca68f220b5575,2014,3,2,CT,2014-08-05,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+464,PE_e4c541913dac4c0bca3d,2014,4,2,CT,2014-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+23,PE_07fb872524ea7e0b9145,2014,5,2,CT,2014-09-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+401,PE_c29031fe1d291910e835,2014,1,1,MT,2014-07-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+404,PE_c347d973d115e2a3ba3c,2014,2,1,MT,2014-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+93,PE_28a3ad7db7957a75e475,2014,3,1,MT,2014-08-04,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+146,PE_428d2603a778e905a134,2014,4,1,MT,2014-08-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+365,PE_ae71f26e9166fb13ee9c,2014,5,1,MT,2014-09-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+73,PE_214aa9017327a70f135f,2014,1,2,MT,2014-07-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+144,PE_4265f591b8d06dcbc8b8,2014,2,2,MT,2014-07-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+303,PE_909a6e90f2a2fb0ccb86,2014,3,2,MT,2014-08-05,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+506,PE_f2aa84d9058e29e106ef,2014,4,2,MT,2014-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+391,PE_beeac198e54979c8cb07,2014,5,2,MT,2014-09-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+471,PE_e6f216bc2af9baf87adb,2014,1,1,ST,2014-07-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+216,PE_670677b2cdea06c82d58,2014,2,1,ST,2014-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+433,PE_d1afac04920a2ee5af17,2014,3,1,ST,2014-08-04,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+199,PE_5d5cb3edcd99b5be75e6,2014,4,1,ST,2014-08-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+69,PE_1ebff2d4e49b119d2aae,2014,5,1,ST,2014-09-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+468,PE_e5b7650f3b7e52f1a1bf,2014,1,2,ST,2014-07-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+308,PE_92db572b305f7a8a1fcf,2014,2,2,ST,2014-07-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+324,PE_99c4e1053e4376d0bed3,2014,3,2,ST,2014-08-05,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+389,PE_be3da0eafc673da18d92,2014,4,2,ST,2014-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+336,PE_a04c61d433646e61a6a1,2014,5,2,ST,2014-09-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+493,PE_effd37ee189df750ad5a,2015,1,1,CT,2015-07-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+487,PE_ece5ee3d9a47f8a4b70b,2015,2,1,CT,2015-07-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+373,PE_b307adedb4f140b2f276,2015,3,1,CT,2015-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+327,PE_9a36752b43ad5983930a,2015,4,1,CT,2015-08-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+59,PE_1994b95c4c5d89d54441,2015,5,1,CT,2015-08-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+63,PE_1ad2a48558b8c9cdf0bb,2015,6,1,CT,2015-08-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+211,PE_63a5c105af28ea9f75a7,2015,1,2,CT,2015-07-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+1,PE_003510690d55f2e080ab,2015,2,2,CT,2015-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+123,PE_38f43e287ee7d1f916e4,2015,3,2,CT,2015-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+149,PE_42feb90a12eb2a1656cd,2015,4,2,CT,2015-08-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+5,PE_01dfb8394999c3a08b1b,2015,5,2,CT,2015-08-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+484,PE_eba40b08b5ce69421768,2015,6,2,CT,2015-09-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+35,PE_0e378dd2a91d7df1a7a9,2015,1,1,MT,2015-07-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+395,PE_bf6fc540566653c363a5,2015,2,1,MT,2015-07-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+171,PE_4ebf629c5dd531a50c12,2015,3,1,MT,2015-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+251,PE_74dfc686b20e794d29d3,2015,4,1,MT,2015-08-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+355,PE_a98d09332522adfe618b,2015,5,1,MT,2015-08-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+207,PE_61227cf97dd057e6375a,2015,6,1,MT,2015-08-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+523,PE_fc35961bbf4775b1838e,2015,1,2,MT,2015-07-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+387,PE_bd8c84ec329021438849,2015,2,2,MT,2015-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+334,PE_9f67556e2848ccb24a85,2015,3,2,MT,2015-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+25,PE_09a938930ab837ebeb36,2015,4,2,MT,2015-08-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+505,PE_f28eca55841e3590b19f,2015,5,2,MT,2015-08-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+21,PE_078b8edebaf25b47ca9c,2015,6,2,MT,2015-09-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+491,PE_ef16b92ac44718ed6fbe,2015,1,1,ST,2015-07-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+213,PE_64548a06be4bb873cda0,2015,2,1,ST,2015-07-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+359,PE_ab750944465b3b03a5ec,2015,3,1,ST,2015-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+479,PE_e9d0921860cc7c87fefe,2015,4,1,ST,2015-08-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+89,PE_27068e46a99396e37068,2015,5,1,ST,2015-08-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+101,PE_2bc636c51bdfedd7a673,2015,6,1,ST,2015-08-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+321,PE_982e6a4e7c9174d09a3c,2015,1,2,ST,2015-07-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+517,PE_f98814c17b9da4b10046,2015,2,2,ST,2015-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+293,PE_8b715eebc00f1d87b8e3,2015,3,2,ST,2015-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+209,PE_61cbb9676a953528de2c,2015,4,2,ST,2015-08-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+245,PE_72bbe667892a258fbed0,2015,5,2,ST,2015-08-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+399,PE_c173a335fbc6a1794117,2015,6,2,ST,2015-09-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+427,PE_cf4508303fbec7c40fe5,2016,1,1,CT,2016-06-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+259,PE_796a63125680b03b1a47,2016,2,1,CT,2016-06-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+188,PE_571c968894d925b12ac7,2016,1,2,CT,2016-06-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+317,PE_962807ecf486db3c765b,2016,2,2,CT,2016-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+17,PE_06726b0bbd436c0f2638,2016,1,1,MT,2016-06-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+66,PE_1d9fa89274a5507fb9c3,2016,2,1,MT,2016-06-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+91,PE_2836684cbc95d298d128,2016,1,2,MT,2016-06-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+475,PE_e91aef82d1d0158c64de,2016,2,2,MT,2016-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+175,PE_518a902e850a37a6e1f7,2016,1,1,ST,2016-06-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+83,PE_245bc6dafec7fe277df3,2016,2,1,ST,2016-06-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+488,PE_ed07163240c41f058ff7,2016,1,2,ST,2016-06-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+263,PE_7b17489d08fa900cd025,2016,2,2,ST,2016-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+338,PE_a249f721c9cded6ed477,2017,1,1,CT,2017-06-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+351,PE_a86f0dd73b63a18791b9,2017,2,1,CT,2017-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+34,PE_0db94b33091790ae448c,2017,3,1,CT,2017-07-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+412,PE_c6a22d9daf9658c76f8d,2017,4,1,CT,2017-08-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+398,PE_c0e9a65e116d987d3dfe,2017,5,1,CT,2017-08-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+165,PE_4a45291481f1020c04f7,2017,6,1,CT,2017-09-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+110,PE_31bb29072ce592a58136,2017,1,2,CT,2017-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+411,PE_c67a9e43f22b05bb8d70,2017,2,2,CT,2017-07-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+414,PE_c7e10f3a52f813c6a07a,2017,3,2,CT,2017-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+499,PE_f0acae9004db30c9f89b,2017,4,2,CT,2017-08-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+72,PE_20fd7645e8886a1975a0,2017,5,2,CT,2017-08-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+43,PE_1286406ef8d51ffa7b89,2017,6,2,CT,2017-09-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+420,PE_c9e73ef1dabab1e96c37,2017,1,1,MT,2017-06-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+7,PE_01ef9362ba3276afc3a9,2017,2,1,MT,2017-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+201,PE_5f5cdcb0357234b8314a,2017,3,1,MT,2017-07-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+92,PE_283a79a4d7e1d99ea45c,2017,4,1,MT,2017-08-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+243,PE_72973ed7fd2fafa39b49,2017,5,1,MT,2017-08-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+520,PE_fa68bde0c7a186695c73,2017,6,1,MT,2017-09-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+252,PE_7563047765a1e3f047e6,2017,1,2,MT,2017-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+122,PE_3712d644db8e7505fd90,2017,2,2,MT,2017-07-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+455,PE_df9fe3439780c58ef619,2017,3,2,MT,2017-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+152,PE_44c3319c1ae4491d3b22,2017,4,2,MT,2017-08-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+364,PE_ae6e7b1bd3de16ea6d0f,2017,5,2,MT,2017-08-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+32,PE_0d069e1b4f6cd76df6ac,2017,6,2,MT,2017-09-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+229,PE_6ca81f85570cae0e0d9c,2017,1,1,ST,2017-06-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+330,PE_9be29822841d41a56b41,2017,2,1,ST,2017-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+71,PE_20cdd4f089d2cb0bb73d,2017,3,1,ST,2017-07-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+178,PE_531c541dd4a3fff82f15,2017,4,1,ST,2017-08-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+291,PE_8b4c5aba46522be8a6ae,2017,5,1,ST,2017-08-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+187,PE_568f0b5ec6deda07b9f9,2017,6,1,ST,2017-09-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+474,PE_e8e143ce24098f6b3f6d,2017,1,2,ST,2017-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+162,PE_4998c6ec98ba5c91a95d,2017,2,2,ST,2017-07-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+170,PE_4d317db65fbb1df71b52,2017,3,2,ST,2017-07-21,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+449,PE_dd2eb9cbf33aadc76796,2017,4,2,ST,2017-08-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+370,PE_b0a6ff66d1c871b7754c,2017,5,2,ST,2017-08-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+521,PE_fae3faa31fd03c716eb2,2017,6,2,ST,2017-09-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+12,PE_0503afb14c99d9e82049,2018,1,1,CT,2018-06-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+269,PE_7d494ede1d52d93f917c,2018,2,1,CT,2018-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+519,PE_fa5a88f5fe4cbceab8ff,2018,3,1,CT,2018-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+100,PE_2bbc899d26154b6d1225,2018,4,1,CT,2018-09-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+385,PE_bcf1d030e292438de1c1,2018,5,1,CT,2018-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+19,PE_06cf6ee8f5f1de6d062c,2018,1,2,CT,2018-06-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+212,PE_64205c4aab501e7ade95,2018,2,2,CT,2018-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+215,PE_661a73f57cd0904e935e,2018,3,2,CT,2018-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+402,PE_c32a2a3d88d9ec350dc6,2018,4,2,CT,2018-09-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+163,PE_49de8099f0ba88b76279,2018,5,2,CT,2018-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+179,PE_5398d3995ed7cd1e0676,2018,1,1,MT,2018-06-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+67,PE_1e64cd46783542f338bd,2018,2,1,MT,2018-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+219,PE_68a15fb356b9d6e019b5,2018,3,1,MT,2018-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+325,PE_99cc1e2e72ab1b968958,2018,4,1,MT,2018-09-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+230,PE_6d151a783a1487f12ad3,2018,5,1,MT,2018-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+426,PE_cef31bb952fb70e29aa3,2018,1,2,MT,2018-06-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+90,PE_27f99a360d626c266301,2018,2,2,MT,2018-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+10,PE_041660a509b242990967,2018,3,2,MT,2018-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+271,PE_7f00e3bef63095e44dba,2018,4,2,MT,2018-09-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+68,PE_1ebd3b89c1a1eb60037d,2018,5,2,MT,2018-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+375,PE_b591ad8fc1edd74ecb16,2018,1,1,ST,2018-06-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+371,PE_b13c99904ac0e5122f2f,2018,2,1,ST,2018-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+390,PE_be7aad6167b8d6e29614,2018,3,1,ST,2018-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+507,PE_f307c47ed6f329163fac,2018,4,1,ST,2018-09-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+102,PE_2d8bea54a10e404180da,2018,5,1,ST,2018-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+306,PE_915ee54b710bdb591c91,2018,1,2,ST,2018-06-28,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+166,PE_4b3ed7bf50264a74706d,2018,2,2,ST,2018-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+345,PE_a607eca0d188cf22b135,2018,3,2,ST,2018-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+294,PE_8c8e4bc602294900374d,2018,4,2,ST,2018-09-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+333,PE_9e220761a582d1c65742,2018,5,2,ST,2018-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+482,PE_eb6fec5adbe358422038,2019,1,1,CT,2019-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+312,PE_954cf35508c90b8d04de,2019,1,2,CT,2019-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+160,PE_4867a66f60d5dfebd5d7,2019,1,1,MT,2019-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+128,PE_3aee59a4d58fb18e7937,2019,1,2,MT,2019-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+205,PE_609af5c454fa9d0e9208,2019,1,1,ST,2019-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+231,PE_6d4bd786a91c3c5cb5a0,2019,1,2,ST,2019-06-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+202,PE_5fe6f2ac660a17d837bd,2020,1,1,CT,2020-06-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+53,PE_166bc984fea383507df7,2020,2,1,CT,2020-07-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+501,PE_f112cb116ff39b0745d1,2020,3,1,CT,2020-07-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+428,PE_d03c293a07504dee9823,2020,4,1,CT,2020-07-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+186,PE_568a40e75356dbe2944f,2020,5,1,CT,2020-08-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+313,PE_956f49ab7f5a452d4e47,2020,6,1,CT,2020-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+277,PE_81e03fd81db11fe99704,2020,7,1,CT,2020-08-25,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+339,PE_a2e77087ab55e269e32c,2020,1,2,CT,2020-06-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+95,PE_292d31f26b57f7190bab,2020,2,2,CT,2020-07-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+197,PE_5cea09f5406d83c18d64,2020,3,2,CT,2020-07-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+470,PE_e6e65791cef10ae1aec3,2020,4,2,CT,2020-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+436,PE_d38cb42b24675ec235ad,2020,5,2,CT,2020-08-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+145,PE_4276db7edd2e90f04dd5,2020,6,2,CT,2020-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+459,PE_e27bd4911eac418c5499,2020,7,2,CT,2020-08-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+208,PE_61b68e752c1619aa8c43,2020,1,1,MT,2020-06-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+503,PE_f20fe17d9d856cebbcf8,2020,2,1,MT,2020-07-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+299,PE_8ed15b2f1e5372b81dc7,2020,3,1,MT,2020-07-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+340,PE_a32b9b1cc443544ce423,2020,4,1,MT,2020-07-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+65,PE_1c61ae236bb189923470,2020,5,1,MT,2020-08-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+159,PE_48332f955c6c36e57528,2020,6,1,MT,2020-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+363,PE_addb6558497635dd3d9a,2020,7,1,MT,2020-08-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+515,PE_f8ef94027a8e2bfa6b9c,2020,1,2,MT,2020-06-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+235,PE_6ec08e8e72986c7e7417,2020,2,2,MT,2020-07-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+136,PE_3f0bbb475c6994c60cf6,2020,3,2,MT,2020-07-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+439,PE_d4823572c24cd1d28427,2020,4,2,MT,2020-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+28,PE_0bb94842a812bc6b3413,2020,5,2,MT,2020-08-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+477,PE_e94ab9d8c2491d471785,2020,6,2,MT,2020-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+296,PE_8dae476d4c3877687500,2020,7,2,MT,2020-08-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+155,PE_46cc9f71204f4afd638d,2020,1,1,ST,2020-06-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+204,PE_5ff3d0ad9d787e19a7ca,2020,2,1,ST,2020-07-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+284,PE_875be1f39b86704274b0,2020,3,1,ST,2020-07-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+524,PE_fc822425df54345742cb,2020,4,1,ST,2020-07-22,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+27,PE_0b902961f965469f339e,2020,5,1,ST,2020-08-02,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+164,PE_49fb6cd53fdd5e458f64,2020,6,1,ST,2020-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+476,PE_e92a1d87a3645647bd4e,2020,7,1,ST,2020-08-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+138,PE_3f6400cdcf4fab1e9fc1,2020,1,2,ST,2020-06-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+154,PE_45cd079098a5ce5a4947,2020,2,2,ST,2020-07-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+490,PE_ee23dd5347fd2acef254,2020,3,2,ST,2020-07-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+248,PE_73b2bd8dba8e659563a4,2020,4,2,ST,2020-07-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+50,PE_15c76299e8dbf45908ff,2020,5,2,ST,2020-08-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+316,PE_961e3caa504d67d7911c,2020,6,2,ST,2020-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+200,PE_5dc8c47ce47282af828e,2020,7,2,ST,2020-08-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+115,PE_33074ef569f8079ca2c5,2021,1,1,CT,2021-06-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+75,PE_21eb97240c4e244d59c9,2021,2,1,CT,2021-07-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+480,PE_e9ed7c0da6f350ec0ebd,2021,3,1,CT,2021-07-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+26,PE_0ac2121b8fe18c0053e2,2021,4,1,CT,2021-08-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+356,PE_a9b65e771f7f28532999,2021,5,1,CT,2021-08-25,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+134,PE_3e80216d31c31cb94be7,2021,6,1,CT,2021-09-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+151,PE_43f0020c0e87bb28cb4f,2021,1,2,CT,2021-06-24,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+337,PE_a1506e8e5a02282cf157,2021,2,2,CT,2021-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+74,PE_21dfe39111b133765d37,2021,3,2,CT,2021-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+104,PE_2e40b6e91cc7d5ecd6c3,2021,4,2,CT,2021-08-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+265,PE_7bb31d342461203b532f,2021,5,2,CT,2021-08-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+13,PE_051cd85fc942217be314,2021,6,2,CT,2021-09-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+183,PE_55b3839d44d67304ba2d,2021,1,1,MT,2021-06-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+310,PE_936c12cc5ae17810e93e,2021,2,1,MT,2021-07-08,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+129,PE_3b0275b6f31aa3c48b11,2021,3,1,MT,2021-07-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+500,PE_f0e98ee733e1acf48f4e,2021,4,1,MT,2021-08-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+485,PE_ebd22f3a15b20eea0e80,2021,5,1,MT,2021-08-25,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+94,PE_29232e3b1d0dd0846861,2021,6,1,MT,2021-09-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+508,PE_f544dd1f1224ddc9abde,2021,1,2,MT,2021-06-24,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+176,PE_51b615c0027e4e29028e,2021,2,2,MT,2021-07-09,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+415,PE_c7ea31b20b60ad1966be,2021,3,2,MT,2021-07-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+41,PE_10a82e2f3d5ad96163d0,2021,4,2,MT,2021-08-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+461,PE_e31452c7a0ebfbfaf3f2,2021,5,2,MT,2021-08-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+319,PE_97c5dc883be532c37d60,2021,6,2,MT,2021-09-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+131,PE_3d9e743a00f5613f6722,2021,1,1,ST,2021-06-23,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed ST-only follow-on tractor pass
+157,PE_47319afabf95ce33e7fd,2021,2,1,ST,2021-07-08,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed ST-only follow-on tractor pass
+279,PE_835c9b48606f6cdfa777,2021,3,1,ST,2021-07-29,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed ST-only follow-on tractor pass
+463,PE_e416400520de7f5adc17,2021,4,1,ST,2021-08-12,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed ST-only follow-on tractor pass
+258,PE_78a548d4e3eef2a21ea3,2021,5,1,ST,2021-08-25,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed ST-only follow-on tractor pass
+369,PE_b08201b583b69f927729,2021,6,1,ST,2021-09-09,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed ST-only follow-on tractor pass
+236,PE_6ee044c77bdf30366b5d,2021,1,2,ST,2021-06-24,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed ST-only follow-on tractor pass
+61,PE_1a4143d14585d70064a4,2021,2,2,ST,2021-07-09,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed ST-only follow-on tractor pass
+367,PE_af610e0f46836e0b77e1,2021,3,2,ST,2021-07-30,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed ST-only follow-on tractor pass
+225,PE_6af7db12fea1a0f5f5e0,2021,4,2,ST,2021-08-13,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed ST-only follow-on tractor pass
+417,PE_c917d3aa7638a95ddccd,2021,5,2,ST,2021-08-26,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed ST-only follow-on tractor pass
+54,PE_16ac905814be2f1ac791,2021,6,2,ST,2021-09-10,1,2021-06-18,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed ST-only follow-on tractor pass
+117,PE_3433a0bfc8c7216f3995,2022,1,1,CT,2022-06-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+194,PE_5ae2ded12c8023b32c0a,2022,2,1,CT,2022-06-29,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+444,PE_db44df4caa1727e348be,2022,3,1,CT,2022-07-13,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+20,PE_074f45d65401c8fdb3f5,2022,4,1,CT,2022-07-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+453,PE_df160c088a0a2ccf4d3e,2022,5,1,CT,2022-08-10,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+103,PE_2dee4ae4d1c5b4873b12,2022,6,1,CT,2022-08-18,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+113,PE_32d4186ac5b7c925427a,2022,7,1,CT,2022-08-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+486,PE_ebead115648e1ebda0bb,2022,8,1,CT,2022-09-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+137,PE_3f1a3adf6196ed54473e,2022,1,2,CT,2022-06-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+150,PE_438127a754ce2a504c09,2022,2,2,CT,2022-06-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+483,PE_eb7e4b7d6a65d5aa6a4b,2022,3,2,CT,2022-07-14,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+407,PE_c409fdcd758dbf3b86bb,2022,4,2,CT,2022-07-27,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+37,PE_0f0b8ef86caaf0f77083,2022,5,2,CT,2022-08-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+465,PE_e517c68ccbe2e4b52791,2022,6,2,CT,2022-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+379,PE_b8cc705881475991ea0f,2022,7,2,CT,2022-08-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+88,PE_26a08057b7264787ef06,2022,8,2,CT,2022-09-07,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+264,PE_7b7021667404f4bf5ffe,2022,1,1,MT,2022-06-17,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+46,PE_14298b67e71efd6380df,2022,2,1,MT,2022-06-29,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+368,PE_afa287a09ff3e5bab631,2022,3,1,MT,2022-07-13,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+181,PE_5556897f607258fe9362,2022,4,1,MT,2022-07-26,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+86,PE_260d9de653b38957c0fe,2022,5,1,MT,2022-08-10,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+133,PE_3e1a799849bdfb1c3f26,2022,6,1,MT,2022-08-18,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+357,PE_aa383c8c9a57591dc206,2022,7,1,MT,2022-08-23,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+347,PE_a642ed3f2f18412680bd,2022,8,1,MT,2022-09-06,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+272,PE_7f40423a8c9c7387079e,2022,1,2,MT,2022-06-17,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+118,PE_344e7a9bb935a4829210,2022,2,2,MT,2022-06-30,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+343,PE_a5a3e7d8a5e84189d18a,2022,3,2,MT,2022-07-14,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+139,PE_3fc5dfce0fb4c6220e16,2022,4,2,MT,2022-07-27,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+305,PE_912d046edf542edb9c36,2022,5,2,MT,2022-08-11,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+510,PE_f59de99757bedf1858d5,2022,6,2,MT,2022-08-19,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+495,PE_f0406a7690a0e8ef2920,2022,7,2,MT,2022-08-23,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+437,PE_d41d88e8b515629ab69d,2022,8,2,MT,2022-09-07,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+438,PE_d47080104483a2906848,2022,1,1,ST,2022-06-17,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+446,PE_dc25029fed7bf1b276c5,2022,2,1,ST,2022-06-29,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+350,PE_a8630556d08f6cec7f6a,2022,3,1,ST,2022-07-13,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+425,PE_ceb9c23bc0db5be24388,2022,4,1,ST,2022-07-26,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+240,PE_70d3cc17c47edebe68ad,2022,5,1,ST,2022-08-10,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+481,PE_ea4184a89b91eb4646ad,2022,6,1,ST,2022-08-18,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+143,PE_425f14902ee81a16cfeb,2022,7,1,ST,2022-08-23,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+452,PE_dec8c485fbbc1c0c7b86,2022,8,1,ST,2022-09-06,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+174,PE_510406c16da87dd620cb,2022,1,2,ST,2022-06-17,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+79,PE_230aa97120550e292bc7,2022,2,2,ST,2022-06-30,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+16,PE_0656666c2b33c1a71dfc,2022,3,2,ST,2022-07-14,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+135,PE_3eefa2d11be77738359b,2022,4,2,ST,2022-07-27,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+302,PE_901ccaf6a3ac1105504f,2022,5,2,ST,2022-08-11,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+472,PE_e743f4558cfa24632460,2022,6,2,ST,2022-08-19,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+267,PE_7cf61966fec7c7b6adc5,2022,7,2,ST,2022-08-23,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+326,PE_99ec6d6affe898b0e8d2,2022,8,2,ST,2022-09-07,1,2022-06-13,Clean Furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+242,PE_7131d35e8cd02b882d26,2023,1,1,CT,2023-07-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+76,PE_21ef5b6342274d9e3203,2023,2,1,CT,2023-08-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+513,PE_f7a5e5b2a4c1c3239774,2023,3,1,CT,2023-08-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+189,PE_577d295e76e129c37688,2023,4,1,CT,2023-09-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+394,PE_bf4d5c43e21a82c51f4f,2023,5,1,CT,2023-09-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+497,PE_f071df1dfa8de45515c1,2023,S1,1,CT,2023-08-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+374,PE_b479db5db86a1e92ca9f,2023,S2,1,CT,2023-08-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+77,PE_222b0b4beba254c530d7,2023,1,2,CT,2023-07-17,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+51,PE_1607bd85c5b858754283,2023,2,2,CT,2023-08-16,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+489,PE_ee0d84028e7204c9f8b6,2023,3,2,CT,2023-08-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+195,PE_5bf168b414e63b4f63f3,2023,4,2,CT,2023-09-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+56,PE_17f8630aaa6312f3912a,2023,5,2,CT,2023-09-26,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+281,PE_8474551aa700ba7170c1,2023,S1,2,CT,2023-08-01,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+172,PE_50834006bf4af0c32f60,2023,S2,2,CT,2023-08-06,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+84,PE_248493668060338e72e6,2023,1,1,MT,2023-07-17,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+344,PE_a5dd6f772a1d2e7d821c,2023,2,1,MT,2023-08-16,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+376,PE_b6fd60d10e559978199b,2023,3,1,MT,2023-08-23,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+295,PE_8d90127b55de039c6ab7,2023,4,1,MT,2023-09-20,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+409,PE_c4acde3ff39ca34f7f1d,2023,5,1,MT,2023-09-26,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+60,PE_199b5b7c1aaa1098c691,2023,S1,1,MT,2023-08-01,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+78,PE_22cf0a3e64c2027aae35,2023,S2,1,MT,2023-08-06,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+396,PE_bf74455b1a7c48461768,2023,1,2,MT,2023-07-17,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+331,PE_9d88eac30a91208d302b,2023,2,2,MT,2023-08-16,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+360,PE_acc7ee117e759ece44f9,2023,3,2,MT,2023-08-23,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+81,PE_23621b170748f0fc60c2,2023,4,2,MT,2023-09-20,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+255,PE_7751232195de561530b0,2023,5,2,MT,2023-09-26,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+256,PE_7867ae6d3ac14e9063c3,2023,S1,2,MT,2023-08-01,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+121,PE_3694e2f2ef6dd2e8480f,2023,S2,2,MT,2023-08-06,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+290,PE_8a47f8b2785e361a0f5c,2023,1,1,ST,2023-07-17,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+431,PE_d0ce0a7aa7e876660808,2023,2,1,ST,2023-08-16,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+384,PE_bca2b67b03840bac2206,2023,3,1,ST,2023-08-23,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+220,PE_68d44a8c5ee2992c2c36,2023,4,1,ST,2023-09-20,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+419,PE_c9875bdbbfec951204a7,2023,5,1,ST,2023-09-26,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+237,PE_6f90d69c4aa146a04e18,2023,S1,1,ST,2023-08-01,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+40,PE_0fa9147237bf4b348c9f,2023,S2,1,ST,2023-08-06,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+300,PE_8f51b688686d8bdc2f79,2023,1,2,ST,2023-07-17,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+460,PE_e29fdc102c9f799e8e4f,2023,2,2,ST,2023-08-16,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+361,PE_ada3010827131318b4a5,2023,3,2,ST,2023-08-23,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+522,PE_fc1529c70189a30552dd,2023,4,2,ST,2023-09-20,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+257,PE_78a0e5a12037218db30c,2023,5,2,ST,2023-09-26,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+413,PE_c6f4076701513ce44077,2023,S1,2,ST,2023-08-01,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+445,PE_dbd728d03c1d5af8f0ef,2023,S2,2,ST,2023-08-06,1,2023-06-28,Pipe Ditch,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+457,PE_e01f96101de9649fe0a8,2024,1,1,CT,2024-05-15,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+362,PE_add35a9103c77e144288,2024,2,1,CT,2024-05-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+278,PE_828e337f2a8b9a9634d7,2024,3,1,CT,2024-06-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+285,PE_87d4115bb68391b10daf,2024,4,1,CT,2024-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+341,PE_a354768a3ad269a40a28,2024,1,2,CT,2024-05-15,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+516,PE_f96a427e92fb0d6cf251,2024,2,2,CT,2024-05-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+450,PE_dd4d0ea35e35c329e9d8,2024,3,2,CT,2024-06-12,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+126,PE_3a4478840ec05680e176,2024,4,2,CT,2024-06-20,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+408,PE_c488be01d5dbff565ef0,2024,1,1,MT,2024-05-15,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST compaction with no logged anchor date
+423,PE_cc030c89ee5b8a7462b6,2024,2,1,MT,2024-05-30,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST compaction with no logged anchor date
+429,PE_d0a561512025e1d2770d,2024,3,1,MT,2024-06-12,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST compaction with no logged anchor date
+261,PE_7a793bda6ecab836d590,2024,4,1,MT,2024-06-20,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST compaction with no logged anchor date
+380,PE_ba059ebbc29b11d1a3be,2024,1,2,MT,2024-05-15,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST compaction with no logged anchor date
+467,PE_e582d3221277d02f35d9,2024,2,2,MT,2024-05-30,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST compaction with no logged anchor date
+418,PE_c918bf0b868668efb5e3,2024,3,2,MT,2024-06-12,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST compaction with no logged anchor date
+8,PE_02b42436b7981ca07571,2024,4,2,MT,2024-06-20,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST compaction with no logged anchor date
+512,PE_f6579064c70952c33aa8,2024,1,1,ST,2024-05-15,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST compaction with no logged anchor date
+451,PE_dd553617c7d118d29861,2024,2,1,ST,2024-05-30,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST compaction with no logged anchor date
+494,PE_f0055d0fbf3bb2c0c279,2024,3,1,ST,2024-06-12,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST compaction with no logged anchor date
+3,PE_00b38906ec1907c7d0dc,2024,4,1,ST,2024-06-20,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST compaction with no logged anchor date
+109,PE_30f71765b192fa672ac6,2024,1,2,ST,2024-05-15,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST compaction with no logged anchor date
+234,PE_6dfbf6a0b565de5536dd,2024,2,2,ST,2024-05-30,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST compaction with no logged anchor date
+156,PE_47021952abc7ade62c23,2024,3,2,ST,2024-06-12,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST compaction with no logged anchor date
+434,PE_d36d20c6bc7c067588be,2024,4,2,ST,2024-06-20,1,NA,Unlogged pre-irrigation tractor pass,after_residue_before_first_runoff,user_confirmed_before_first_runoff,user_confirmed_before_first_runoff,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST compaction with no logged anchor date
+142,PE_41cebec90b66f3ef63c2,2025,1,1,CT,2025-06-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+315,PE_961b16815e7ba5016bdb,2025,2,1,CT,2025-07-14,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+282,PE_85771b5590cb80ee80b1,2025,3,1,CT,2025-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+386,PE_bd4a80359ce1de5f5729,2025,4,1,CT,2025-08-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+247,PE_73a092189bd19f7de823,2025,5,1,CT,2025-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+4,PE_01024210b88310ac1815,2025,6,1,CT,2025-09-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+378,PE_b85e98ea69e68f01ed00,2025,7,1,CT,2025-09-14,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+147,PE_42c8ab0c8a8eb2aaa7dc,2025,S1,1,CT,2025-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+309,PE_92e7ac2243498d97f3e0,2025,1,2,CT,2025-06-30,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+108,PE_30d8eee773ba85ed7ec9,2025,2,2,CT,2025-07-14,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+260,PE_79ea2eb78bef48e2d163,2025,3,2,CT,2025-07-31,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+244,PE_72b83136bc50254a55a6,2025,4,2,CT,2025-08-11,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+196,PE_5c35b22fc4eba02df28c,2025,5,2,CT,2025-08-19,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+492,PE_ef5b618a3b1b8ffbd8e4,2025,6,2,CT,2025-09-03,0,NA,NA,NA,NA,not_exposed,default_unexposed,2,NA
+430,PE_d0b9f8548f96e312e4d0,2025,7,2,CT,2025-09-15,0,NA,NA,NA,NA,not_exposed,default_unexposed,1,NA
+141,PE_418fe61f7dcc6a6354d9,2025,S1,2,CT,2025-09-23,0,NA,NA,NA,NA,not_exposed,default_unexposed,0,NA
+469,PE_e6892c1c4df9f9956548,2025,1,1,MT,2025-06-30,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+504,PE_f2544036a8cdc2b562ca,2025,2,1,MT,2025-07-14,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+335,PE_a033c0958b5b88a75684,2025,3,1,MT,2025-07-31,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+80,PE_2314eec6a45e0be9e203,2025,4,1,MT,2025-08-11,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+400,PE_c1edec673d6e55fe03b0,2025,5,1,MT,2025-08-19,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+217,PE_676050582c291c72204b,2025,6,1,MT,2025-09-03,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+496,PE_f0466175569500bfdf4d,2025,7,1,MT,2025-09-14,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+246,PE_739761594fff71774ab8,2025,S1,1,MT,2025-09-23,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+410,PE_c63b91d3075e6834f32e,2025,1,2,MT,2025-06-30,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+228,PE_6c85627a623e6c9dfbb4,2025,2,2,MT,2025-07-14,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+124,PE_39c8810e26ab4ca7933c,2025,3,2,MT,2025-07-31,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+268,PE_7d221972180d28e4f760,2025,4,2,MT,2025-08-11,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+528,PE_ff8985d7bd1f94902d4e,2025,5,2,MT,2025-08-19,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+342,PE_a36448d6fe89c398bac0,2025,6,2,MT,2025-09-03,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+274,PE_7f8105e65bf5e18e6c6b,2025,7,2,MT,2025-09-14,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+22,PE_07b0e2786e6c6d7e52f2,2025,S1,2,MT,2025-09-23,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+223,PE_69bf4666a40285ef26b8,2025,1,1,ST,2025-06-30,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+185,PE_55ff1c1f21eee62bac5f,2025,2,1,ST,2025-07-14,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+9,PE_0373cedd6c6b07cdac38,2025,3,1,ST,2025-07-31,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+232,PE_6db16cd7a8da79e5651d,2025,4,1,ST,2025-08-11,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+249,PE_744bc567dc348be5d05b,2025,5,1,ST,2025-08-19,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+116,PE_33b48c45a8f1d7ee984a,2025,6,1,ST,2025-09-03,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+2,PE_007bf9724431b43650d7,2025,7,1,ST,2025-09-15,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+382,PE_bb8ea40d37cb388028ef,2025,S1,1,ST,2025-09-23,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,0,user-confirmed MT and ST follow-on tractor pass
+111,PE_326f1ee42ddcd2cd3c31,2025,1,2,ST,2025-06-30,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+153,PE_44d1a7f433fe780ac78b,2025,2,2,ST,2025-07-14,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass
+254,PE_76eec8ae39fe2d6f5031,2025,3,2,ST,2025-07-31,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+352,PE_a873c6f206750ebc6cd1,2025,4,2,ST,2025-08-11,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+70,PE_2000666922e9baf4491a,2025,5,2,ST,2025-08-19,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+29,PE_0c2d197a5610b0bbb10e,2025,6,2,ST,2025-09-03,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+221,PE_68f1adf13e8ebbd5338b,2025,7,2,ST,2025-09-14,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,2,user-confirmed MT and ST follow-on tractor pass
+238,PE_7024c3ae50e63fc3a67a,2025,S1,2,ST,2025-09-23,1,2025-06-24,Clean and pack furrows,after_residue_before_first_runoff,logged_operational_anchor,event_on_or_after_logged_anchor,data/furrow_tire_compaction_records.csv,1,user-confirmed MT and ST follow-on tractor pass

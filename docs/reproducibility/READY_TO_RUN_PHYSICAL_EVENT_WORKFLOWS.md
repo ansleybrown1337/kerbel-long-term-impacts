@@ -1,10 +1,8 @@
-# Ready-to-run physical-event workflows: v3p1 handoff
+# Ready-to-run physical-event workflows: Bayes, ML, and comparison v3p3
 
 ## Status
 
-The v3p1 source, shared schema, preflight, documentation, and focused tests are prepared. The corrected preflight reports exactly 528 physical events (510 numeric-irrigation events and 18 S1/S2 storm events), zero unresolved predictor conflicts, zero blocking rows, and `ready_for_model_execution: true`.
-
-No Stan compilation or sampling, ML LOYO fitting, CatBoost full-record recalibration, Monte Carlo reconstruction, comparison regeneration, or publication-figure regeneration was run while preparing v3p1.
+The v3p1 shared schema and corrected preflight remain the active data contract. They report exactly 528 physical events (510 numeric-irrigation events and 18 S1/S2 storm events), zero unresolved predictor conflicts, zero blocking rows, and `ready_for_model_execution: true`. Bayes and ML v3p3 each hard-check the same runoff-volume-only compaction roster: 120 exposed physical events and 70 exposed events with genuine volume observations. Earlier Bayes v3p2, ML v3p1, and comparison v3p2 artifacts remain preserved as baselines.
 
 ## Scientific contract
 
@@ -70,16 +68,18 @@ Expected success: the audit prints `ready_for_model_execution: True`, and the ga
 ### 3. Bayesian fit and post-processing
 
 ```powershell
-& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' code\bayes\stir-bayes-load_v3p1_physical_event.R
+& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' code\bayes\stir-bayes-load_v3p3_physical_event.R
 ```
 
 Expected success: final `[OK] Wrote:` messages, `Saved overall diagnostics to:`, and exit code 0. Check:
 
-- `results/bayes/v3p1_physical_event/run_manifest_bayes_v3p1_physical_event.json`
-- `results/bayes/v3p1_physical_event/overall_diagnostics_bayes_v3p1_physical_event.csv`
-- `results/bayes/v3p1_physical_event/event_analyte_draw_ledger_bayes_v3p1_physical_event.csv`
-- `results/bayes/v3p1_physical_event/annual_load_draws_bayes_v3p1_physical_event.csv`
-- sampler diagnostics, posterior predictive checks, event/row diagnostics, and `figures/bayes/v3p1_physical_event/`
+- `results/bayes/v3p3_physical_event/run_manifest_bayes_v3p3_physical_event.json`
+- `results/bayes/v3p3_physical_event/overall_diagnostics_bayes_v3p3_physical_event.csv`
+- `results/bayes/v3p3_physical_event/event_analyte_draw_ledger_bayes_v3p3_physical_event.csv`
+- `results/bayes/v3p3_physical_event/annual_load_draws_bayes_v3p3_physical_event.csv`
+- `results/bayes/v3p3_physical_event/tire_compaction_event_audit_v3p3_physical_event.csv`
+- `results/bayes/v3p3_physical_event/tire_compaction_volume_effect_v3p3_physical_event.csv`
+- sampler diagnostics, posterior predictive checks, event/row diagnostics, and `figures/bayes/v3p3_physical_event/`
 
 The Bayes prediction table must cover all 10,984 cleaned-data rows for the 10
 prespecified study analytes (`OP`, `TP`, `NO3`, `TN`, `TSS`, `TKN`, `NH4`,
@@ -92,12 +92,13 @@ Do not proceed on sampling failures, unacceptable diagnostics, duplicate ledger 
 ### 4. ML training and calibration
 
 ```powershell
-& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_catboost_conformal_loyo_v3p1_physical_event.py --repo . --no-impute_missing --no-figures
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_catboost_conformal_loyo_v3p3_physical_event.py --repo . --preflight-only --no-figures
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_catboost_conformal_loyo_v3p3_physical_event.py --repo . --no-impute_missing --no-figures
 ```
 
-Expected success: `[DONE] Revised physical-event workflow outputs written to ...`, exit code 0, saved LOYO outputs, and `results/ml/v3p1_physical_event/run_manifest_ml_v3p1_physical_event.json`. This command deliberately does not save final full-record models or create reconstructed values. Check LOYO exclusions, physical-event calibration splits, event-balanced weights, coverage, residuals, and event-date audits. The manifest must report:
+Expected success: the preflight reports 528 physical events, 120 compacted events, 70 compacted events with genuine volume, compaction in `logV` only, and no fitting. The full LOYO command then writes `results/ml/v3p3_physical_event/run_manifest_ml_v3p3_physical_event.json`. Check LOYO exclusions, physical-event calibration splits, event-balanced weights, coverage, residuals, and event-date audits. The manifest must report:
 
-- `workflow_version = v3p1_physical_event`
+- `workflow_version = v3p3_physical_event`
 - `calibration_split_unit = PhysicalEventID`
 - `annual_reporting_unit = mean_per_treatment_plot`
 - `primary_ml_central_estimate = mean_of_replicate_annual_plot_totals`
@@ -107,15 +108,15 @@ Expected success: `[DONE] Revised physical-event workflow outputs written to ...
 ### 5. Final full-record model fit and calibration
 
 ```powershell
-& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_catboost_conformal_loyo_v3p1_physical_event.py --repo . --fit_final_models_only --no-figures
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_catboost_conformal_loyo_v3p3_physical_event.py --repo . --fit_final_models_only --no-figures
 ```
 
-Expected success: `[DONE] Final full-record CatBoost models and calibration residuals saved; reconstruction not started.`, exit code 0, two `.cbm` files and matching metadata under `results/ml/v3p1_physical_event/models/`, plus `calibration_residual_distribution_logC.csv` and `calibration_residual_distribution_logV.csv`. This command does not repeat LOYO and does not generate reconstructed values.
+Expected success: `[DONE] Final full-record CatBoost models and calibration residuals saved; reconstruction not started.`, exit code 0, two `.cbm` files and matching metadata under `results/ml/v3p3_physical_event/models/`, plus `calibration_residual_distribution_logC.csv` and `calibration_residual_distribution_logV.csv`. This command does not repeat LOYO and does not generate reconstructed values.
 
 ### 6. Full-record prediction from saved models
 
 ```powershell
-& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_regenerate_from_saved_models_v3p1.py --repo . --no-figures
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_regenerate_from_saved_models_v3p3.py --repo . --no-figures
 ```
 
 Expected success: `[DONE] Full-record predictions regenerated from saved event-level models.`, exit code 0, and full-record point/draw ledgers. Check:
@@ -136,38 +137,38 @@ primary predictions. All point ledgers must be unique by
 ### 7. Comparison tables
 
 ```powershell
-& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\comparison\bayes_ml_comparison_v3p1_physical_event.py --repo . --skip-figures
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\comparison\bayes_ml_comparison_v3p3_physical_event.py --repo . --skip-figures
 ```
 
-Expected success: `[DONE] Corrected comparison outputs written to ...`, exit code 0, and `results/comparison/v3p1_physical_event/run_manifest_comparison_v3p1_physical_event.json`. Inspect raw tables before publication tables. Confirm mean-per-plot units, all 2011–2025 years, CT-relative within-draw calculations, no zero insertion for missing years, primary TSS/TP/TN plus runoff-volume products, and separate incomplete-observed subtotals.
+Expected success: `[DONE] Corrected comparison outputs written to ...`, exit code 0, and `results/comparison/v3p3_physical_event/run_manifest_comparison_v3p3_physical_event.json`. Inspect raw tables before publication tables. Confirm the intentional Bayes v3p3 plus ML v3p3 pairing, mean-per-plot units, all 2011–2025 years, CT-relative within-draw calculations, no zero insertion for missing years, primary TSS/TP/TN plus runoff-volume products, and separate incomplete-observed subtotals.
 
 ### 8. Figures
 
 ```powershell
-& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_postprocess_plots_v3p1_physical_event.py --repo .
-& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\comparison\bayes_ml_comparison_v3p1_physical_event.py --repo . --figures-only
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\ml\ml_postprocess_plots_v3p3_physical_event.py --repo .
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' code\comparison\bayes_ml_comparison_v3p3_physical_event.py --repo . --figures-only
 ```
 
-Expected success: `[DONE] v3p1 physical-event post-processing figures created.`, `[DONE] Corrected comparison figures regenerated from saved tables in ...`, both commands exit 0, and refreshed `figures/ml/v3p1_physical_event/` and `figures/comparison/v3p1_physical_event/`. Visually inspect every primary figure. Observed n=2 points must show the replicate minimum-to-maximum range; n=1 must use an x marker with no interval; n=0 must show no point.
+Expected success: `[DONE] v3p3 physical-event post-processing figures created.`, `[DONE] Corrected comparison figures regenerated from saved tables in ...`, both commands exit 0, and refreshed `figures/ml/v3p3_physical_event/` and `figures/comparison/v3p3_physical_event/`. Visually inspect every primary figure. In Bayes and comparison v3p3 figures, observed n=2 points show a white circle and the replicate minimum-to-maximum range; n=1 uses a white square with no interval; n=0 shows no point.
 
 ## Post-run checks
 
 ```powershell
-& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' -m py_compile code\pipeline\merge_wq_stir_by_season.py code\pipeline\run_pipeline.py code\shared\physical_event.py code\shared\audit_physical_events.py code\ml\ml_catboost_conformal_loyo_v3p1_physical_event.py code\ml\ml_regenerate_from_saved_models_v3p1.py code\ml\ml_postprocess_plots_v3p1_physical_event.py code\comparison\bayes_ml_comparison_v3p1_physical_event.py
-& 'C:\Users\ansle\anaconda3\python.exe' -m pytest -q tests\test_seasonal_stir.py tests\test_physical_event_v3p1.py
-& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' -e "invisible(parse(file='code/bayes/stir-bayes-load_v3p1_physical_event.R')); f <- tempfile(fileext='.R'); knitr::purl('code/bayes/stir-bayes-load_v3p1_physical_event.Rmd', output=f, documentation=0, quiet=TRUE); invisible(parse(file=f)); unlink(f); cat('R and Rmd parse: PASS\n')"
+& 'C:\Users\ansle\anaconda3\envs\wq_ml\python.exe' -m py_compile code\pipeline\merge_wq_stir_by_season.py code\pipeline\run_pipeline.py code\shared\physical_event.py code\shared\audit_physical_events.py code\ml\ml_catboost_conformal_loyo_v3p3_physical_event.py code\ml\ml_regenerate_from_saved_models_v3p3.py code\ml\ml_postprocess_plots_v3p3_physical_event.py code\comparison\bayes_ml_comparison_v3p3_physical_event.py
+& 'C:\Users\ansle\anaconda3\python.exe' -m pytest -q
+& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' -e "invisible(parse(file='code/bayes/stir-bayes-load_v3p3_physical_event.R')); f <- tempfile(fileext='.R'); knitr::purl('code/bayes/stir-bayes-load_v3p3_physical_event.Rmd', output=f, documentation=0, quiet=TRUE); invisible(parse(file=f)); unlink(f); cat('R and Rmd parse: PASS\n')"
 ```
 
 Expected success: Python compilation exits 0, pytest reports all focused tests passed, and R prints `R and Rmd parse: PASS`. The `wq_ml` environment currently supplies the scientific runtime; the base Anaconda interpreter is used for pytest because pytest is not installed in `wq_ml`.
 
 ## Output namespaces
 
-Active v3p1 outputs:
+Active outputs:
 
-- `results/bayes/v3p1_physical_event/`
-- `results/ml/v3p1_physical_event/`
-- `results/comparison/v3p1_physical_event/`
-- matching `figures/{bayes,ml,comparison}/v3p1_physical_event/`
+- `results/bayes/v3p3_physical_event/`
+- `results/ml/v3p3_physical_event/`
+- `results/comparison/v3p3_physical_event/`
+- matching versioned figure folders
 - `validation/preflight/physical_event_v3p1/`
 
 Accepted v3p0 artifacts remain archived under:
@@ -176,5 +177,11 @@ Accepted v3p0 artifacts remain archived under:
 - `results/{bayes,ml,comparison}/old_versions/v3p0_physical_event/`
 - `figures/{bayes,ml,comparison}/old_versions/v3p0_physical_event/`
 - `validation/preflight/old_versions/physical_event_v3p0/`
+
+Superseded Bayes v3p1 artifacts are archived under:
+
+- `old_code/versions/v3p1_physical_event/`
+- `results/bayes/old_versions/v3p1_physical_event/`
+- `figures/bayes/old_versions/v3p1_physical_event/`
 
 No files are staged or committed by this migration.

@@ -83,9 +83,13 @@ results/**/event_analyte_draw_ledger*.csv
 results/ml/**/imputed_row_draws.csv
 
 # Temporary validation and scratch outputs (not scientific release products)
+validation/preflight/**/bayes_preflight*.log
 out/*codex*_check/
 figs/*codex*_check/
 out/**/scratch/
 figs/**/scratch/
 *.tmp
 *.inspect.ndjson
+
+# Local Codex writing/building utilities
+/tools/
