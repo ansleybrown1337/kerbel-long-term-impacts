@@ -20,6 +20,15 @@ PRIOR_AUDIT_PATH = REPO / "docs" / "methods" / "bayesian_prior_audit_v3p3.md"
 SAVED_FIT_DIAGNOSTIC_PATH = (
     REPO / "code" / "bayes" / "diagnose_saved_fit_v3p3.R"
 )
+PERIOD_TABLE_HELPER_PATH = (
+    REPO / "code" / "bayes" / "period_total_load_tables.R"
+)
+PERIOD_TABLE_RUNNER_PATH = (
+    REPO
+    / "code"
+    / "bayes"
+    / "export_period_total_load_tables_v3p3_physical_event.R"
+)
 COMPACTION_PATH = REPO / "data" / "furrow_tire_compaction_records.csv"
 PREFLIGHT_EVENTS_PATH = (
     REPO
@@ -39,6 +48,8 @@ def test_v3p3_release_files_and_output_isolation() -> None:
         WORKFLOW_PATH,
         PRIOR_AUDIT_PATH,
         SAVED_FIT_DIAGNOSTIC_PATH,
+        PERIOD_TABLE_HELPER_PATH,
+        PERIOD_TABLE_RUNNER_PATH,
         COMPACTION_PATH,
     ):
         assert path.is_file(), path
@@ -339,3 +350,29 @@ def test_v3p3_compaction_enters_only_event_volume_process() -> None:
         in batch
     )
     assert "tire_compaction_annual_volume_contrast" in batch
+
+
+def test_v3p3_period_total_exports_use_saved_replicate_aware_draws() -> None:
+    batch = BATCH_PATH.read_text(encoding="utf-8")
+    helper = PERIOD_TABLE_HELPER_PATH.read_text(encoding="utf-8")
+    runner = PERIOD_TABLE_RUNNER_PATH.read_text(encoding="utf-8")
+
+    assert 'source(file.path(repo_root, "code", "bayes", "period_total_load_tables.R"))' in batch
+    assert '"pre_tire_compaction_era"' in batch
+    assert '"tire_compaction_era"' in batch
+    assert "2020L" in batch
+    assert "2021L" in batch
+    assert "2025L" in batch
+
+    assert '"\\n("' in helper
+    assert '"%\\n("' in helper
+    assert "group_by(\n      .data$draw, .data$draw_id, .data$analyte, .data$treatment" in helper
+    assert "load_sum_kg = sum(.data$load_g) / 1000" in helper
+    assert "MT_pct_reduction_from_CT = 100 * (1 - .data$MT / .data$CT)" in helper
+    assert "ST_pct_reduction_from_CT = 100 * (1 - .data$ST / .data$CT)" in helper
+
+    assert 'paste0("annual_load_draws_bayes_", model_version, ".csv")' in runner
+    assert "readr::read_csv(" in runner
+    assert "fit_mogp" not in runner
+    assert "cmdstan_model(" not in runner
+    assert "mod$sample(" not in runner

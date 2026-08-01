@@ -191,6 +191,21 @@ divergence, and posterior-correlation CSVs plus a residue-volume chain
 density/trace figure without changing the fit. CSV writes use short bounded
 retries because OneDrive can briefly lock an existing output while syncing.
 
+To regenerate only the all-years, 2011-2020 pre-tire-compaction-era, and
+2021-2025 tire-compaction-era total-load tables from the saved replicate-aware
+annual posterior draws, run:
+
+```powershell
+& 'C:\Program Files\R\R-4.4.2\bin\x64\Rscript.exe' code\bayes\export_period_total_load_tables_v3p3_physical_event.R
+```
+
+This targeted runner reads
+`annual_load_draws_bayes_v3p3_physical_event.csv` only; it does not open the
+serialized Stan fit, compile, sample, or rebuild event-level predictions. Each
+period receives a numeric audit table and a PUB-ready table. PUB-ready cells
+contain the estimate and its parenthesized 95% interval on separate lines for
+direct pasting into Word.
+
 To run only the structural preflight without compiling or sampling:
 
 ```powershell

@@ -7266,181 +7266,56 @@ jsonlite::write_json(
 )
 
 # ============================================================
-# Study-period total loads and % reductions from CT
-# using existing posterior draws object: annual_draws
+# Study-period and tire-compaction-era total loads
+# using the existing replicate-aware annual_draws object
 # ============================================================
 
 stopifnot(exists("annual_draws"))
-stopifnot(all(c("draw", "draw_id", "analyte", "treatment", "load_g") %in% names(annual_draws)))
+source(file.path(repo_root, "code", "bayes", "period_total_load_tables.R"))
 
-prob_ci <- 0.95
-alpha_ci <- 1 - prob_ci
-
-# ---- Formatting helpers ----
-fmt_ci <- function(mean, low, high, digits = 2) {
-  ifelse(
-    is.finite(mean) & is.finite(low) & is.finite(high),
-    paste0(
-      formatC(mean, format = "f", digits = digits),
-      " (",
-      formatC(low,  format = "f", digits = digits),
-      ", ",
-      formatC(high, format = "f", digits = digits),
-      ")"
-    ),
-    NA_character_
+study_start_year <- min(as.integer(annual_draws$Year), na.rm = TRUE)
+study_end_year <- max(as.integer(annual_draws$Year), na.rm = TRUE)
+if (study_start_year > 2020L || study_end_year < 2025L) {
+  stop(
+    "Annual draws do not span both requested tire-compaction periods: ",
+    study_start_year, "-", study_end_year
   )
 }
 
-fmt_pct_ci <- function(mean, low, high, digits = 1) {
-  ifelse(
-    is.finite(mean) & is.finite(low) & is.finite(high),
-    paste0(
-      formatC(mean, format = "f", digits = digits),
-      "% (",
-      formatC(low,  format = "f", digits = digits),
-      "%, ",
-      formatC(high, format = "f", digits = digits),
-      "%)"
-    ),
-    NA_character_
-  )
-}
-
-# ---- 1) Study-period total load by posterior draw ----
-study_load_draws <- annual_draws %>%
-  dplyr::mutate(
-    treatment = factor(as.character(treatment), levels = c("CT", "MT", "ST"))
-  ) %>%
-  dplyr::group_by(draw, draw_id, analyte, treatment) %>%
-  dplyr::summarise(
-    load_sum_kg = sum(load_g, na.rm = TRUE) / 1000,
-    .groups = "drop"
-  )
-
-# ---- 2) Wide by treatment within each posterior draw ----
-study_load_draws_wide <- study_load_draws %>%
-  tidyr::pivot_wider(
-    names_from = treatment,
-    values_from = load_sum_kg
-  ) %>%
-  dplyr::filter(
-    is.finite(CT),
-    CT > 0,
-    is.finite(MT),
-    is.finite(ST)
-  ) %>%
-  dplyr::mutate(
-    MT_pct_reduction_from_CT = 100 * (1 - MT / CT),
-    ST_pct_reduction_from_CT = 100 * (1 - ST / CT)
-  )
-
-# ---- 3) Summarize study-period total loads from posterior draws ----
-study_load_summary_draws <- study_load_draws %>%
-  dplyr::group_by(analyte, treatment) %>%
-  dplyr::summarise(
-    load_sum_mean_kg = mean(load_sum_kg, na.rm = TRUE),
-    load_sum_low_kg  = stats::quantile(load_sum_kg, probs = alpha_ci / 2, na.rm = TRUE),
-    load_sum_high_kg = stats::quantile(load_sum_kg, probs = 1 - alpha_ci / 2, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  dplyr::mutate(
-    treatment = factor(as.character(treatment), levels = c("CT", "MT", "ST"))
-  ) %>%
-  dplyr::arrange(analyte, treatment)
-
-# ---- 4) Make numeric wide load table ----
-study_load_wide <- study_load_summary_draws %>%
-  dplyr::mutate(col = paste0(as.character(treatment), "_mod")) %>%
-  dplyr::select(
-    analyte, col,
-    load_sum_mean_kg,
-    load_sum_low_kg,
-    load_sum_high_kg
-  ) %>%
-  tidyr::pivot_wider(
-    names_from = col,
-    values_from = c(
-      load_sum_mean_kg,
-      load_sum_low_kg,
-      load_sum_high_kg
-    ),
-    names_glue = "{col}_{.value}"
-  ) %>%
-  dplyr::arrange(analyte)
-
-# ---- 5) Summarize draw-wise percent reductions from CT ----
-pct_reduction_summary_draws <- study_load_draws_wide %>%
-  dplyr::group_by(analyte) %>%
-  dplyr::summarise(
-    MT_pct_red_mean = mean(MT_pct_reduction_from_CT, na.rm = TRUE),
-    MT_pct_red_low  = stats::quantile(MT_pct_reduction_from_CT, probs = alpha_ci / 2, na.rm = TRUE),
-    MT_pct_red_high = stats::quantile(MT_pct_reduction_from_CT, probs = 1 - alpha_ci / 2, na.rm = TRUE),
-
-    ST_pct_red_mean = mean(ST_pct_reduction_from_CT, na.rm = TRUE),
-    ST_pct_red_low  = stats::quantile(ST_pct_reduction_from_CT, probs = alpha_ci / 2, na.rm = TRUE),
-    ST_pct_red_high = stats::quantile(ST_pct_reduction_from_CT, probs = 1 - alpha_ci / 2, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# ---- 6) Join numeric load summaries and percent-reduction summaries ----
-study_load_wide <- study_load_wide %>%
-  dplyr::left_join(pct_reduction_summary_draws, by = "analyte")
-
-# ---- 7) Publication-ready table ----
-study_load_pub <- study_load_wide %>%
-  dplyr::transmute(
-    analyte,
-    CT = fmt_ci(
-      CT_mod_load_sum_mean_kg,
-      CT_mod_load_sum_low_kg,
-      CT_mod_load_sum_high_kg,
-      digits = 2
-    ),
-    MT = fmt_ci(
-      MT_mod_load_sum_mean_kg,
-      MT_mod_load_sum_low_kg,
-      MT_mod_load_sum_high_kg,
-      digits = 2
-    ),
-    ST = fmt_ci(
-      ST_mod_load_sum_mean_kg,
-      ST_mod_load_sum_low_kg,
-      ST_mod_load_sum_high_kg,
-      digits = 2
-    ),
-    `MT reduction from CT` = fmt_pct_ci(
-      MT_pct_red_mean,
-      MT_pct_red_low,
-      MT_pct_red_high,
-      digits = 1
-    ),
-    `ST reduction from CT` = fmt_pct_ci(
-      ST_pct_red_mean,
-      ST_pct_red_low,
-      ST_pct_red_high,
-      digits = 1
-    )
-  )
-
-# ---- 8) Save numeric and publication-ready versions ----
-numeric_file <- file.path(
-  bayes_results_dir,
-  paste0("study_period_total_loads_kg_with_pct_reductions_", model_version, ".csv")
+period_specs <- tibble::tribble(
+  ~period_id, ~start_year, ~end_year, ~numeric_stem, ~pub_stem,
+  "all_study_years",
+  study_start_year,
+  study_end_year,
+  "study_period_total_loads_kg_with_pct_reductions",
+  "study_period_total_loads_kg_pub",
+  "pre_tire_compaction_era",
+  study_start_year,
+  2020L,
+  paste0(
+    "pre_tire_compaction_era_", study_start_year,
+    "_2020_total_loads_kg_with_pct_reductions"
+  ),
+  paste0(
+    "pre_tire_compaction_era_", study_start_year,
+    "_2020_total_loads_kg_pub"
+  ),
+  "tire_compaction_era",
+  2021L,
+  2025L,
+  "tire_compaction_era_2021_2025_total_loads_kg_with_pct_reductions",
+  "tire_compaction_era_2021_2025_total_loads_kg_pub"
 )
 
-pub_file <- file.path(
-  bayes_results_dir,
-  paste0("study_period_total_loads_kg_pub_", model_version, ".csv")
+period_total_exports <- export_period_total_load_tables(
+  annual_draws = annual_draws,
+  period_specs = period_specs,
+  results_dir = bayes_results_dir,
+  model_version = model_version,
+  writer = write_csv_retry
 )
 
-write_csv_retry(study_load_wide, numeric_file)
-write_csv_retry(study_load_pub, pub_file)
-
-message("[OK] Wrote: ", numeric_file)
-message("[OK] Wrote: ", pub_file)
-
-study_load_pub
+period_total_exports$all_study_years$pub
 
 library(dplyr)
 library(posterior)
