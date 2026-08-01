@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.4.0 — ML predictor-contract and feature-importance revision
+
+- Preserved completed Bayesian, ML, and comparison v3p3 artifacts; added an
+  isolated ML v3p4 workflow and a Bayes-v3p3-versus-ML-v3p4 comparison.
+- Removed derived `Result_lod_mg_L` from the ML concentration predictors while
+  retaining the directly interpretable `MDL_mg_L` and `RL_mg_L` fields.
+- Added the reviewed event-level `FurrowTireCompaction` exposure to ML
+  concentration prediction as well as runoff-volume prediction; Bayesian v3p3
+  remains unchanged with a runoff-volume-only compaction pathway.
+- Retained `DaysSincePlant` and removed `DaysUntilHarvest` from the ML
+  runoff-volume feature set; the concentration model continues to receive both
+  crop-calendar fields.
+- Kept Chapter 4 feature-importance figures at a maximum of 20 inputs while
+  increasing figure height and label sizes and stating the displayed/available
+  feature counts in the comparison titles.
+- Restored ML prediction-interval ribbons to the primary annual load and
+  runoff-volume comparison figures. Their y-axes use Bayesian credible bounds,
+  observed references, and ML centers but exclude ML interval bounds; clipped
+  ML ribbons are explicitly disclosed, while supplemental panels retain the
+  complete method-specific intervals.
+- Added hard preflight checks for the revised feature contract. No CatBoost
+  calibration, fitting, reconstruction, or comparison regeneration was run
+  while preparing the v3p4 code.
+
 ## 3.3.0 — furrow tire-compaction runoff-volume pathway
 
 - Added a documented Boolean `FurrowTireCompaction` exposure for 2021 ST and

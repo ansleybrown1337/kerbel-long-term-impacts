@@ -1,0 +1,15 @@
+metric,value,details
+workflow_version,v3p4_physical_event,corrected ML workflow
+physical_event_key,Year + Irrigation + Rep + Treatment,shared event contract
+comparison_analyte_field,analyte_abbr,normalized ML/Bayes output key
+concentration_observations,15366,all legitimate rows retained
+physical_events,528,hydrologic plot events
+volume_candidate_rows_before_dedup,9767,copied raw rows
+genuine_volume_observations,372,volume training rows
+events_without_volume_observation,195,prediction only
+furrow_tire_compaction_events,120,binary predictor used in concentration and runoff volume
+compacted_events_with_genuine_volume,70,observed support for the runoff-volume predictor
+blocking_conflict_rows,0,must be zero before fitting
+event_balanced_training_weights,True,default true; recorded per training row
+predictors_used_logC,Year;Irrigation;Rep;Treatment;Analyte;Volume;Inflow_Result_mg_L;Inflow_Volume;Flag;Inflow_Flag;FlumeMethod;MeasureMethod;IrrMethod;TSSMethod;Lab;SeasonYear;Crop;previous_crop;CumAll_STIR_toDate;Season_STIR_toDate;DaysSincePlant;DaysUntilHarvest;DayOfYear;SampleMethod;FF;Composite;Duplicate;RLMDL_Method;RLMDL_Source;RLMDL_Assumed;MDL_mg_L;RL_mg_L;FurrowTireCompaction;residue_prop;Residue_DryMass_kg_m2,row model
+predictors_used_logV,Year;Irrigation;Rep;Treatment;Crop;SeasonYear;previous_crop;CumAll_STIR_toDate;Season_STIR_toDate;Inflow_Volume;MeasureMethod;FlumeMethod;IrrMethod;DayOfYear;DaysSincePlant;FurrowTireCompaction;residue_prop;Residue_DryMass_kg_m2,volume-observation model

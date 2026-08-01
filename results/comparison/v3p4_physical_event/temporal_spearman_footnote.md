@@ -1,0 +1,1 @@
+Spearman rho compares paired Bayesian and ML annual central estimates within analyte and treatment. Parentheses give paired-year n. * indicates unadjusted p < 0.05; these exploratory tests are not multiplicity-adjusted.

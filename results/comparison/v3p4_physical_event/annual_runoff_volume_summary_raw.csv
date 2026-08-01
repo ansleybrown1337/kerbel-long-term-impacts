@@ -1,0 +1,91 @@
+Method,Scenario,Year,Treatment,center_kL,lower_95_kL,upper_95_kL,central_estimate_type,interval_type
+Bayes,model_only,2011,CT,134.83534227254023,94.20085380037182,174.83914609434495,posterior_mean,95% posterior credible interval
+Bayes,model_only,2012,CT,197.8212000951296,127.6607149601774,268.05954262862866,posterior_mean,95% posterior credible interval
+Bayes,model_only,2013,CT,180.69607226113624,130.7307839242477,228.22807815346584,posterior_mean,95% posterior credible interval
+Bayes,model_only,2014,CT,140.52273581465045,107.19817683247048,174.62730555032957,posterior_mean,95% posterior credible interval
+Bayes,model_only,2015,CT,155.6851223719953,117.0726990516919,195.14703987937557,posterior_mean,95% posterior credible interval
+Bayes,model_only,2016,CT,61.08595048467062,40.644219991392994,82.61548691372451,posterior_mean,95% posterior credible interval
+Bayes,model_only,2017,CT,209.5278332534245,159.87270036934495,254.89006303543516,posterior_mean,95% posterior credible interval
+Bayes,model_only,2018,CT,156.65217223705363,83.70102379536151,244.6424920181958,posterior_mean,95% posterior credible interval
+Bayes,model_only,2019,CT,30.33522576599273,12.371995632091974,47.80962646649845,posterior_mean,95% posterior credible interval
+Bayes,model_only,2020,CT,185.0819827374712,126.83070182177904,241.43210102057049,posterior_mean,95% posterior credible interval
+Bayes,model_only,2021,CT,166.9966586989308,119.869744966165,214.6775885972193,posterior_mean,95% posterior credible interval
+Bayes,model_only,2022,CT,235.19043227516784,172.03845327064644,297.8669236374572,posterior_mean,95% posterior credible interval
+Bayes,model_only,2023,CT,240.4079928968182,196.0559049165508,286.80539284773033,posterior_mean,95% posterior credible interval
+Bayes,model_only,2024,CT,145.40014823478234,111.94067712484832,178.9729807425568,posterior_mean,95% posterior credible interval
+Bayes,model_only,2025,CT,272.8076275615254,223.0688014761332,319.70154329636733,posterior_mean,95% posterior credible interval
+Bayes,model_only,2011,MT,115.24369506776468,73.29730122174173,161.794171870261,posterior_mean,95% posterior credible interval
+Bayes,model_only,2012,MT,162.26012314067634,113.1249102102413,212.03770238541347,posterior_mean,95% posterior credible interval
+Bayes,model_only,2013,MT,175.3944637358185,131.27227397897602,227.24684582311,posterior_mean,95% posterior credible interval
+Bayes,model_only,2014,MT,83.2002582687293,46.73214043241992,121.2165976876488,posterior_mean,95% posterior credible interval
+Bayes,model_only,2015,MT,96.71659043751932,64.17745671400179,131.32927264595696,posterior_mean,95% posterior credible interval
+Bayes,model_only,2016,MT,28.99002525025459,9.72333150034626,49.74889821827525,posterior_mean,95% posterior credible interval
+Bayes,model_only,2017,MT,123.35814452346112,89.16156933252238,157.05326796634716,posterior_mean,95% posterior credible interval
+Bayes,model_only,2018,MT,138.09544749133943,69.72593818133242,221.78252317820437,posterior_mean,95% posterior credible interval
+Bayes,model_only,2019,MT,30.39322733863872,12.263463559523958,48.79614977140827,posterior_mean,95% posterior credible interval
+Bayes,model_only,2020,MT,117.23648954267692,70.13577794047032,164.25196574185742,posterior_mean,95% posterior credible interval
+Bayes,model_only,2021,MT,105.25340490358114,61.83163317521733,156.5277166429837,posterior_mean,95% posterior credible interval
+Bayes,model_only,2022,MT,348.6220631541965,292.9842121819963,406.1609253289428,posterior_mean,95% posterior credible interval
+Bayes,model_only,2023,MT,343.68373375901143,294.7246378123604,387.9790646791809,posterior_mean,95% posterior credible interval
+Bayes,model_only,2024,MT,222.0894644348292,188.270649237842,254.2898347545452,posterior_mean,95% posterior credible interval
+Bayes,model_only,2025,MT,354.541543647706,309.3677611319728,400.5822376652093,posterior_mean,95% posterior credible interval
+Bayes,model_only,2011,ST,117.58612881817668,79.53248352344788,157.3030927319125,posterior_mean,95% posterior credible interval
+Bayes,model_only,2012,ST,150.75475497891392,97.12579649354768,206.10958125118165,posterior_mean,95% posterior credible interval
+Bayes,model_only,2013,ST,153.12644736839596,111.27404925890336,195.17318466090225,posterior_mean,95% posterior credible interval
+Bayes,model_only,2014,ST,87.84864342343731,52.36812949678376,125.07971076250264,posterior_mean,95% posterior credible interval
+Bayes,model_only,2015,ST,91.28967791768332,59.24246548257028,124.72599977103587,posterior_mean,95% posterior credible interval
+Bayes,model_only,2016,ST,37.57850770124874,17.43548027315647,57.29861513574984,posterior_mean,95% posterior credible interval
+Bayes,model_only,2017,ST,113.59245411294636,80.55120063849155,148.11868610823777,posterior_mean,95% posterior credible interval
+Bayes,model_only,2018,ST,137.70021994865823,69.53119183530758,220.2645427961474,posterior_mean,95% posterior credible interval
+Bayes,model_only,2019,ST,30.499458038559904,11.815024600310664,48.76174450819588,posterior_mean,95% posterior credible interval
+Bayes,model_only,2020,ST,123.08480921329672,83.69069982112366,164.5236370206336,posterior_mean,95% posterior credible interval
+Bayes,model_only,2021,ST,217.41111913122543,166.50209207216298,265.14735866621805,posterior_mean,95% posterior credible interval
+Bayes,model_only,2022,ST,355.9346484343899,295.437954803243,415.5058751917449,posterior_mean,95% posterior credible interval
+Bayes,model_only,2023,ST,318.98415810921296,270.3851484023513,365.6711679815499,posterior_mean,95% posterior credible interval
+Bayes,model_only,2024,ST,213.17011209975337,184.043390533279,241.4982011407426,posterior_mean,95% posterior credible interval
+Bayes,model_only,2025,ST,364.9841774683532,324.6575387111106,407.4037815171263,posterior_mean,95% posterior credible interval
+ML,full_record_model_only,2011,CT,99.48497395885411,73.01462546812473,286.5125235435831,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2012,CT,102.77931752687489,82.55473845603674,253.23071553727533,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2013,CT,106.18248871543948,82.6530922364012,290.23973798642896,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2014,CT,81.72409135864113,58.18182165828154,242.0050092327767,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2015,CT,141.50624716132032,107.59663066023776,366.4295703930767,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2016,CT,80.7119220292473,41.31935800380235,340.59842466111974,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2017,CT,227.09308933691068,171.23322002874826,631.6181210486502,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2018,CT,71.35603619985291,52.20263983929898,195.38755872781928,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2019,CT,17.18933640075829,6.216105823245973,133.92301074661856,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2020,CT,119.21733066214962,92.57273878156383,308.44403119414335,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2021,CT,89.85282641219523,69.35547584343323,229.55744295834404,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2022,CT,117.51097037436013,95.13599011325206,276.457218632219,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2023,CT,247.66751783404303,190.2544094940032,690.9504964786888,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2024,CT,144.33038610878958,104.80392606043874,445.8779725346966,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2025,CT,331.2573255982927,291.50941724012046,738.3213163003049,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2011,MT,115.56786216164053,83.55195869113656,350.30180120029013,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2012,MT,117.73031453281502,90.90977940212704,305.56640068610244,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2013,MT,146.59294484669724,114.30793472831147,394.5853804239041,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2014,MT,50.527305963705174,33.2237040438573,207.7718900100845,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2015,MT,48.353453102187096,35.87493890309675,135.65810678757762,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2016,MT,8.220645773315962,4.251125360702835,35.748803972384295,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2017,MT,68.55221745984241,49.02715092922779,217.59044669111307,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2018,MT,52.20765773847754,39.088819343596015,151.6007212305411,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2019,MT,12.940831268340812,4.534604347486496,47.47154068087158,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2020,MT,81.47311129264696,64.23132661886503,198.9083329390126,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2021,MT,53.89115559343413,41.32172822158702,144.8652333531365,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2022,MT,106.01923889787982,86.51782775767465,255.04778143496966,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2023,MT,237.47421618702688,181.61023179633128,661.9311482804297,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2024,MT,143.9529609081063,96.78774874029645,499.30600585532846,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2025,MT,399.80082866468234,331.2285758660635,909.7577086884129,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2011,ST,117.91719470003059,85.91290589511814,341.76438076763003,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2012,ST,98.42422609178792,77.93086403326355,253.7952685122652,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2013,ST,105.80225320354354,81.04517846385664,281.2527990292481,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2014,ST,52.298187544191,37.70566335118488,163.58092941046556,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2015,ST,55.085310575702096,39.23565459030752,158.1534209070681,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2016,ST,22.729092760209053,11.41599102010754,98.626563839369,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2017,ST,59.87617740696152,44.93917214783218,181.48810721616744,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2018,ST,54.48051013880956,38.97801047272027,150.56777450301152,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2019,ST,11.904812503858793,3.949829534677644,83.83022004396224,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2020,ST,100.03396727001244,77.08054713011171,266.06066961055575,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2021,ST,44.575971763523384,32.833295930709326,120.35800775289084,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2022,ST,96.53009354474976,79.01740092265176,229.76679813949028,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2023,ST,200.22975797898178,155.93317549135722,538.7781679204151,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2024,ST,170.1514084170304,130.68659521380962,487.5310560210094,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval
+ML,full_record_model_only,2025,ST,404.8042348412953,355.0245376754339,890.0701387736292,mean_of_replicate_annual_plot_volumes,95% Monte Carlo empirical calibration-residual prediction interval

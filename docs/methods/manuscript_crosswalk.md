@@ -18,7 +18,7 @@ v2p1 products are not valid substitutes for these physical-event outputs.
 | Temporal rank agreement | `results/comparison/v3p2_physical_event/temporal_spearman_publication.csv` | Comparison | Includes paired-year n and significance marker; raw table retains rho and p |
 | Concentration and volume error | `results/comparison/v3p2_physical_event/performance_and_calibration_publication.csv` | Comparison | Concentration by analyte/treatment; volume overall and by treatment |
 | ML LOYO interval calibration | `results/comparison/v3p2_physical_event/loyo_interval_coverage_by_year_target_publication.csv` | ML/comparison | Missing observed-volume years remain explicit as n = 0 and NA coverage |
-| ML feature importance | `results/comparison/v3p2_physical_event/feature_importance_descriptive_noncausal_publication.csv` | ML/comparison | Descriptive CatBoost importance; not causal evidence |
+| ML feature importance | `results/comparison/v3p4_physical_event/feature_importance_descriptive_noncausal_publication.csv` | ML/comparison | Top-20 figure plus complete saved table; descriptive CatBoost importance, not causal evidence |
 | Cross-model review ledger | `results/comparison/v3p2_physical_event/cross_model_observation_disagreement.csv` | Comparison | Review aid only; disagreement is not an automatic error label |
 | Annual-load figures | `figures/comparison/v3p2_physical_event/annual_complete_observed/annual_load_*_complete_observed_v3p2.png` | Comparison | Replicate ranges for n=2; white square and no interval for n=1; no point for n=0 |
 | Annual-volume figure | `figures/comparison/v3p2_physical_event/annual_complete_observed/annual_runoff_volume_complete_observed_v3p2.png` | Comparison | Same replicate-completeness and marker convention for runoff volume |

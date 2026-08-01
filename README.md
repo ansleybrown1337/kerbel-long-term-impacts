@@ -1,6 +1,6 @@
 # Kerbel long-term impacts on edge-of-field water quality
 
-This repository supports analysis of the 2011–2025 Kerbel agricultural monitoring record in Colorado. The active Bayesian, ML, and comparison workflows are `v3p3_physical_event`; the corrected shared data contract remains `v3p1_physical_event`. Both models share one hydrologic unit: `Year + Irrigation + Rep + Treatment`. `Date` is observation metadata; a deterministic `EventDate` is selected for event-level predictors.
+This repository supports analysis of the 2011–2025 Kerbel agricultural monitoring record in Colorado. The active Bayesian workflow is `v3p3_physical_event`; the active ML and comparison workflows are `v3p4_physical_event`; and the corrected shared data contract remains `v3p1_physical_event`. Both models share one hydrologic unit: `Year + Irrigation + Rep + Treatment`. `Date` is observation metadata; a deterministic `EventDate` is selected for event-level predictors.
 
 ## Workflow map
 
@@ -9,8 +9,8 @@ This repository supports analysis of the 2011–2025 Kerbel agricultural monitor
 | Data pipeline | `code/pipeline/run_pipeline.py` | `data/` | `out/wq_cleaned.csv` and pipeline intermediates |
 | Physical-event preflight | `code/shared/audit_physical_events.py` | `out/wq_cleaned.csv` | `validation/preflight/physical_event_v3p1/` |
 | Bayesian v3p3 | `code/bayes/stir-bayes-load_v3p3_physical_event.R` and `code/bayes/m_stir_mogp_v3p3_physical_event.stan` | cleaned data, documented furrow tire-compaction exposure, and passing v3p1 data-contract preflight | `results/bayes/v3p3_physical_event/`, `figures/bayes/v3p3_physical_event/` |
-| ML v3p3 | `code/ml/ml_catboost_conformal_loyo_v3p3_physical_event.py` | cleaned data, passing preflight, and documented runoff-volume-only furrow tire compaction | `results/ml/v3p3_physical_event/`, `figures/ml/v3p3_physical_event/` |
-| Comparison v3p3 | `code/comparison/bayes_ml_comparison_v3p3_physical_event.py` | completed Bayes v3p3 and ML v3p3 products | `results/comparison/v3p3_physical_event/`, `figures/comparison/v3p3_physical_event/` |
+| ML v3p4 | `code/ml/ml_catboost_conformal_loyo_v3p4_physical_event.py` | cleaned data, passing preflight, reviewed furrow tire compaction in both prediction models, nonduplicate RL/MDL concentration limits, and `DaysSincePlant`-only volume timing | `results/ml/v3p4_physical_event/`, `figures/ml/v3p4_physical_event/` |
+| Comparison v3p4 | `code/comparison/bayes_ml_comparison_v3p4_physical_event.py` | completed Bayes v3p3 and ML v3p4 products | `results/comparison/v3p4_physical_event/`, `figures/comparison/v3p4_physical_event/` |
 
 Legacy artifacts formerly stored in `figs/`, model-output directories under
 `out/`, and `code/out_cmdstanr/` have been migrated into versioned subfolders
@@ -35,18 +35,20 @@ The code refactor and physical-event preflight are complete. The corrected
 pipeline preserves the source storm-event labels (`S1`/`S2`), and two confirmed
 duplicate-sample volume transcription errors are documented in
 `data/source_corrections_v3p1.csv`. The current audit has zero blocking rows and
-is ready for model execution. Bayes and ML v3p3 use the same reviewed
-runoff-volume-only furrow tire-compaction exposure; completed Bayes v3p2, ML
-v3p1, and comparison v3p2 products remain preserved as baselines.
+is ready for model execution. Bayesian v3p3 retains the reviewed
+runoff-volume-only furrow tire-compaction pathway. ML v3p4 uses the same
+reviewed event exposure in both concentration and runoff-volume prediction;
+completed v3p3 ML and comparison products remain preserved as baselines.
 
-Start with [READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md](docs/reproducibility/READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md). Do not proceed to model execution until `preflight_metadata.json` reports `"ready_for_model_execution": true`.
+Use [READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md](docs/reproducibility/READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md) for the shared preflight and Bayesian v3p3 workflow, and [READY_TO_RUN_ML_V3P4.md](docs/reproducibility/READY_TO_RUN_ML_V3P4.md) for the revised ML/comparison sequence. Do not proceed to model execution until `preflight_metadata.json` reports `"ready_for_model_execution": true`.
 
 ## Documentation
 
 - [Pipeline workflow](docs/workflows/pipeline_v3p1.md)
 - [Bayesian v3p3 workflow](docs/workflows/bayes_v3p3_physical_event.md)
-- [ML v3p3 workflow](docs/workflows/ml_v3p3_physical_event.md)
-- [Comparison v3p3 workflow](docs/workflows/comparison_v3p3_physical_event.md)
+- [ML v3p4 workflow](docs/workflows/ml_v3p4_physical_event.md)
+- [Comparison v3p4 workflow](docs/workflows/comparison_v3p4_physical_event.md)
+- [Ready-to-run ML v3p4 sequence](docs/reproducibility/READY_TO_RUN_ML_V3P4.md)
 - [Methods change note](docs/methods/physical_event_methods_change_v3p1.md)
 - [Repository cleanup plan](docs/reproducibility/repository_cleanup_plan.md)
 - [GitHub release checklist](docs/reproducibility/github_release_checklist.md)
