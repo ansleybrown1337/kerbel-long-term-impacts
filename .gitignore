@@ -94,3 +94,4 @@ figs/**/scratch/
 # Local Codex writing/building utilities
 /tools/
 /out/docx_work
+/docs/drafts
