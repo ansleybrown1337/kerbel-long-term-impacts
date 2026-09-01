@@ -1,5 +1,6 @@
 {
   "workflow_version": "v3p4_physical_event",
+  "data_contract_version": "v3p4_physical_event",
   "event_unit": "PhysicalEventID",
   "physical_event_key": [
     "Year",
@@ -44,7 +45,7 @@
   "annual_interval_type": "Monte Carlo empirical calibration-residual prediction interval",
   "annual_interval_is_parameter_confidence_interval": false,
   "monte_carlo_propagation": "weighted_resampling_of_signed_log_scale_calibration_residuals",
-  "legacy_uniform_between_conformal_bounds_used": false,
+  "uniform_between_conformal_bounds_used": false,
   "annual_reporting_unit": "mean_per_treatment_plot",
   "annual_aggregation_hierarchy": [
     "sum physical-event values within Year + Treatment + Rep + Analyte + Draw",

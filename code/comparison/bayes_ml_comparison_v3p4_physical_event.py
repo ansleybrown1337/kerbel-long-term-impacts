@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare completed Bayesian v3p3 and ML v3p4 physical-event outputs.
 
-This workflow has no legacy fallbacks. It refuses absent manifests, wrong
+This workflow has no fallback inputs. It refuses absent manifests, wrong
 versions, incomplete study-year coverage, and non-unique event-analyte draws.
 """
 
@@ -3325,7 +3325,7 @@ def main() -> None:
         "event_unit": "PhysicalEventID",
         "physical_event_key": PHYSICAL_EVENT_CONFIG["physical_event_key"],
         "years": STUDY_YEARS,
-        "legacy_fallbacks": False,
+        "fallback_paths_used": False,
         "missing_year_zero_fill": False,
         "event_analyte_draw_uniqueness_asserted": True,
         "event_analyte_point_uniqueness_asserted": True,
@@ -3415,7 +3415,7 @@ def main() -> None:
             + ml_full_extra_analytes
             + ml_full_point_extras
         )),
-        "inputs": [str(path) for path in manifests],
+        "inputs": [path.resolve().relative_to(repo.resolve()).as_posix() for path in manifests],
     }
     (
         output_dir / f"run_manifest_comparison_{COMPARISON_VERSION}.json"

@@ -16,7 +16,7 @@ RMD_PATH = (
 )
 CONFIG_PATH = REPO / "config" / "physical_event_v3p3.json"
 WORKFLOW_PATH = REPO / "docs" / "workflows" / "bayes_v3p3_physical_event.md"
-PRIOR_AUDIT_PATH = REPO / "docs" / "methods" / "bayesian_prior_audit_v3p3.md"
+PRIOR_AUDIT_PATH = REPO / "docs" / "methods" / "bayesian_priors.md"
 SAVED_FIT_DIAGNOSTIC_PATH = (
     REPO / "code" / "bayes" / "diagnose_saved_fit_v3p3.R"
 )
@@ -30,13 +30,7 @@ PERIOD_TABLE_RUNNER_PATH = (
     / "export_period_total_load_tables_v3p3_physical_event.R"
 )
 COMPACTION_PATH = REPO / "data" / "furrow_tire_compaction_records.csv"
-PREFLIGHT_EVENTS_PATH = (
-    REPO
-    / "validation"
-    / "preflight"
-    / "physical_event_v3p1"
-    / "physical_events.csv"
-)
+PREFLIGHT_EVENTS_PATH = REPO / "results" / "preflight" / "physical_events.csv"
 
 
 def test_v3p3_release_files_and_output_isolation() -> None:
@@ -56,39 +50,15 @@ def test_v3p3_release_files_and_output_isolation() -> None:
 
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     assert config["workflow_version"] == "v3p3_physical_event"
-    assert config["versions"] == {
-        "bayesian": "v3p3_physical_event",
-        "ml": "v3p3_physical_event",
-        "comparison": "v3p3_physical_event",
-    }
+    assert config["versions"] == {"bayesian": "v3p3_physical_event"}
     assert config["output_roots"]["bayesian_results"] == (
         "results/bayes/v3p3_physical_event"
     )
     assert config["output_roots"]["bayesian_figures"] == (
         "figures/bayes/v3p3_physical_event"
     )
-    assert config["output_roots"]["ml_results"] == (
-        "results/ml/v3p3_physical_event"
-    )
-    assert config["output_roots"]["ml_figures"] == (
-        "figures/ml/v3p3_physical_event"
-    )
-    assert config["output_roots"]["comparison_results"] == (
-        "results/comparison/v3p3_physical_event"
-    )
-    assert config["output_roots"]["comparison_figures"] == (
-        "figures/comparison/v3p3_physical_event"
-    )
-    assert config["data_contract"] == {
-        "workflow_version": "v3p1_physical_event",
-        "preflight_directory": "validation/preflight/physical_event_v3p1",
-        "reason": (
-            "v3p3 adds the documented event-level furrow tire-compaction "
-            "predictor to the Bayesian and ML runoff-volume models only; the "
-            "corrected 528-event input and v3p1 preflight contract are "
-            "unchanged"
-        ),
-    }
+    assert config["data_contract"]["workflow_version"] == "v3p4_physical_event"
+    assert config["data_contract"]["preflight_directory"] == "results/preflight"
     assert config["furrow_tire_compaction"] == {
         "source_file": "data/furrow_tire_compaction_records.csv",
         "assignment_key": ["Year", "Treatment"],
@@ -192,7 +162,7 @@ def test_v3p3_rstudio_and_workflow_entrypoints_are_current() -> None:
     assert "FurrowTireCompaction" in workflow
     assert "runoff-volume process only" in workflow
     assert "No pipeline or Python data" in workflow
-    assert "bayesian_prior_audit_v3p3.md" in workflow
+    assert "bayesian_priors.md" in workflow
 
 
 def test_v3p3_saved_fit_residue_audit_includes_global_volume_path() -> None:

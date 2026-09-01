@@ -1,4 +1,4 @@
-"""Shared physical-event data contracts for the v3p1 workflows."""
+"""Shared physical-event data contracts for the release workflows."""
 
 from .physical_event import (  # noqa: F401
     ANALYTE_COLUMN_CANDIDATES,

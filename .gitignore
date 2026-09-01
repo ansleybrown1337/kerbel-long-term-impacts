@@ -80,6 +80,7 @@ results/bayes/**/cmdstan*/**/*.csv
 # Large draw-level outputs, retain compact summaries and diagnostics
 results/**/annual_load_draws*.csv
 results/**/event_analyte_draw_ledger*.csv
+results/**/*draw*.csv
 results/ml/**/imputed_row_draws.csv
 
 # Temporary validation and scratch outputs (not scientific release products)
@@ -93,5 +94,6 @@ figs/**/scratch/
 
 # Local Codex writing/building utilities
 /tools/
+/tmp/
 /out/docx_work
 /docs/drafts

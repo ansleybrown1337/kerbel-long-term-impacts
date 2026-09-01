@@ -222,7 +222,7 @@ def run_all(
                "--wq", str(merged_csv),
                "--residue", str(residue),
                "--stir", str(stir_events),
-               "--measurement-dates", "data/residue_measurement_dates_v3p1.csv",
+               "--measurement-dates", "data/residue_measurement_dates.csv",
                "--out", str(merged_with_residue_csv)]
         if debug:
             cmd.append("--debug")

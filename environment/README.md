@@ -1,40 +1,29 @@
 # Environment and reproducibility
 
-## Python environments verified during the v3p0 refactor
+## Python
 
-The ML workflow requires the repository's `wq_ml` Conda environment documented
-by `environment_wq_ml.yml`. The installed environment inspected on 2026-07-19
-contains:
-
-- Python 3.10.19
-- pandas 2.3.3
-- NumPy 2.2.5
-- SciPy 1.15.3
-- Matplotlib 3.10.7
-- scikit-learn 1.7.2
-- CatBoost 1.2.8
-
-Run ML with:
+Create the analysis environment with:
 
 ```powershell
-C:\Users\ansle\anaconda3\envs\wq_ml\python.exe code\ml\ml_catboost_conformal_loyo_v3p0_physical_event.py --repo .
+conda env create -f environment/environment_wq_ml.yml
+conda activate wq_ml
 ```
 
-The base Anaconda Python inspected during the refactor is Python 3.12.7 with
-pandas 2.2.2, NumPy 1.26.4, SciPy 1.13.1, Matplotlib 3.9.2, and scikit-learn
-1.5.1. It does not contain CatBoost. It is suitable for the preflight, focused
-tests, and comparison workflow, but not the ML fit.
+The environment provides Python, pandas, NumPy, SciPy, Matplotlib,
+scikit-learn, CatBoost, tqdm, pytest, and spreadsheet readers used by the data,
+ML, and synthesis workflows. A smaller package list is also provided in the
+repository-root `requirements.txt` for users who manage Python outside Conda.
 
-## R and Bayesian workflow
+## R and CmdStan
 
-R 4.4.2 was used for the parse-only validation. Full Bayesian execution also
-requires CmdStanR, CmdStan, and the packages loaded by
-`code/bayes/stir-bayes-load_v3p0_physical_event.Rmd`.
+The Bayesian workflow requires R, CmdStanR, CmdStan, and the packages loaded by
+`code/bayes/stir-bayes-load_v3p3_physical_event.R`. The checked-in Stan source
+is compiled locally; platform-specific executables and chain CSVs are excluded
+from Git.
 
 ## Reproducibility boundary
 
-`requirements_mac.txt` is a platform-specific historical snapshot and should
-not replace the Windows environments above. Exact model runtimes and minimum
-hardware requirements have not yet been measured for v3p0; record them after
-the manual runs. Do not deposit platform-specific compiled Stan executables,
-local CmdStan output directories, Python caches, or `catboost_info/`.
+Compact fitted objects, model summaries, tables, and figures are retained.
+Large posterior/prediction draw ledgers, local caches, compiled binaries, and
+manuscript-building utilities are local runtime artifacts and are intentionally
+ignored. See the root README and workflow documents for run order.

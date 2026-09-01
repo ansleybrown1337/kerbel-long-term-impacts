@@ -1,19 +1,47 @@
 cff-version: 1.2.0
-message: "Please cite the archived GitHub/Zenodo release and the associated article."
-title: "Kerbel long-term impacts on edge-of-field water quality"
+message: "Please cite the archived release and associated article."
+title: "Improving Historical Reconstruction and Insight Through Complementary Bayesian and Machine Learning Analysis of Long-Term Water-Quality Records"
 type: software
 authors:
   - family-names: Brown
-    given-names: AJ
-    affiliation: "Colorado State University Agricultural Water Quality Program"
-    # orcid: "REPLACE_WITH_ORCID"
-version: "3.1.0"
-# date-released: "REPLACE_WITH_YYYY-MM-DD"
-# doi: "REPLACE_WITH_ZENODO_DOI"
-# repository-code: "REPLACE_WITH_REPOSITORY_URL"
+    given-names: Ansley J.
+    orcid: "https://orcid.org/0000-0002-2803-4742"
+    affiliation: "Department of Soil and Crop Sciences, Colorado State University"
+  - family-names: Wardle
+    given-names: Erik
+    affiliation: "Department of Soil and Crop Sciences, Colorado State University"
+  - family-names: Bauder
+    given-names: Troy
+    orcid: "https://orcid.org/0000-0002-1136-6724"
+    affiliation: "Department of Soil and Crop Sciences, Colorado State University"
+  - family-names: Deleon
+    given-names: Emmanuel
+    orcid: "https://orcid.org/0009-0003-8858-8522"
+    affiliation: "Department of Soil and Crop Sciences, Colorado State University"
+  - family-names: Ladow
+    given-names: Jakob F.
+    affiliation: "Department of Soil and Crop Sciences, Colorado State University"
+  - family-names: Trimarco
+    given-names: Tad
+    orcid: "https://orcid.org/0009-0006-5066-4157"
+    affiliation: "Soil Health Institute"
+  - family-names: Howlett
+    given-names: Lauryn
+    affiliation: "Department of Soil and Crop Sciences, Colorado State University"
+  - family-names: Andales
+    given-names: Allan A.
+    orcid: "https://orcid.org/0000-0002-7640-6723"
+    affiliation: "Department of Soil and Crop Sciences, Colorado State University"
+  - family-names: Harmel
+    given-names: Robert Daren
+    orcid: "https://orcid.org/0000-0002-5344-1286"
+    affiliation: "Retired; formerly Director, USDA-ARS Center for Agricultural Resources Research, Fort Collins, Colorado"
+version: "3.4.0"
+repository-code: "https://github.com/ansleybrown1337/kerbel-long-term-impacts"
 license: GPL-2.0-only
 keywords:
   - edge-of-field water quality
+  - conservation tillage
   - Bayesian modeling
   - CatBoost
   - conformal prediction

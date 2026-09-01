@@ -1,4 +1,4 @@
-"""Physical-event identities, audits, and aggregation for v3p1.
+"""Physical-event identities, audits, and aggregation for the public workflow.
 
 The scientific unit contract is deliberately centralized here so the Bayesian,
 ML, and comparison workflows cannot silently invent different event keys.
@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 
-_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "physical_event_v3p1.json"
+_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "physical_event_v3p4.json"
 if not _CONFIG_PATH.is_file():
     raise FileNotFoundError(f"Shared physical-event configuration is absent: {_CONFIG_PATH}")
 PHYSICAL_EVENT_CONFIG = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
@@ -676,7 +676,7 @@ def build_event_analyte_load_ledger(
     concentration_column: str = "Concentration_mg_L",
     volume_column: str = "Volume_L",
 ) -> pd.DataFrame:
-    """Create the sole v3p1 physical event-analyte-draw load ledger."""
+    """Create the physical event-analyte-draw load ledger."""
 
     analyte = next((column for column in ANALYTE_COLUMN_CANDIDATES if column in concentration_draws), None)
     if analyte is None:
@@ -764,11 +764,10 @@ def validate_corrected_artifact_metadata(
     expected_years: Sequence[int] | None = None,
     expected_versions: Sequence[str] | None = None,
 ) -> list[Mapping[str, object]]:
-    """Refuse legacy, absent, or incomplete comparison inputs.
+    """Refuse absent, incompatible, or incomplete comparison inputs.
 
-    ``expected_versions`` permits an explicitly versioned mixed-model
-    comparison, such as Bayesian v3p2 paired with the still-current ML v3p1
-    data contract. Omitting it preserves the shared v3p1 default.
+    ``expected_versions`` permits the explicitly versioned Bayes v3p3 and ML
+    v3p4 inputs. Omitting it uses the shared release contract.
     """
 
     records: list[Mapping[str, object]] = []

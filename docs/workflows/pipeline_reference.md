@@ -130,7 +130,7 @@ planting date is the documented proxy.
 ```
 out/pipeline_csvs/wq_with_stir_by_season_with_residue.csv
 out/pipeline_csvs/residue_agg_by_year_trt_rep.csv
-out/pipeline_csvs/residue_assignment_audit_v3p1.csv
+out/pipeline_csvs/residue_assignment_audit.csv
 ```
 
 ---
@@ -138,7 +138,7 @@ out/pipeline_csvs/residue_assignment_audit_v3p1.csv
 ### Step E. Bayes-specific backend cleaning (final)
 **Script:** `code/bayes/stir_bayes_backend.py`
 
-**Purpose:** Apply analysis-specific assumptions required for Bayesian modeling. This step replaces the legacy `stir-bayes-backend.R` cleaning logic.
+**Purpose:** Apply analysis-specific assumptions required for Bayesian modeling.
 
 Key operations:
 - Handles WQ flags consistently:

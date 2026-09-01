@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit-only v3p1 physical-event preflight (no fitting or prediction)."""
+"""Audit the shared physical-event data contract without fitting models."""
 
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from shared.physical_event import (  # noqa: E402
     PHYSICAL_EVENT_CONFIG,
     PHYSICAL_EVENT_KEY,
     VOLUME_PROVENANCE_COLUMNS,
-    _stable_id,
     add_concentration_observation_id,
     add_physical_event_id,
     build_event_date_audit,
@@ -43,6 +42,12 @@ def main() -> None:
     args = parse_args()
     input_path = Path(args.input).resolve()
     output_dir = Path(args.output_dir).resolve()
+    repo_root = Path(__file__).resolve().parents[2]
+    input_display = (
+        input_path.relative_to(repo_root).as_posix()
+        if input_path.is_relative_to(repo_root)
+        else str(input_path)
+    )
     if not input_path.is_file():
         raise FileNotFoundError(input_path)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -68,27 +73,11 @@ def main() -> None:
     )
     available_provenance = [column for column in VOLUME_PROVENANCE_COLUMNS if column in raw]
 
-    legacy_key = [
-        column
-        for column in [
-            EVENT_DATE_COLUMN,
-            *PHYSICAL_EVENT_KEY,
-            "SampleID",
-            "MeasureMethod",
-        ]
-        if column in rows
-    ]
-    rows["LegacyEventVolumeID_v2"] = [
-        _stable_id("LEGACY_EV", values)
-        for values in rows[legacy_key].itertuples(index=False, name=None)
-    ]
-
     physical_events = (
         rows.groupby(["PhysicalEventID", *PHYSICAL_EVENT_KEY], dropna=False)
         .agg(
             concentration_rows=("ConcentrationObservationID", "size"),
             analytes=("analyte_abbr" if "analyte_abbr" in rows else "Analyte", "nunique"),
-            legacy_event_ids=("LegacyEventVolumeID_v2", "nunique"),
             nonmissing_concentrations=("Result_mg_L", lambda values: values.notna().sum()),
             nonmissing_volume_candidate_rows=("Volume", lambda values: values.notna().sum()),
         )
@@ -195,11 +184,6 @@ def main() -> None:
         physical_events[["PhysicalEventID", *PHYSICAL_EVENT_KEY]],
         on="PhysicalEventID", how="left", validate="one_to_one",
     )
-    legacy_mapping = (
-        rows[["LegacyEventVolumeID_v2", "PhysicalEventID", *PHYSICAL_EVENT_KEY]]
-        .drop_duplicates()
-        .sort_values(["PhysicalEventID", "LegacyEventVolumeID_v2"])
-    )
     multiplicity = (
         physical_events.groupby("Year", dropna=False)
         .agg(
@@ -208,7 +192,6 @@ def main() -> None:
             nonmissing_concentrations=("nonmissing_concentrations", "sum"),
             genuine_volume_observations=("genuine_volume_observations", "sum"),
             events_with_multiple_volume_observations=("genuine_volume_observations", lambda values: values.gt(1).sum()),
-            legacy_event_ids=("legacy_event_ids", "sum"),
         )
         .reset_index()
     )
@@ -350,7 +333,6 @@ def main() -> None:
     _write(reports["ambiguous_volume_observations"], output_dir, "ambiguous_volume_observations.csv")
     _write(reports["events_without_volume_observation"], output_dir, "events_without_volume_observation.csv")
     _write(status, output_dir, "zero_missing_volume_status.csv")
-    _write(legacy_mapping, output_dir, "legacy_event_id_mapping.csv")
     _write(multiplicity, output_dir, "event_multiplicity_by_year.csv")
     _write(irrigation_roster, output_dir, "yearly_irrigation_roster.csv")
     _write(
@@ -370,7 +352,7 @@ def main() -> None:
         "workflow_version": CORRECTED_VERSION,
         "event_unit": "PhysicalEventID",
         "audit_only": True,
-        "input": str(input_path),
+        "input": input_display,
         "physical_event_key": PHYSICAL_EVENT_KEY,
         "date_is_physical_event_identity": False,
         "event_date_selection_rule": PHYSICAL_EVENT_CONFIG["event_date"][
@@ -394,9 +376,9 @@ def main() -> None:
     (output_dir / "preflight_metadata.json").write_text(
         json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
     )
-    audit_readme = f"""# Physical-event v3p1 preflight audit
+    audit_readme = f"""# Physical-event preflight audit
 
-Input: `{input_path}`
+Input: `{input_display}`
 
 - Physical events: {physical_events['PhysicalEventID'].nunique():,}
 - Numeric-irrigation events: {roster_counts['numeric']:,}
@@ -432,7 +414,7 @@ available.
     print(summary.to_string(index=False))
     print(f"\nPreflight outputs: {output_dir}")
     if not blocking_review.empty:
-        print("BLOCKED: review BLOCKING_REVIEW.csv before any v3p1 model execution.")
+        print("BLOCKED: review BLOCKING_REVIEW.csv before model execution.")
 
 
 if __name__ == "__main__":

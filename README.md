@@ -1,64 +1,112 @@
-# Kerbel long-term impacts on edge-of-field water quality
+# Improving Historical Reconstruction and Insight Through Complementary Bayesian and Machine Learning Analysis of Long-Term Water-Quality Records
 
-This repository supports analysis of the 2011–2025 Kerbel agricultural monitoring record in Colorado. The active Bayesian workflow is `v3p3_physical_event`; the active ML and comparison workflows are `v3p4_physical_event`; and the corrected shared data contract remains `v3p1_physical_event`. Both models share one hydrologic unit: `Year + Irrigation + Rep + Treatment`. `Date` is observation metadata; a deterministic `EventDate` is selected for event-level predictors.
+This repository contains the data, code, model specifications, compact results,
+and figures associated with the manuscript of the same name. The analysis uses
+the 2011–2025 Kerbel surface-irrigated conservation-tillage experiment in Fort
+Collins, Colorado. Conventional tillage (CT), minimum tillage (MT), and strip
+tillage (ST) are evaluated with two complementary frameworks: a hierarchical
+Bayesian model for scientific inference and a CatBoost workflow for predictive
+reconstruction within the observed data domain.
 
-## Workflow map
+## Summary
 
-| Stage | Active entry point | Reads | Writes |
-|---|---|---|---|
-| Data pipeline | `code/pipeline/run_pipeline.py` | `data/` | `out/wq_cleaned.csv` and pipeline intermediates |
-| Physical-event preflight | `code/shared/audit_physical_events.py` | `out/wq_cleaned.csv` | `validation/preflight/physical_event_v3p1/` |
-| Bayesian v3p3 | `code/bayes/stir-bayes-load_v3p3_physical_event.R` and `code/bayes/m_stir_mogp_v3p3_physical_event.stan` | cleaned data, documented furrow tire-compaction exposure, and passing v3p1 data-contract preflight | `results/bayes/v3p3_physical_event/`, `figures/bayes/v3p3_physical_event/` |
-| ML v3p4 | `code/ml/ml_catboost_conformal_loyo_v3p4_physical_event.py` | cleaned data, passing preflight, reviewed furrow tire compaction in both prediction models, nonduplicate RL/MDL concentration limits, and `DaysSincePlant`-only volume timing | `results/ml/v3p4_physical_event/`, `figures/ml/v3p4_physical_event/` |
-| Comparison v3p4 | `code/comparison/bayes_ml_comparison_v3p4_physical_event.py` | completed Bayes v3p3 and ML v3p4 products | `results/comparison/v3p4_physical_event/`, `figures/comparison/v3p4_physical_event/` |
+Long-term edge-of-field monitoring records provide valuable evidence for
+evaluating agricultural conservation practices, but incomplete observations,
+changing measurement methods, and temporal heterogeneity complicate prediction
+and inference. Weighted concentration interval coverage was 93.8% for Bayesian
+posterior-predictive intervals and 85.5% for ML outer leave-one-year-out
+prediction intervals; runoff-volume coverage was 89.0% and 86.8%, respectively.
+CatBoost concentration predictions were driven primarily by analyte identity
+and inflow concentration, whereas runoff-volume prediction relied most on days
+since planting, day of year, cumulative STIR, measurement method, and inflow
+volume. Both frameworks placed total suspended solids and total nitrogen export
+highest under CT, although estimated reduction magnitudes differed. Bayesian
+medians indicated that MT and ST reduced total suspended solids by 7.8% and
+10.5% relative to CT, while ML estimated reductions of 36.3% and 34.9%. For
+total nitrogen, Bayesian reductions were 6.9% and 4.2%, while ML reductions were
+31.5% and 33.2%. Total phosphorus was less stable across frameworks. Agreement
+between the frameworks strengthens management conclusions; disagreement marks
+analytes and processes that require cautious interpretation.
 
-Legacy artifacts formerly stored in `figs/`, model-output directories under
-`out/`, and `code/out_cmdstanr/` have been migrated into versioned subfolders
-under `figures/` and `results/`. The active `out/` directory is now reserved for
-pipeline/model-input data products.
+## Release scope
 
-The comparison stage does not fit either model and has no fallback to legacy results. It rejects wrong versions, missing artifacts, incomplete years, and duplicated `PhysicalEventID × Analyte × Draw` ledger rows.
+The public workflow consists of:
 
-## Scientific data units
+- a shared physical-event contract defined by `Year + Irrigation + Rep + Treatment`;
+- Bayes model `v3p3_physical_event`;
+- machine-learning model `v3p4_physical_event`; and
+- complementary Bayes/ML synthesis `v3p4_physical_event`.
 
-- `PhysicalEventID` identifies one plot runoff event and therefore one latent/event-resolved runoff volume.
-- `VolumeObservationID` identifies one genuine recorded volume measurement. Exact copied values across analyte, sample, and duplicate rows do not become new measurements.
-- `ConcentrationObservationID` identifies one analyte result row. Legitimate rows remain separate through model fitting and prediction.
-- Final physical load has one row per `PhysicalEventID × Analyte × Draw`, after within-draw prediction resolution (median by default; mean and an explicitly configured method priority are sensitivity options).
-- Annual and cumulative load and runoff-volume products are means per treatment plot: event values are summed within `Year × Treatment × Rep` and the replicate-specific annual plot totals are then averaged.
+Date is event metadata, not part of physical-event identity. The cleaned record
+contains 528 plot-level physical events: 510 numeric-irrigation events and 18
+storm events. Annual treatment estimates first sum events within each replicate
+plot and then average the replicate-specific annual totals.
 
-See the [data-unit dictionary](docs/methods/data_unit_dictionary_v3p1.md) for the complete contract.
+## Where to find outputs
 
-## Current status
+| Product | Location | Contents |
+| --- | --- | --- |
+| Clean analysis table | `out/wq_cleaned.csv` | Reproducible merged and cleaned water-quality record |
+| Data-contract audit | `results/preflight/` | Event roster, observation inventories, and blocking checks |
+| Bayes summaries | `results/bayes/v3p3_physical_event/` | Compact posterior summaries, diagnostics, and fitted model object |
+| ML summaries | `results/ml/v3p4_physical_event/` | LOYO diagnostics, feature importance, compact predictions, and saved CatBoost models |
+| Complementary synthesis | `results/comparison/v3p4_physical_event/` | Publication tables comparing the two analytical frameworks |
+| Figures | `figures/{bayes,ml,comparison}/` | Current model-specific and synthesis figures |
 
-The code refactor and physical-event preflight are complete. The corrected
-pipeline preserves the source storm-event labels (`S1`/`S2`), and two confirmed
-duplicate-sample volume transcription errors are documented in
-`data/source_corrections_v3p1.csv`. The current audit has zero blocking rows and
-is ready for model execution. Bayesian v3p3 retains the reviewed
-runoff-volume-only furrow tire-compaction pathway. ML v3p4 uses the same
-reviewed event exposure in both concentration and runoff-volume prediction;
-completed v3p3 ML and comparison products remain preserved as baselines.
+Large chain CSVs and draw-level ledgers are intentionally excluded from Git.
+They are regenerated by the model workflows and are not required to inspect the
+released summaries.
 
-Use [READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md](docs/reproducibility/READY_TO_RUN_PHYSICAL_EVENT_WORKFLOWS.md) for the shared preflight and Bayesian v3p3 workflow, and [READY_TO_RUN_ML_V3P4.md](docs/reproducibility/READY_TO_RUN_ML_V3P4.md) for the revised ML/comparison sequence. Do not proceed to model execution until `preflight_metadata.json` reports `"ready_for_model_execution": true`.
+## Reproduce the analysis
 
-## Documentation
+Create the Python environment from `environment/environment_wq_ml.yml`, then
+run commands from the repository root.
 
-- [Pipeline workflow](docs/workflows/pipeline_v3p1.md)
-- [Bayesian v3p3 workflow](docs/workflows/bayes_v3p3_physical_event.md)
-- [ML v3p4 workflow](docs/workflows/ml_v3p4_physical_event.md)
-- [Comparison v3p4 workflow](docs/workflows/comparison_v3p4_physical_event.md)
-- [Ready-to-run ML v3p4 sequence](docs/reproducibility/READY_TO_RUN_ML_V3P4.md)
-- [Methods change note](docs/methods/physical_event_methods_change_v3p1.md)
-- [Repository cleanup plan](docs/reproducibility/repository_cleanup_plan.md)
-- [GitHub release checklist](docs/reproducibility/github_release_checklist.md)
-- [Environment notes](environment/README.md)
-- [Citation metadata](CITATION.cff)
+```powershell
+conda env create -f environment/environment_wq_ml.yml
+conda activate wq_ml
+python code/pipeline/run_pipeline.py
+python code/shared/audit_physical_events.py --input out/wq_cleaned.csv --output-dir results/preflight
+```
 
-The accepted v3p0 code, results, figures, and preflight are retained under `old_code/versions/v3p0_physical_event/` and the workflow-specific `old_versions/` output folders. Superseded Bayes and comparison v3p1 source is under `old_code/versions/v3p1_physical_event/`; Bayes v3p1 results and figures are under the corresponding `old_versions/v3p1_physical_event/` folders. The intended release archive is the tagged GitHub snapshot through the Zenodo–GitHub integration.
+Run the Bayesian workflow in R with CmdStan installed:
 
-## Authorship and license
+```powershell
+Rscript code/bayes/stir-bayes-load_v3p3_physical_event.R
+```
 
-Principal investigator: AJ Brown, Colorado State University Agricultural Water Quality Program.
+Run the ML and synthesis workflows:
 
-The code is licensed under the [GNU General Public License version 2](LICENSE). Confirm the final author list, ORCIDs, funding, repository URL, article DOI, and release date before creating the GitHub release.
+```powershell
+python code/ml/ml_catboost_conformal_loyo_v3p4_physical_event.py --repo .
+python code/comparison/bayes_ml_comparison_v3p4_physical_event.py --repo .
+```
+
+The model-fitting stages are computationally intensive. The included fitted
+objects and compact outputs support inspection and selected post-processing
+without refitting. See the workflow documents for exact contracts and options:
+
+- [Data units](docs/methods/data_unit_dictionary.md)
+- [Physical-event methods](docs/methods/physical_event_methods.md)
+- [Seasonal STIR methods](docs/methods/STIR_calculations.md)
+- [Bayesian priors](docs/methods/bayesian_priors.md)
+- [Data pipeline](docs/workflows/pipeline_reference.md)
+- [Bayes workflow](docs/workflows/bayes_v3p3_physical_event.md)
+- [ML workflow](docs/workflows/ml_v3p4_physical_event.md)
+- [Complementary synthesis](docs/workflows/comparison_v3p4_physical_event.md)
+
+## Diagnostic qualification
+
+The saved Bayes fit produced the reported posterior summaries but is not fully
+converged: 20 finite parameters had R-hat greater than 1.04 (maximum 1.068), and
+28 divergent transitions were recorded. These diagnostics should accompany
+interpretation of Bayesian estimates and are retained in the released results.
+
+## Citation and license
+
+Author and citation metadata are in [CITATION.cff](CITATION.cff). Add the final
+article DOI and archived-release DOI after publication. Code is licensed under
+GPL-2.0-only; see [LICENSE](LICENSE).
+
+Repository contact: Ansley J. Brown, Colorado State University Agricultural
+Water Quality Program.

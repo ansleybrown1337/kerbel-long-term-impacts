@@ -63,7 +63,7 @@ derived from one resolved point load per `PhysicalEventID x Analyte`; it is not
 the median of the uncertainty draws.
 The 95% band comes from Monte Carlo resampling of signed log-scale residuals
 from the physical-event-grouped split-conformal calibration sets. This replaces
-the legacy uniform sampling between interval endpoints, which treated an
+uniform sampling between interval endpoints, which would treat an
 interval as though it were a uniform predictive distribution. Interval
 performance is evaluated in the outer LOYO folds. Point-load
 ledgers stop on duplicate `PhysicalEventID x Analyte` keys, draw ledgers stop on

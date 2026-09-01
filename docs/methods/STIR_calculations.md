@@ -3,7 +3,7 @@ Created by A.J. Brown, October 2025
 
 ## Overview
 
-This document describes the workflow used to calculate **Soil Tillage Intensity Rating (STIR)** values for each field operation in the Kerbel Long-Term Impacts dataset. The updated workflow uses the **`stir_pipeline.py`** script, which replaces legacy approaches that relied on user-supplied mixing efficiencies or surface fractions. All STIR values are now calculated consistently using the **MOSES (Management Operations and Soil Erosion Simulation)** dataset distributed by the **USDA–NRCS** and integrated into the *SoilManageR* package.
+This document describes the workflow used to calculate **Soil Tillage Intensity Rating (STIR)** values for each field operation in the Kerbel Long-Term Impacts dataset. The **`stir_pipeline.py`** workflow calculates values consistently using the **MOSES (Management Operations and Soil Erosion Simulation)** dataset distributed by the **USDA–NRCS** and integrated into the *SoilManageR* package.
 
 - [SoilManageR Repo](https://gitlab.com/SoilManageR/SoilManageR)
 - [SoilManageR Article](https://bsssjournals.onlinelibrary.wiley.com/doi/10.1111/ejss.70102)
@@ -132,7 +132,7 @@ python .\stir_pipeline.py `
 
 The computed STIR values allow comparison of soil disturbance among management systems, years, or tillage operations. The model-facing seasonal total resets after the preceding harvest rather than at January 1 or planting, so tillage performed while no irrigation runoff is being sampled still contributes to the following crop's exposure. The all-years total remains a separate long-term cumulative measure.
 
-Because the workflow draws directly from MOSES and RUSLE2 calibration data, the resulting STIR values are standardized and reproducible across studies. This alignment ensures that subsequent analyses (e.g., legacy tillage effects, cumulative disturbance modeling) are directly comparable with national datasets used in NRCS conservation planning and erosion modeling.
+Because the workflow draws directly from MOSES and RUSLE2 calibration data, the resulting STIR values are standardized and reproducible across studies. This alignment ensures that tillage-effect and cumulative-disturbance analyses are directly comparable with national datasets used in NRCS conservation planning and erosion modeling.
 
 ---
 

@@ -2,7 +2,7 @@
   "workflow_version": "v3p4_physical_event",
   "bayesian_workflow_version": "v3p3_physical_event",
   "ml_workflow_version": "v3p4_physical_event",
-  "data_contract_version": "v3p1_physical_event",
+  "data_contract_version": "v3p4_physical_event",
   "event_unit": "PhysicalEventID",
   "physical_event_key": [
     "Year",
@@ -27,7 +27,7 @@
     2024,
     2025
   ],
-  "legacy_fallbacks": false,
+  "fallback_paths_used": false,
   "missing_year_zero_fill": false,
   "event_analyte_draw_uniqueness_asserted": true,
   "event_analyte_point_uniqueness_asserted": true,
@@ -163,7 +163,7 @@
     "TSP"
   ],
   "inputs": [
-    "C:\\Users\\ansle\\OneDrive\\Documents\\GitHub\\kerbel-long-term-impacts\\results\\bayes\\v3p3_physical_event\\run_manifest_bayes_v3p3_physical_event.json",
-    "C:\\Users\\ansle\\OneDrive\\Documents\\GitHub\\kerbel-long-term-impacts\\results\\ml\\v3p4_physical_event\\run_manifest_ml_v3p4_physical_event.json"
+    "results/bayes/v3p3_physical_event/run_manifest_bayes_v3p3_physical_event.json",
+    "results/ml/v3p4_physical_event/run_manifest_ml_v3p4_physical_event.json"
   ]
 }

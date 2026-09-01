@@ -1,25 +1,20 @@
 # Data
 
-The repository currently keeps raw, processed, and model-ready tables together under `data/` and `out/`. The proposed Zenodo layout separates them without changing the active working tree:
+This directory contains the source monitoring and management tables used by the
+reproducible pipeline. The pipeline writes intermediate audit tables under
+`out/pipeline_csvs/` and the model-ready table to `out/wq_cleaned.csv`.
 
-- `data/raw/`: original monitoring and management inputs presently in `data/`;
-- `data/processed/`: pipeline products presently in `out/pipeline_csvs/` and the active cleaned model table;
-- `results/`: saved Bayes, ML, and comparison results, not input data.
+Key source tables include the master water-quality record, tillage operations,
+crop records, residue observations and dates, measurement-method metadata,
+furrow tire-compaction records, and provenance-supported source corrections.
+Column definitions and units are documented in `data_dictionary.csv` and
+`docs/methods/data_unit_dictionary.md`.
 
-See `docs/output_manifest.csv` for exact current-to-release paths and `data/data_dictionary.csv` for the release dictionary template.
-
-## Units and analytical levels
-
-- Concentration: mg/L unless a source column explicitly states otherwise.
-- Runoff volume: L in row/event model tables; some publication volume tables use kL.
-- Bayesian annual load draws: g.
-- ML annual and row-reconstructed loads: mg.
-- Comparison cumulative loads: kg.
-
-The accepted upstream event key includes `Date + Year + Irrigation + Rep + Treatment + SampleID + MeasureMethod`. Before definitive release interpretation, document whether first-flush, outflow, and duplicate SampleIDs are separate physical load-bearing events or repeated measurements within one plot runoff event.
+The physical-event key is `Year + Irrigation + Rep + Treatment`. Date, sample
+identifier, analyte, and measurement method are observation metadata rather
+than event-identity fields.
 
 Do not edit raw source measurements in place unless a provenance-supported
-transcription correction has been explicitly confirmed. Record confirmed source
-corrections in `source_corrections_v3p0.csv`; record cleaning, alias mapping,
-censoring, unit conversion, and aggregation rules in the processed-data
-dictionary and workflow documentation.
+transcription correction has been explicitly confirmed. Record such changes in
+`source_corrections.csv`; record cleaning, alias mapping, censoring, unit
+conversion, and aggregation rules in the data dictionary and workflow docs.

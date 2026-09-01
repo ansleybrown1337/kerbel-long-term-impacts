@@ -189,10 +189,10 @@ def test_v3p4_entrypoints_and_output_names_are_current() -> None:
     assert "completed ML `v3p4_physical_event` outputs" in comparison_workflow
 
 
-def test_v3p4_still_uses_corrected_v3p1_data_contract() -> None:
+def test_v3p4_uses_shared_release_data_contract() -> None:
     source = ML_PATH.read_text(encoding="utf-8")
     assert "CORRECTED_VERSION as DATA_CONTRACT_VERSION" in source
-    assert '/ "physical_event_v3p1"' in source
+    assert 'PHYSICAL_EVENT_CONFIG["data_contract"]["preflight_directory"]' in source
     assert (
         'preflight_metadata.get("workflow_version") != DATA_CONTRACT_VERSION'
         in source

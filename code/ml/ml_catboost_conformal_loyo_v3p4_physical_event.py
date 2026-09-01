@@ -1797,9 +1797,7 @@ def main() -> None:
         raise ValueError(f"Input is missing required columns: {sorted(missing_required)}")
     preflight_metadata_path = (
         repo
-        / "validation"
-        / "preflight"
-        / "physical_event_v3p1"
+        / PHYSICAL_EVENT_CONFIG["data_contract"]["preflight_directory"]
         / "preflight_metadata.json"
     )
     if not preflight_metadata_path.is_file():
@@ -1810,7 +1808,7 @@ def main() -> None:
         or not preflight_metadata.get("ready_for_model_execution", False)
     ):
         raise ValueError(
-            "Physical-event preflight is legacy, incomplete, or blocked; review BLOCKING_REVIEW.csv."
+            "Physical-event preflight is incompatible, incomplete, or blocked; review BLOCKING_REVIEW.csv."
         )
     df, infrastructure_source, previous_crop, residue_cover = parse_and_engineer(raw)
     event_key = resolve_event_key(df)
@@ -2372,6 +2370,7 @@ def main() -> None:
 
     manifest = {
         "workflow_version": WORKFLOW_VERSION,
+        "data_contract_version": DATA_CONTRACT_VERSION,
         "event_unit": "PhysicalEventID",
         "physical_event_key": PHYSICAL_EVENT_KEY,
         "comparison_analyte_field": analysis_analyte_column,
@@ -2403,7 +2402,7 @@ def main() -> None:
         "annual_interval_type": "Monte Carlo empirical calibration-residual prediction interval",
         "annual_interval_is_parameter_confidence_interval": False,
         "monte_carlo_propagation": "weighted_resampling_of_signed_log_scale_calibration_residuals",
-        "legacy_uniform_between_conformal_bounds_used": False,
+        "uniform_between_conformal_bounds_used": False,
         "annual_reporting_unit": "mean_per_treatment_plot",
         "annual_aggregation_hierarchy": PHYSICAL_EVENT_CONFIG[
             "annual_reporting"

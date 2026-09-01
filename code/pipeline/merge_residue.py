@@ -287,7 +287,7 @@ def main() -> None:
     ap.add_argument("--stir", required=True, help="Long-format STIR event CSV.")
     ap.add_argument(
         "--measurement-dates",
-        default="data/residue_measurement_dates_v3p1.csv",
+        default="data/residue_measurement_dates.csv",
         help="Confirmed residue measurement dates and crop assignments.",
     )
     ap.add_argument("--out", required=True, help="Output CSV.")
@@ -317,7 +317,7 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(out_path, index=False)
     res_agg.to_csv(out_path.parent / "residue_agg_by_year_trt_rep.csv", index=False)
-    audit_path = out_path.parent / "residue_assignment_audit_v3p1.csv"
+    audit_path = out_path.parent / "residue_assignment_audit.csv"
     audit.to_csv(audit_path, index=False)
 
     n_units = len(audit)

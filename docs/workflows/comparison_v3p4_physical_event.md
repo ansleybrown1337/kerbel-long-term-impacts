@@ -12,7 +12,7 @@ It stops for missing files, unexpected versions,
 incomplete 2011-2025 coverage within any publication analyte/treatment, or
 duplicate `PhysicalEventID x Analyte` point rows or
 `PhysicalEventID x Analyte x Draw` uncertainty rows. It never substitutes a
-legacy path or inserts missing years as zero.
+fallback path or inserts missing years as zero.
 
 The ten shared analytes remain in technical raw exports. Primary annual
 manuscript-supporting tables are restricted to TSS, TP, and TN; runoff volume

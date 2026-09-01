@@ -559,7 +559,7 @@ if (!file.exists(preflight_metadata_path)) {
 preflight_metadata <- jsonlite::read_json(preflight_metadata_path, simplifyVector = TRUE)
 if (!identical(preflight_metadata$workflow_version, data_contract_version) ||
     !isTRUE(preflight_metadata$ready_for_model_execution)) {
-  stop("Physical-event preflight is legacy, incomplete, or blocked. Review ",
+  stop("Physical-event preflight is incompatible, incomplete, or blocked. Review ",
        file.path(preflight_dir, "BLOCKING_REVIEW.csv"))
 }
 

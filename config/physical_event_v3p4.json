@@ -14,9 +14,9 @@
     "comparison_figures": "figures/comparison/v3p4_physical_event"
   },
   "data_contract": {
-    "workflow_version": "v3p1_physical_event",
-    "preflight_directory": "validation/preflight/physical_event_v3p1",
-    "reason": "v3p4 revises only the ML predictor contract and ML/comparison presentation; Bayesian v3p3, the corrected 528-event input, and the v3p1 preflight contract are unchanged"
+    "workflow_version": "v3p4_physical_event",
+    "preflight_directory": "results/preflight",
+    "reason": "One documented 528-event contract is shared by the Bayes v3p3, ML v3p4, and complementary synthesis workflows."
   },
   "physical_event_key": ["Year", "Irrigation", "Rep", "Treatment"],
   "event_date": {
