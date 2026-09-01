@@ -2,6 +2,8 @@
 
 **Repository author and maintainer:** Ansley J. Brown ([ansleybrown1337](https://github.com/ansleybrown1337))
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22217990.svg)](https://doi.org/10.5281/zenodo.22217990)
+
 This repository contains the data, code, model specifications, results,
 and figures associated with the manuscript titled, "Improving Historical 
 Reconstruction and Insight Through Complementary Bayesian and Machine Learning 
