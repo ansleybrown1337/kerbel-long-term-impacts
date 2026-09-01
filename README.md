@@ -1,7 +1,12 @@
-# Improving Historical Reconstruction and Insight Through Complementary Bayesian and Machine Learning Analysis of Long-Term Water-Quality Records
+![Improving Historical Reconstruction and Insight Through Complementary Bayesian and Machine Learning Analysis of Long-Term Water-Quality Records](figures/repository_banner.png)
 
-This repository contains the data, code, model specifications, compact results,
-and figures associated with the manuscript of the same name. The analysis uses
+**Repository author and maintainer:** Ansley J. Brown ([ansleybrown1337](https://github.com/ansleybrown1337))
+
+This repository contains the data, code, model specifications, results,
+and figures associated with the manuscript titled, "Improving Historical 
+Reconstruction and Insight Through Complementary Bayesian and Machine Learning 
+Analysis of Long-Term Water-Quality Records", and is part of the dissertation
+work of Ansley J. Brown. The analysis uses
 the 2011–2025 Kerbel surface-irrigated conservation-tillage experiment in Fort
 Collins, Colorado. Conventional tillage (CT), minimum tillage (MT), and strip
 tillage (ST) are evaluated with two complementary frameworks: a hierarchical
