@@ -1,0 +1,49 @@
+Outcome,Period,PeriodStart,PeriodEnd,Method,Treatment,Center,Unit,PercentChangeFromCT,PercentChangeDefinition,CenterType,ContrastType
+Runoff volume,2011-2020,2011,2020,Bayes,CT,1452.2436372940645,kL/plot,0.0,100 * (treatment - CT) / CT,sum of annual posterior means,signed percent change calculated from period centers
+Runoff volume,2011-2020,2011,2020,Bayes,MT,1070.888464796879,kL/plot,-26.259724105781366,100 * (treatment - CT) / CT,sum of annual posterior means,signed percent change calculated from period centers
+Runoff volume,2011-2020,2011,2020,Bayes,ST,1043.0611015213171,kL/plot,-28.175887658572815,100 * (treatment - CT) / CT,sum of annual posterior means,signed percent change calculated from period centers
+Runoff volume,2011-2020,2011,2020,ML,CT,1047.2448333500488,kL/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+Runoff volume,2011-2020,2011,2020,ML,MT,702.1663441396687,kL/plot,-32.9510806089635,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+Runoff volume,2011-2020,2011,2020,ML,ST,678.5517321951065,kL/plot,-35.20600812854085,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+Runoff volume,2021-2025,2021,2025,Bayes,CT,1060.8028596672245,kL/plot,0.0,100 * (treatment - CT) / CT,sum of annual posterior means,signed percent change calculated from period centers
+Runoff volume,2021-2025,2021,2025,Bayes,MT,1374.1902098993244,kL/plot,29.542468459258295,100 * (treatment - CT) / CT,sum of annual posterior means,signed percent change calculated from period centers
+Runoff volume,2021-2025,2021,2025,Bayes,ST,1470.4842152429349,kL/plot,38.6199331800659,100 * (treatment - CT) / CT,sum of annual posterior means,signed percent change calculated from period centers
+Runoff volume,2021-2025,2021,2025,ML,CT,930.6190263276807,kL/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+Runoff volume,2021-2025,2021,2025,ML,MT,941.1384002511295,kL/plot,1.1303630836948786,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+Runoff volume,2021-2025,2021,2025,ML,ST,916.2914665455805,kL/plot,-1.53957305586564,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TSS,2011-2020,2011,2020,Bayes,CT,1138.016039879414,kg/plot,0.0,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TSS,2011-2020,2011,2020,Bayes,MT,505.52353279791765,kg/plot,-56.61728631918912,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TSS,2011-2020,2011,2020,Bayes,ST,454.0376609899111,kg/plot,-61.36637202613071,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TSS,2011-2020,2011,2020,ML,CT,1267.3499679242937,kg/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TSS,2011-2020,2011,2020,ML,MT,448.7448738074463,kg/plot,-64.59187397602454,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TSS,2011-2020,2011,2020,ML,ST,341.5913025280611,kg/plot,-73.04680544652317,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TSS,2021-2025,2021,2025,Bayes,CT,920.238671226261,kg/plot,0.0,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TSS,2021-2025,2021,2025,Bayes,MT,1381.2055445347323,kg/plot,60.60311929509916,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TSS,2021-2025,2021,2025,Bayes,ST,1403.873111090674,kg/plot,59.04717493814906,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TSS,2021-2025,2021,2025,ML,CT,931.0276753659828,kg/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TSS,2021-2025,2021,2025,ML,MT,951.6470324436286,kg/plot,2.21468787912674,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TSS,2021-2025,2021,2025,ML,ST,1089.303461873244,kg/plot,17.000116182909792,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TP,2011-2020,2011,2020,Bayes,CT,0.7986790596877256,kg/plot,0.0,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TP,2011-2020,2011,2020,Bayes,MT,0.5422703190970527,kg/plot,-30.59044712274812,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TP,2011-2020,2011,2020,Bayes,ST,0.4942936572612226,kg/plot,-37.42880194722852,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TP,2011-2020,2011,2020,ML,CT,0.6857107186214011,kg/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TP,2011-2020,2011,2020,ML,MT,0.5134310120989968,kg/plot,-25.124254564485593,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TP,2011-2020,2011,2020,ML,ST,0.4215057227869633,kg/plot,-38.530095659816034,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TP,2021-2025,2021,2025,Bayes,CT,0.7844974347689619,kg/plot,0.0,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TP,2021-2025,2021,2025,Bayes,MT,1.483120371685818,kg/plot,124.30918395604373,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TP,2021-2025,2021,2025,Bayes,ST,1.4008610681013731,kg/plot,95.67558411271116,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TP,2021-2025,2021,2025,ML,CT,0.9524025673200383,kg/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TP,2021-2025,2021,2025,ML,MT,1.1612287923704323,kg/plot,21.92625599886919,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TP,2021-2025,2021,2025,ML,ST,1.2039343881406839,kg/plot,26.410241787611934,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TN,2011-2020,2011,2020,Bayes,CT,8.33347657994955,kg/plot,0.0,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TN,2011-2020,2011,2020,Bayes,MT,5.619688194583845,kg/plot,-32.59275758624985,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TN,2011-2020,2011,2020,Bayes,ST,5.408687023708575,kg/plot,-35.02157778722038,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TN,2011-2020,2011,2020,ML,CT,7.420497927160617,kg/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TN,2011-2020,2011,2020,ML,MT,3.7242939737457017,kg/plot,-49.81072685009472,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TN,2011-2020,2011,2020,ML,ST,3.4867357012407556,kg/plot,-53.0121059871393,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TN,2021-2025,2021,2025,Bayes,CT,6.5067500848172255,kg/plot,0.0,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TN,2021-2025,2021,2025,Bayes,MT,8.288357767144499,kg/plot,28.14438562019285,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TN,2021-2025,2021,2025,Bayes,ST,8.869321345444982,kg/plot,37.43944009436817,100 * (treatment - CT) / CT,posterior mean of period-total mean-per-plot draws,posterior mean of draw-wise signed percent change from CT
+TN,2021-2025,2021,2025,ML,CT,6.134470846550992,kg/plot,0.0,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TN,2021-2025,2021,2025,ML,MT,5.56198169045701,kg/plot,-9.332331515045915,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers
+TN,2021-2025,2021,2025,ML,ST,5.565235805066422,kg/plot,-9.27928513678753,100 * (treatment - CT) / CT,sum of deterministic annual mean-per-plot totals,signed percent change calculated from period centers

@@ -13,7 +13,11 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "code"))
 
 from comparison.bayes_ml_comparison_v3p4_physical_event import (  # noqa: E402
+    annual_signed_ct_relative_products,
     bayes_referenced_axis_upper,
+    event_concentration_one_to_one_table,
+    management_period_sensitivity_products,
+    primary_ct_relative_plot_data,
 )
 
 
@@ -157,6 +161,274 @@ def test_v3p4_primary_comparison_restores_ml_ribbons_on_bayes_scale() -> None:
     assert '"primary_annual_figure_ml_prediction_ribbon_shown": True' in comparison
     assert '"annual_runoff_volume_ml_prediction_ribbon_shown": True' in comparison
     assert "ML prediction-interval bounds excluded" in comparison
+
+
+def test_management_period_sensitivity_is_reproducible_and_signed(tmp_path: Path) -> None:
+    annual_load_rows = []
+    annual_volume_rows = []
+    for year in range(2011, 2026):
+        period_multiplier = 1.0 if year <= 2020 else 2.0
+        for treatment, treatment_multiplier in {"CT": 1.0, "MT": 0.8, "ST": 0.7}.items():
+            for analyte in ("TSS", "TP", "TN"):
+                annual_load_rows.append(
+                    {
+                        "Method": "ML",
+                        "Scenario": "full_record_model_only",
+                        "Year": year,
+                        "Analyte": analyte,
+                        "Treatment": treatment,
+                        "primary_center": period_multiplier * treatment_multiplier,
+                    }
+                )
+            for method, scenario in (
+                ("Bayes", "model_only"),
+                ("ML", "full_record_model_only"),
+            ):
+                annual_volume_rows.append(
+                    {
+                        "Method": method,
+                        "Scenario": scenario,
+                        "Year": year,
+                        "Treatment": treatment,
+                        "center_kL": period_multiplier * treatment_multiplier,
+                    }
+                )
+
+    bayes_template = pd.DataFrame(
+        {
+            "analyte": ["TSS", "TP", "TN"],
+            "CT_mod_load_sum_mean_kg": [10.0, 10.0, 10.0],
+            "MT_mod_load_sum_mean_kg": [8.0, 8.0, 8.0],
+            "ST_mod_load_sum_mean_kg": [7.0, 7.0, 7.0],
+            "MT_pct_red_mean": [12.5, 12.5, 12.5],
+            "ST_pct_red_mean": [22.5, 22.5, 22.5],
+        }
+    )
+    for prefix in (
+        "pre_tire_compaction_era_2011_2020",
+        "tire_compaction_era_2021_2025",
+    ):
+        bayes_template.to_csv(
+            tmp_path
+            / f"{prefix}_total_loads_kg_with_pct_reductions_v3p3_physical_event.csv",
+            index=False,
+        )
+
+    result = management_period_sensitivity_products(
+        pd.DataFrame(annual_load_rows),
+        pd.DataFrame(annual_volume_rows),
+        tmp_path,
+    )
+
+    assert len(result) == 48
+    assert not result.duplicated(["Outcome", "Period", "Method", "Treatment"]).any()
+    bayes_mt = result.loc[
+        result["Outcome"].eq("TSS")
+        & result["Period"].eq("2011-2020")
+        & result["Method"].eq("Bayes")
+        & result["Treatment"].eq("MT"),
+        "PercentChangeFromCT",
+    ].item()
+    ml_mt = result.loc[
+        result["Outcome"].eq("TSS")
+        & result["Period"].eq("2011-2020")
+        & result["Method"].eq("ML")
+        & result["Treatment"].eq("MT"),
+        "PercentChangeFromCT",
+    ].item()
+    assert bayes_mt == pytest.approx(-12.5)
+    assert ml_mt == pytest.approx(-20.0)
+
+
+def test_management_period_figure_has_no_title_and_centers_legend_above() -> None:
+    source = COMPARISON_PATH.read_text(encoding="utf-8")
+    plot_block = source.split(
+        "def plot_management_period_sensitivity(", 1
+    )[1].split("def make_figures(", 1)[0]
+    assert "figure.suptitle" not in plot_block
+    assert "Labels show MT or ST percent change relative to CT" not in plot_block
+    assert 'loc="upper center"' in plot_block
+    assert 'bbox_to_anchor=(0.5, 0.995)' in plot_block
+    assert '"postprocessing" / "pre_post_2021_management_sensitivity"' in plot_block
+
+
+def test_primary_ct_relative_plot_is_focused_and_reproducible() -> None:
+    rows = []
+    for method, scenario in (
+        ("Bayes", "model_only"),
+        ("ML", "full_record_model_only"),
+    ):
+        for analyte in ("TSS", "TP", "TN", "NH4"):
+            for treatment in ("MT", "ST"):
+                rows.append(
+                    {
+                        "Method": method,
+                        "Scenario": scenario,
+                        "Analyte": analyte,
+                        "ComparisonTreatment": treatment,
+                        "primary_center": 1.0,
+                        "lower_95": 0.0,
+                        "upper_95": 2.0,
+                    }
+                )
+    result = primary_ct_relative_plot_data(pd.DataFrame(rows))
+    assert len(result) == 12
+    assert set(result["Analyte"].astype(str)) == {"TSS", "TP", "TN"}
+    assert not result.duplicated(
+        ["Method", "Analyte", "ComparisonTreatment"]
+    ).any()
+
+    source = COMPARISON_PATH.read_text(encoding="utf-8")
+    plot_block = source.split("def plot_ct_relative(", 1)[1].split(
+        "def plot_performance_comparison(", 1
+    )[0]
+    assert "figure.suptitle" not in plot_block
+    assert 'loc="upper center"' in plot_block
+    assert '"cumulative_primary_analyte_differences_vs_ct"' in plot_block
+    assert 'colors = {"MT":' in plot_block
+
+
+def test_annual_signed_ct_relative_uses_within_draw_ratios_and_ml_point_center() -> None:
+    draw_rows = []
+    treatment_values = {
+        "CT": [10.0, 20.0],
+        "MT": [8.0, 22.0],
+        "ST": [12.0, 18.0],
+    }
+    for method, scenario in (
+        ("Bayes", "model_only"),
+        ("ML", "full_record_model_only"),
+    ):
+        for treatment, values in treatment_values.items():
+            for draw, value in enumerate(values, start=1):
+                draw_rows.append(
+                    {
+                        "Method": method,
+                        "Scenario": scenario,
+                        "Year": 2021,
+                        "Outcome": "TSS",
+                        "Treatment": treatment,
+                        "Draw": draw,
+                        "ModeledAnnualTotal": value,
+                    }
+                )
+    point_rows = [
+        {
+            "Method": "ML",
+            "Scenario": "full_record_model_only",
+            "Year": 2021,
+            "Outcome": "TSS",
+            "Treatment": treatment,
+            "PointAnnualTotal": value,
+        }
+        for treatment, value in {"CT": 10.0, "MT": 9.0, "ST": 11.0}.items()
+    ]
+    raw, summary = annual_signed_ct_relative_products(
+        pd.DataFrame(draw_rows), pd.DataFrame(point_rows)
+    )
+    bayes_mt = summary.loc[
+        summary["Method"].eq("Bayes")
+        & summary["ComparisonTreatment"].eq("MT")
+    ].iloc[0]
+    ml_mt = summary.loc[
+        summary["Method"].eq("ML")
+        & summary["ComparisonTreatment"].eq("MT")
+    ].iloc[0]
+    assert bayes_mt["median"] == pytest.approx(-5.0)
+    assert ml_mt["primary_center"] == pytest.approx(-10.0)
+    assert ml_mt["primary_center_type"] == (
+        "deterministic_mean_per_plot_annual_contrast"
+    )
+    assert raw.loc[
+        raw["Method"].eq("Bayes")
+        & raw["ComparisonTreatment"].eq("ST"),
+        "PercentDifferenceRelativeToCT",
+    ].tolist() == pytest.approx([20.0, -10.0])
+    assert summary["n_invalid_percent_draws"].eq(0).all()
+
+
+def test_annual_signed_ct_relative_figure_marks_2021_without_title() -> None:
+    source = COMPARISON_PATH.read_text(encoding="utf-8")
+    plot_block = source.split(
+        "def plot_annual_signed_ct_relative(", 1
+    )[1].split("def plot_performance_comparison(", 1)[0]
+    assert "figure.suptitle" not in plot_block
+    assert 'label="Tire compaction begins (2021)"' in plot_block
+    assert "compaction_boundary" in plot_block
+    assert 'colors = {"MT": "#2A7F62", "ST": "#2E6EAA"}' in plot_block
+    assert 'ecolor=colors[treatment]' in plot_block
+    assert 'linewidth=2.0' in plot_block
+    assert 'set_hatch' not in plot_block
+    assert 'Nonpositive CT draws omitted from ratio' not in plot_block
+    assert 'loc="upper center"' in plot_block
+    assert '"annual_signed_differences_vs_ct"' in plot_block
+
+
+def test_event_one_to_one_table_resolves_observations_by_physical_event() -> None:
+    analytes = ["NH4", "NO3", "NO2", "OP", "Se", "TDS", "TKN", "TN", "TP", "TSS"]
+    bayes_rows = []
+    ml_rows = []
+    for index, analyte in enumerate(analytes, start=1):
+        event_id = f"PE_{index}"
+        for observed in [float(index), float(index + 2)]:
+            bayes_rows.append(
+                {
+                    "PhysicalEventID": event_id,
+                    "Analyte": analyte,
+                    "Year": 2020,
+                    "Treatment": "MT",
+                    "Observed": observed,
+                    "Predicted": float(index + 0.5),
+                }
+            )
+        ml_rows.append(
+            {
+                "Target": "Result_mg_L",
+                "PhysicalEventID": event_id,
+                "Analyte": analyte,
+                "Year": 2020,
+                "Treatment": "MT",
+                "y_true": float(index + 1),
+                "y_pred": float(index + 1.5),
+                "n_source_observations": 2,
+            }
+        )
+    result = event_concentration_one_to_one_table(
+        pd.DataFrame(bayes_rows), pd.DataFrame(ml_rows)
+    )
+    assert len(result) == 20
+    assert result["Analyte"].nunique() == 10
+    assert not result.duplicated(
+        ["Method", "PhysicalEventID", "Analyte"]
+    ).any()
+    assert result["Observed_mg_L"].eq(
+        result["Analyte"].map({analyte: index + 1 for index, analyte in enumerate(analytes, 1)})
+    ).all()
+
+
+def test_event_one_to_one_figures_are_square_and_use_identical_symlog_axes() -> None:
+    source = COMPARISON_PATH.read_text(encoding="utf-8")
+    plot_block = source.split(
+        "def plot_event_concentration_one_to_one(", 1
+    )[1].split("def plot_performance_comparison(", 1)[0]
+    assert 'axis.set_box_aspect(1)' in plot_block
+    assert 'axis.set_xscale(' in plot_block and 'axis.set_yscale(' in plot_block
+    assert '"symlog"' in plot_block
+    assert 'axis.set_xlim(0, axis_maximum)' in plot_block
+    assert 'axis.set_ylim(0, axis_maximum)' in plot_block
+    assert 'label="One-to-one"' in plot_block
+    assert '"event_concentration_one_to_one"' in plot_block
+
+
+def test_ml_compaction_sensitivity_is_explicitly_noncausal() -> None:
+    source = COMPARISON_PATH.read_text(encoding="utf-8")
+    block = source.split(
+        "def ml_furrow_compaction_predictive_sensitivity(", 1
+    )[1].split("def management_period_sensitivity_products(", 1)[0]
+    assert 'without_compaction["FurrowTireCompaction"] = 0' in block
+    assert 'len(event_rows) != 120' in block
+    assert 'clusters are Year x Irrigation' in block
+    assert '"paired predictive sensitivity, not a causal effect' in block
 
 
 def test_v3p4_ml_has_hard_support_checks_and_preflight() -> None:

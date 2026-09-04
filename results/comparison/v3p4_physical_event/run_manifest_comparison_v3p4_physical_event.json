@@ -111,6 +111,26 @@
   "three_track_nrmse_capped_bars": "hatched and labeled with actual values",
   "three_track_nrmse_faceted_supplement": true,
   "ml_loyo_rmse_nrmse_interpretation": "held-out prediction error, not interval uncertainty",
+  "management_period_sensitivity_figure": "postprocessing/pre_post_2021_management_sensitivity",
+  "management_period_sensitivity_table": "management_period_sensitivity_raw.csv",
+  "management_periods": {
+    "2011-2020": [
+      2011,
+      2020
+    ],
+    "2021-2025": [
+      2021,
+      2025
+    ]
+  },
+  "management_period_figure_title_shown": false,
+  "management_period_figure_legend": "centered above panels",
+  "management_period_percent_change_definition": "100 * (treatment - CT) / CT; negative values are lower than CT",
+  "cumulative_primary_ct_relative_figure": "postprocessing/cumulative_primary_analyte_differences_vs_ct",
+  "cumulative_primary_ct_relative_table": "cumulative_primary_ct_relative_plot_raw.csv",
+  "ml_furrow_compaction_predictive_sensitivity": "ml_furrow_compaction_predictive_sensitivity_summary_raw.csv",
+  "ml_furrow_compaction_interval_type": "95% percentile cluster-bootstrap interval for the mean paired prediction difference; Year x Irrigation clusters; fitted model held fixed",
+  "ml_furrow_compaction_effect_is_causal": false,
   "loyo_ledger_role": "diagnostics_only_because_years_without_observed_volume_are_absent",
   "loyo_ledger_years_present": [
     2011,
@@ -165,5 +185,20 @@
   "inputs": [
     "results/bayes/v3p3_physical_event/run_manifest_bayes_v3p3_physical_event.json",
     "results/ml/v3p4_physical_event/run_manifest_ml_v3p4_physical_event.json"
-  ]
+  ],
+  "annual_signed_ct_relative_figure": "postprocessing/annual_signed_differences_vs_ct",
+  "annual_signed_ct_relative_table": "annual_signed_ct_relative_summary_raw.csv",
+  "annual_signed_ct_relative_definition": "100 * (treatment annual mean-per-plot total - CT annual mean-per-plot total) / CT annual mean-per-plot total within draw; negative values are lower than CT",
+  "annual_signed_ct_relative_tire_compaction_boundary": 2021,
+  "annual_signed_ct_relative_off_scale_intervals_marked": true,
+  "annual_signed_ct_relative_invalid_denominators_retained_in_qc": true,
+  "annual_signed_ct_relative_invalid_denominator_hatching_shown": false,
+  "annual_signed_ct_relative_error_bars_match_treatment_colors": true,
+  "event_concentration_one_to_one_table": "event_concentration_one_to_one_raw.csv",
+  "event_concentration_one_to_one_figure_directory": "postprocessing/event_concentration_one_to_one",
+  "event_concentration_one_to_one_unit": "PhysicalEventID x Analyte",
+  "event_concentration_observed_resolution": "median",
+  "event_concentration_axis_scale": "identical symmetric-log x and y scales within analyte",
+  "event_concentration_square_panel_aspect": true,
+  "event_concentration_one_to_one_is_external_validation": false
 }

@@ -47,6 +47,14 @@ STUDY_YEARS = list(range(2011, 2026))
 TREATMENTS = ["CT", "MT", "ST"]
 PUBLICATION_ANALYTES = ["NH4", "NO3", "NO2", "OP", "Se", "TDS", "TKN", "TN", "TP", "TSS"]
 PRIMARY_MANUSCRIPT_ANALYTES = ["TSS", "TP", "TN"]
+MANAGEMENT_PERIODS = {
+    "2011-2020": tuple(range(2011, 2021)),
+    "2021-2025": tuple(range(2021, 2026)),
+}
+MANAGEMENT_OUTCOMES = ["Runoff volume", "TSS", "TP", "TN"]
+COMPARISON_METHODS = ["Bayes", "ML"]
+COMPACTION_BOOTSTRAP_SEED = 20260903
+COMPACTION_BOOTSTRAP_REPLICATES = 20_000
 BAYES_POSTERIOR_FIT = "posterior_predictive_fit"
 ML_FULL_RECORD_RECONSTRUCTION = "full_record_physical_event_reconstruction"
 ML_OUTER_LOYO_VALIDATION = "outer_loyo_physical_event_validation"
@@ -246,6 +254,200 @@ def annual_point_products(point_ledgers: pd.DataFrame) -> pd.DataFrame:
     points["annual_reporting_unit"] = "mean_per_treatment_plot"
     assert_study_years(points, "Combined annual point totals")
     return points
+
+
+def annual_volume_draw_products(
+    ledgers: pd.DataFrame,
+    point_ledgers: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Aggregate event runoff volume to annual mean-per-plot draws and points."""
+
+    draw_columns = [
+        "Method", "Scenario", "PhysicalEventID", "Year", "Treatment", "Rep",
+        "Draw", "Volume_L",
+    ]
+    require_columns(ledgers, draw_columns, "Combined draw ledger for annual volume")
+    draw_key = ["Method", "Scenario", "PhysicalEventID", "Draw"]
+    draw_conflicts = (
+        ledgers.groupby(draw_key, dropna=False)[
+            ["Year", "Treatment", "Rep", "Volume_L"]
+        ]
+        .nunique(dropna=False)
+        .gt(1)
+        .any(axis=1)
+    )
+    if draw_conflicts.any():
+        raise ValueError(
+            "Combined draw ledger has conflicting annual-volume fields within "
+            "Method x Scenario x PhysicalEventID x Draw."
+        )
+    draw_events = ledgers[draw_columns].drop_duplicates(draw_key).copy()
+    draw_events["Volume_L"] = pd.to_numeric(
+        draw_events["Volume_L"], errors="raise"
+    )
+    _, annual_draws = aggregate_replicate_mean(
+        draw_events,
+        value_column="Volume_L",
+        group_columns=["Method", "Scenario", "Year", "Treatment"],
+        draw_column="Draw",
+        plot_total_column="PlotAnnualVolume_L",
+        treatment_mean_column="ModeledAnnualTotal",
+    )
+    annual_draws["Outcome"] = "Runoff volume"
+
+    point_columns = [
+        "Method", "Scenario", "PhysicalEventID", "Year", "Treatment", "Rep",
+        "Volume_L",
+    ]
+    require_columns(
+        point_ledgers, point_columns, "Combined point ledger for annual volume"
+    )
+    point_key = ["Method", "Scenario", "PhysicalEventID"]
+    point_conflicts = (
+        point_ledgers.groupby(point_key, dropna=False)[
+            ["Year", "Treatment", "Rep", "Volume_L"]
+        ]
+        .nunique(dropna=False)
+        .gt(1)
+        .any(axis=1)
+    )
+    if point_conflicts.any():
+        raise ValueError(
+            "Combined point ledger has conflicting annual-volume fields within "
+            "Method x Scenario x PhysicalEventID."
+        )
+    point_events = point_ledgers[point_columns].drop_duplicates(point_key).copy()
+    point_events["Volume_L"] = pd.to_numeric(
+        point_events["Volume_L"], errors="raise"
+    )
+    _, annual_points = aggregate_replicate_mean(
+        point_events,
+        value_column="Volume_L",
+        group_columns=["Method", "Scenario", "Year", "Treatment"],
+        plot_total_column="PlotAnnualPointVolume_L",
+        treatment_mean_column="PointAnnualTotal",
+    )
+    annual_points["Outcome"] = "Runoff volume"
+    return annual_draws, annual_points
+
+
+def annual_signed_ct_relative_products(
+    annual_draws: pd.DataFrame,
+    annual_points: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Calculate annual treatment-minus-CT percentages within each model draw."""
+
+    draw_columns = [
+        "Method", "Scenario", "Year", "Outcome", "Treatment", "Draw",
+        "ModeledAnnualTotal",
+    ]
+    require_columns(annual_draws, draw_columns, "Annual CT-relative draws")
+    index_columns = ["Method", "Scenario", "Year", "Outcome", "Draw"]
+    wide = annual_draws.pivot(
+        index=index_columns,
+        columns="Treatment",
+        values="ModeledAnnualTotal",
+    ).reset_index()
+    missing = [treatment for treatment in TREATMENTS if treatment not in wide]
+    if missing:
+        raise ValueError(
+            f"Annual CT-relative calculation is missing treatment(s): {missing}"
+        )
+
+    records: list[pd.DataFrame] = []
+    for treatment in ["MT", "ST"]:
+        part = wide[[*index_columns, "CT", treatment]].copy()
+        part["ComparisonTreatment"] = treatment
+        finite_pair = np.isfinite(part["CT"]) & np.isfinite(part[treatment])
+        valid = finite_pair & part["CT"].gt(1e-12)
+        part["valid_percent_denominator"] = valid
+        part["AnnualDifference_TreatmentMinusCT"] = np.where(
+            finite_pair, part[treatment] - part["CT"], np.nan
+        )
+        part["PercentDifferenceRelativeToCT"] = np.where(
+            valid, 100.0 * (part[treatment] - part["CT"]) / part["CT"], np.nan
+        )
+        records.append(part)
+    raw = pd.concat(records, ignore_index=True)
+    group_columns = [
+        "Method", "Scenario", "Year", "Outcome", "ComparisonTreatment"
+    ]
+    valid_raw = raw.loc[raw["valid_percent_denominator"]].copy()
+    summary = summarize_draws(
+        valid_raw, group_columns, "PercentDifferenceRelativeToCT"
+    ).rename(columns={"n_draws": "n_valid_percent_draws"})
+    qc = (
+        raw.groupby(group_columns, as_index=False)
+        .agg(
+            n_total_draws=("Draw", "size"),
+            ct_annual_total_median=("CT", "median"),
+            ct_annual_total_lower_95=("CT", lambda values: values.quantile(0.025)),
+            ct_annual_total_upper_95=("CT", lambda values: values.quantile(0.975)),
+        )
+    )
+    summary = summary.merge(qc, on=group_columns, validate="one_to_one")
+    summary["n_invalid_percent_draws"] = (
+        summary["n_total_draws"] - summary["n_valid_percent_draws"]
+    )
+    summary["fraction_invalid_percent_draws"] = (
+        summary["n_invalid_percent_draws"] / summary["n_total_draws"]
+    )
+
+    point_columns = [
+        "Method", "Scenario", "Year", "Outcome", "Treatment", "PointAnnualTotal"
+    ]
+    require_columns(annual_points, point_columns, "Annual CT-relative points")
+    point_wide = annual_points.pivot(
+        index=["Method", "Scenario", "Year", "Outcome"],
+        columns="Treatment",
+        values="PointAnnualTotal",
+    ).reset_index()
+    point_records: list[pd.DataFrame] = []
+    for treatment in ["MT", "ST"]:
+        part = point_wide[
+            ["Method", "Scenario", "Year", "Outcome", "CT", treatment]
+        ].copy()
+        part["ComparisonTreatment"] = treatment
+        valid = (
+            np.isfinite(part["CT"])
+            & np.isfinite(part[treatment])
+            & part["CT"].gt(1e-12)
+        )
+        part["PointPercentDifference"] = np.where(
+            valid, 100.0 * (part[treatment] - part["CT"]) / part["CT"], np.nan
+        )
+        point_records.append(part[
+            [
+                "Method", "Scenario", "Year", "Outcome",
+                "ComparisonTreatment", "PointPercentDifference",
+            ]
+        ])
+    points = pd.concat(point_records, ignore_index=True)
+    summary = summary.merge(
+        points,
+        on=group_columns,
+        how="left",
+        validate="one_to_one",
+    )
+    summary["primary_center"] = summary["median"]
+    summary["primary_center_type"] = "posterior_median_of_draw_wise_contrast"
+    ml = summary["Method"].eq("ML")
+    if summary.loc[ml, "PointPercentDifference"].isna().any():
+        raise ValueError("An ML annual CT-relative deterministic point is missing.")
+    summary.loc[ml, "primary_center"] = summary.loc[ml, "PointPercentDifference"]
+    summary.loc[ml, "primary_center_type"] = (
+        "deterministic_mean_per_plot_annual_contrast"
+    )
+    summary["primary_center_within_draw_interval"] = (
+        summary["primary_center"].ge(summary["lower_95"])
+        & summary["primary_center"].le(summary["upper_95"])
+    )
+    summary["definition"] = (
+        "100 * (treatment annual mean-per-plot total - CT annual mean-per-plot "
+        "total) / CT annual mean-per-plot total, calculated within draw; "
+        "negative means lower than CT and positive means higher than CT"
+    )
+    return raw, summary
 
 
 def attach_primary_centers(
@@ -725,7 +927,14 @@ def ml_full_record_point_diagnostics(ml_dir: Path) -> pd.DataFrame:
 def build_performance_products(
     bayes_dir: Path,
     ml_dir: Path,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
     """Build primary Bayes-vs-ML and separate ML validation metric products."""
 
     bayes_rows = read_required(
@@ -787,7 +996,14 @@ def build_performance_products(
     ml_evaluation_tracks = pd.concat(
         [ml_reconstruction_performance, ml_loyo_performance], ignore_index=True
     )
-    return primary, ml_evaluation_tracks, bayes_rows, bayes_volume, ml_rows
+    return (
+        primary,
+        ml_evaluation_tracks,
+        bayes_rows,
+        bayes_volume,
+        ml_rows,
+        ml_reconstruction,
+    )
 
 
 def coverage_by_year_target(frame: pd.DataFrame, method: str) -> pd.DataFrame:
@@ -1021,6 +1237,19 @@ def metric_manifest_fields() -> dict[str, object]:
         "three_track_nrmse_capped_bars": "hatched and labeled with actual values",
         "three_track_nrmse_faceted_supplement": True,
         "ml_loyo_rmse_nrmse_interpretation": "held-out prediction error, not interval uncertainty",
+        "event_concentration_one_to_one_table": (
+            "event_concentration_one_to_one_raw.csv"
+        ),
+        "event_concentration_one_to_one_figure_directory": (
+            "postprocessing/event_concentration_one_to_one"
+        ),
+        "event_concentration_one_to_one_unit": "PhysicalEventID x Analyte",
+        "event_concentration_observed_resolution": "median",
+        "event_concentration_axis_scale": (
+            "identical symmetric-log x and y scales within analyte"
+        ),
+        "event_concentration_square_panel_aspect": True,
+        "event_concentration_one_to_one_is_external_validation": False,
     }
 
 
@@ -1032,7 +1261,56 @@ def update_saved_comparison_manifest(output_dir: Path) -> None:
         return
     manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest.update(metric_manifest_fields())
+    manifest.update(management_period_manifest_fields())
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
+def management_period_manifest_fields() -> dict[str, object]:
+    return {
+        "management_period_sensitivity_figure": (
+            "postprocessing/pre_post_2021_management_sensitivity"
+        ),
+        "management_period_sensitivity_table": "management_period_sensitivity_raw.csv",
+        "management_periods": {
+            period: [years[0], years[-1]]
+            for period, years in MANAGEMENT_PERIODS.items()
+        },
+        "management_period_figure_title_shown": False,
+        "management_period_figure_legend": "centered above panels",
+        "management_period_percent_change_definition": (
+            "100 * (treatment - CT) / CT; negative values are lower than CT"
+        ),
+        "cumulative_primary_ct_relative_figure": (
+            "postprocessing/cumulative_primary_analyte_differences_vs_ct"
+        ),
+        "cumulative_primary_ct_relative_table": (
+            "cumulative_primary_ct_relative_plot_raw.csv"
+        ),
+        "annual_signed_ct_relative_figure": (
+            "postprocessing/annual_signed_differences_vs_ct"
+        ),
+        "annual_signed_ct_relative_table": (
+            "annual_signed_ct_relative_summary_raw.csv"
+        ),
+        "annual_signed_ct_relative_definition": (
+            "100 * (treatment annual mean-per-plot total - CT annual "
+            "mean-per-plot total) / CT annual mean-per-plot total within draw; "
+            "negative values are lower than CT"
+        ),
+        "annual_signed_ct_relative_tire_compaction_boundary": 2021,
+        "annual_signed_ct_relative_off_scale_intervals_marked": True,
+        "annual_signed_ct_relative_invalid_denominator_hatching_shown": False,
+        "annual_signed_ct_relative_error_bars_match_treatment_colors": True,
+        "annual_signed_ct_relative_invalid_denominators_retained_in_qc": True,
+        "ml_furrow_compaction_predictive_sensitivity": (
+            "ml_furrow_compaction_predictive_sensitivity_summary_raw.csv"
+        ),
+        "ml_furrow_compaction_interval_type": (
+            "95% percentile cluster-bootstrap interval for the mean paired "
+            "prediction difference; Year x Irrigation clusters; fitted model held fixed"
+        ),
+        "ml_furrow_compaction_effect_is_causal": False,
+    }
 
 
 def publication_coverage_table(frame: pd.DataFrame) -> pd.DataFrame:
@@ -1132,6 +1410,139 @@ def disagreement_table(bayes: pd.DataFrame, ml: pd.DataFrame) -> pd.DataFrame:
     return joined.sort_values("BayesMLAbsolutePredictionDifference_mg_L", ascending=False)
 
 
+def event_concentration_one_to_one_table(
+    bayes_rows: pd.DataFrame,
+    ml_reconstruction: pd.DataFrame,
+) -> pd.DataFrame:
+    """Pair measured and modeled concentrations at PhysicalEventID x Analyte."""
+
+    keys = ["PhysicalEventID", "Analyte"]
+    require_columns(
+        bayes_rows,
+        [*keys, "Year", "Treatment", "Observed", "Predicted"],
+        "Bayesian event-concentration diagnostics",
+    )
+    bayes = bayes_rows.loc[
+        bayes_rows["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
+    ].copy()
+    for column in ["Observed", "Predicted"]:
+        bayes[column] = pd.to_numeric(bayes[column], errors="coerce")
+    bayes = bayes.dropna(subset=["Observed", "Predicted"])
+    assert_constant_within_keys(
+        bayes,
+        keys,
+        ["Year", "Treatment", "Predicted"],
+        "Bayesian event-concentration diagnostics",
+    )
+    bayes_resolved = (
+        bayes.groupby(keys, as_index=False, dropna=False)
+        .agg(
+            Year=("Year", "first"),
+            Treatment=("Treatment", "first"),
+            Observed_mg_L=("Observed", "median"),
+            BayesModeled_mg_L=("Predicted", "first"),
+            n_source_observations=("Observed", "size"),
+        )
+    )
+
+    require_columns(
+        ml_reconstruction,
+        ["Target", *keys, "Year", "Treatment", "y_true", "y_pred"],
+        "ML full-record event-concentration diagnostics",
+    )
+    ml = ml_reconstruction.loc[
+        ml_reconstruction["Target"].eq("Result_mg_L")
+        & ml_reconstruction["Analyte"].astype(str).isin(PUBLICATION_ANALYTES)
+    ].copy()
+    if ml.duplicated(keys).any():
+        raise ValueError(
+            "ML event-concentration diagnostics are not unique by "
+            "PhysicalEventID x Analyte."
+        )
+    ml = ml.rename(
+        columns={
+            "Year": "MLYear",
+            "Treatment": "MLTreatment",
+            "y_true": "MLObserved_mg_L",
+            "y_pred": "MLModeled_mg_L",
+            "n_source_observations": "ml_n_source_observations",
+        }
+    )
+    paired = bayes_resolved.merge(
+        ml[[
+            *keys,
+            "MLYear",
+            "MLTreatment",
+            "MLObserved_mg_L",
+            "MLModeled_mg_L",
+            "ml_n_source_observations",
+        ]],
+        on=keys,
+        how="inner",
+        validate="one_to_one",
+    )
+    if len(paired) != len(bayes_resolved) or len(paired) != len(ml):
+        raise ValueError(
+            "Bayesian and ML event-concentration diagnostics do not contain the "
+            "same PhysicalEventID x Analyte pairs."
+        )
+    if not paired["Year"].eq(paired["MLYear"]).all() or not paired[
+        "Treatment"
+    ].astype(str).eq(paired["MLTreatment"].astype(str)).all():
+        raise ValueError("Bayesian and ML event-concentration metadata disagree.")
+    if not np.allclose(
+        pd.to_numeric(paired["Observed_mg_L"], errors="raise"),
+        pd.to_numeric(paired["MLObserved_mg_L"], errors="raise"),
+        rtol=1e-10,
+        atol=1e-12,
+    ):
+        raise ValueError(
+            "Bayesian and ML median-resolved measured concentrations disagree."
+        )
+    if not paired["n_source_observations"].eq(
+        paired["ml_n_source_observations"]
+    ).all():
+        raise ValueError(
+            "Bayesian and ML source-observation counts disagree after event resolution."
+        )
+
+    common = paired[
+        [
+            "PhysicalEventID", "Analyte", "Year", "Treatment",
+            "Observed_mg_L", "n_source_observations",
+        ]
+    ]
+    records = []
+    for method, modeled_column, estimate_type in [
+        ("Bayes", "BayesModeled_mg_L", "posterior_predictive_mean"),
+        ("ML", "MLModeled_mg_L", "full_record_deterministic_prediction"),
+    ]:
+        part = common.copy()
+        part["Method"] = method
+        part["Modeled_mg_L"] = pd.to_numeric(
+            paired[modeled_column], errors="raise"
+        ).to_numpy()
+        part["central_estimate_type"] = estimate_type
+        part["resolution"] = (
+            "one median measured concentration per PhysicalEventID x Analyte"
+        )
+        records.append(part)
+    output = pd.concat(records, ignore_index=True)
+    expected_analytes = set(PUBLICATION_ANALYTES)
+    if set(output["Analyte"].astype(str)) != expected_analytes:
+        raise ValueError(
+            "Event one-to-one table does not contain exactly the ten publication "
+            "analytes."
+        )
+    if output.duplicated(["Method", *keys]).any():
+        raise ValueError(
+            "Event one-to-one table is not unique by Method x PhysicalEventID x Analyte."
+        )
+    return output.sort_values(
+        ["Analyte", "Method", "Year", "Treatment", "PhysicalEventID"]
+    ).reset_index(drop=True)
+
+
 def publication_load_table(summary: pd.DataFrame, value_label: str) -> pd.DataFrame:
     output = summary.copy()
     if "Analyte" in output:
@@ -1152,6 +1563,465 @@ def publication_load_table(summary: pd.DataFrame, value_label: str) -> pd.DataFr
             "mean", "median", "primary_center", "lower_95", "upper_95", "n_draws"
         }
     ]]
+
+
+def percent_change_from_ct(ct: float, treatment: float) -> float:
+    """Return the signed treatment percent change relative to CT."""
+
+    if not np.isfinite(ct) or ct <= 0:
+        raise ValueError(f"CT period total must be finite and positive; found {ct}.")
+    if not np.isfinite(treatment):
+        raise ValueError(f"Treatment period total must be finite; found {treatment}.")
+    return 100.0 * (treatment - ct) / ct
+
+
+def primary_ct_relative_plot_data(ct_summary: pd.DataFrame) -> pd.DataFrame:
+    """Return the cumulative TSS, TP, and TN contrasts used in the main plot."""
+
+    require_columns(
+        ct_summary,
+        [
+            "Method", "Scenario", "Analyte", "ComparisonTreatment",
+            "primary_center", "lower_95", "upper_95",
+        ],
+        "CT-relative cumulative summary",
+    )
+    output = ct_summary.loc[
+        ct_summary["Analyte"].astype(str).isin(PRIMARY_MANUSCRIPT_ANALYTES)
+        & ct_summary["ComparisonTreatment"].astype(str).isin(["MT", "ST"])
+        & (
+            ct_summary["Method"].astype(str).eq("Bayes")
+            & ct_summary["Scenario"].astype(str).eq("model_only")
+            | ct_summary["Method"].astype(str).eq("ML")
+            & ct_summary["Scenario"].astype(str).eq("full_record_model_only")
+        )
+    ].copy()
+    expected = len(PRIMARY_MANUSCRIPT_ANALYTES) * 2 * len(COMPARISON_METHODS)
+    if len(output) != expected or output.duplicated(
+        ["Method", "Analyte", "ComparisonTreatment"]
+    ).any():
+        raise ValueError(
+            "Primary CT-relative plot requires one Bayes and one ML row for "
+            "each TSS/TP/TN x MT/ST contrast."
+        )
+    output["Analyte"] = pd.Categorical(
+        output["Analyte"], categories=PRIMARY_MANUSCRIPT_ANALYTES, ordered=True
+    )
+    output["Method"] = pd.Categorical(
+        output["Method"], categories=COMPARISON_METHODS, ordered=True
+    )
+    output["ComparisonTreatment"] = pd.Categorical(
+        output["ComparisonTreatment"], categories=["MT", "ST"], ordered=True
+    )
+    return output.sort_values(
+        ["Analyte", "Method", "ComparisonTreatment"]
+    ).reset_index(drop=True)
+
+
+def _prepare_saved_catboost_frame(
+    frame: pd.DataFrame,
+    features: Sequence[str],
+    categorical: Sequence[str],
+) -> pd.DataFrame:
+    """Reproduce the saved ML workflow's feature coercion for prediction."""
+
+    require_columns(frame, features, "Saved ML event-prediction table")
+    output = frame.loc[:, list(features)].copy()
+    categorical_set = set(categorical)
+    for column in output:
+        if column in categorical_set:
+            output[column] = (
+                output[column].astype("string").fillna("__MISSING__").astype(str)
+            )
+        else:
+            output[column] = pd.to_numeric(output[column], errors="coerce")
+    return output
+
+
+def _cluster_bootstrap_mean_interval(
+    rows: pd.DataFrame,
+    *,
+    value_column: str,
+    seed: int,
+    replicates: int,
+) -> tuple[float, float]:
+    """Bootstrap Year x Irrigation clusters and return a percentile interval."""
+
+    cluster = (
+        rows.groupby(["Year", "Irrigation"], as_index=False, dropna=False)
+        [value_column]
+        .agg(["sum", "count"])
+        .reset_index()
+    )
+    if len(cluster) < 2:
+        raise ValueError("At least two field-irrigation clusters are required.")
+    rng = np.random.default_rng(seed)
+    sampled = rng.integers(0, len(cluster), size=(replicates, len(cluster)))
+    sums = cluster["sum"].to_numpy(dtype=float)[sampled].sum(axis=1)
+    counts = cluster["count"].to_numpy(dtype=float)[sampled].sum(axis=1)
+    means = sums / counts
+    lower, upper = np.quantile(means, [0.025, 0.975])
+    return float(lower), float(upper)
+
+
+def ml_furrow_compaction_predictive_sensitivity(
+    ml_dir: Path,
+    *,
+    seed: int = COMPACTION_BOOTSTRAP_SEED,
+    bootstrap_replicates: int = COMPACTION_BOOTSTRAP_REPLICATES,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Estimate a paired, noncausal ML sensitivity to the compaction indicator.
+
+    Predictions for exposed events are recomputed after changing only
+    ``FurrowTireCompaction`` from 1 to 0. The fitted CatBoost model is held
+    fixed. Percentile intervals resample field-irrigation clusters
+    (Year x Irrigation), preserving the associated plot-event rows.
+    """
+
+    try:
+        from catboost import CatBoostRegressor
+    except ImportError as exc:  # pragma: no cover - environment-specific guard
+        raise RuntimeError(
+            "CatBoost is required to regenerate the ML compaction sensitivity."
+        ) from exc
+
+    prediction_path = ml_dir / "volume_observation_and_event_predictions.csv"
+    model_path = ml_dir / "models" / "model_logV.cbm"
+    metadata_path = ml_dir / "models" / "model_logV_meta.json"
+    events = read_required(prediction_path, "ML event-volume predictions")
+    if not model_path.is_file() or not metadata_path.is_file():
+        raise FileNotFoundError(
+            f"Saved ML runoff-volume model is absent: {model_path}, {metadata_path}"
+        )
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    features = list(metadata.get("feature_cols", []))
+    categorical = list(metadata.get("cat_cols", []))
+    if "FurrowTireCompaction" not in features:
+        raise ValueError("Saved runoff-volume model does not use FurrowTireCompaction.")
+    require_columns(
+        events,
+        [
+            "PhysicalEventID", "Year", "Irrigation", "Rep", "Treatment",
+            "FurrowTireCompaction", "Volume_model_pred",
+        ],
+        "ML event-volume predictions",
+    )
+    exposed = events.loc[
+        pd.to_numeric(events["FurrowTireCompaction"], errors="coerce").eq(1)
+    ].copy()
+    if exposed.empty:
+        raise ValueError("No compacted ML events were available for sensitivity analysis.")
+
+    with_compaction = _prepare_saved_catboost_frame(
+        exposed, features, categorical
+    )
+    without_compaction = with_compaction.copy()
+    without_compaction["FurrowTireCompaction"] = 0
+    model = CatBoostRegressor()
+    model.load_model(str(model_path))
+    predicted_with = np.clip(np.expm1(model.predict(with_compaction)), 0.0, np.inf)
+    predicted_without = np.clip(
+        np.expm1(model.predict(without_compaction)), 0.0, np.inf
+    )
+    saved_prediction = pd.to_numeric(
+        exposed["Volume_model_pred"], errors="raise"
+    ).to_numpy(dtype=float)
+    if not np.allclose(predicted_with, saved_prediction, rtol=1e-10, atol=1e-6):
+        raise AssertionError(
+            "Recomputed exposed-event predictions do not match the saved ML predictions."
+        )
+
+    exposed["PredictedVolumeWithCompaction_L"] = predicted_with
+    exposed["PredictedVolumeWithoutCompaction_L"] = predicted_without
+    exposed["PairedPredictionDifference_L"] = predicted_with - predicted_without
+    exposed["PairedPredictionPercentDifference"] = np.where(
+        predicted_without > 0,
+        100.0 * (predicted_with - predicted_without) / predicted_without,
+        np.nan,
+    )
+    event_rows = (
+        exposed.groupby(
+            ["PhysicalEventID", "Year", "Irrigation", "Rep", "Treatment"],
+            as_index=False,
+            dropna=False,
+        )[
+            [
+                "PredictedVolumeWithCompaction_L",
+                "PredictedVolumeWithoutCompaction_L",
+                "PairedPredictionDifference_L",
+                "PairedPredictionPercentDifference",
+            ]
+        ]
+        .median()
+    )
+    if len(event_rows) != 120:
+        raise ValueError(
+            f"Expected 120 unique compacted physical events; found {len(event_rows)}."
+        )
+
+    summary_rows: list[dict[str, object]] = []
+    for index, (scope, rows) in enumerate(
+        [
+            ("All exposed events", event_rows),
+            ("MT", event_rows.loc[event_rows["Treatment"].astype(str).eq("MT")]),
+            ("ST", event_rows.loc[event_rows["Treatment"].astype(str).eq("ST")]),
+        ]
+    ):
+        lower, upper = _cluster_bootstrap_mean_interval(
+            rows,
+            value_column="PairedPredictionDifference_L",
+            seed=seed + index,
+            replicates=bootstrap_replicates,
+        )
+        mean_with = float(rows["PredictedVolumeWithCompaction_L"].mean())
+        mean_without = float(rows["PredictedVolumeWithoutCompaction_L"].mean())
+        summary_rows.append(
+            {
+                "Scope": scope,
+                "n_physical_events": int(len(rows)),
+                "n_field_irrigation_clusters": int(
+                    rows[["Year", "Irrigation"]].drop_duplicates().shape[0]
+                ),
+                "MeanPredictedVolumeWithCompaction_L": mean_with,
+                "MeanPredictedVolumeWithoutCompaction_L": mean_without,
+                "MeanPairedPredictionDifference_L_per_event": float(
+                    rows["PairedPredictionDifference_L"].mean()
+                ),
+                "Lower95ClusterBootstrap_L_per_event": lower,
+                "Upper95ClusterBootstrap_L_per_event": upper,
+                "PercentDifferenceOfMeanPredictions": (
+                    100.0 * (mean_with - mean_without) / mean_without
+                ),
+                "BootstrapReplicates": int(bootstrap_replicates),
+                "BootstrapSeed": int(seed + index),
+                "IntervalType": (
+                    "95% percentile cluster-bootstrap interval for the mean paired "
+                    "prediction difference; clusters are Year x Irrigation; fitted "
+                    "CatBoost model held fixed"
+                ),
+                "Interpretation": (
+                    "paired predictive sensitivity, not a causal effect or parameter "
+                    "confidence interval"
+                ),
+            }
+        )
+    return event_rows, pd.DataFrame(summary_rows)
+
+
+def management_period_sensitivity_products(
+    annual_load: pd.DataFrame,
+    annual_volume: pd.DataFrame,
+    bayes_dir: Path,
+) -> pd.DataFrame:
+    """Build the pre/post-2021 centers and signed CT-relative contrasts.
+
+    Bayesian load contrasts retain the posterior mean of the draw-wise
+    CT-relative percentage from the versioned v3p3 period exports. ML load
+    contrasts and both runoff-volume contrasts are calculated from the
+    framework-specific annual central estimates used by this comparison.
+    """
+
+    require_columns(
+        annual_load,
+        ["Method", "Scenario", "Year", "Analyte", "Treatment", "primary_center"],
+        "Annual load summary for management-period sensitivity",
+    )
+    require_columns(
+        annual_volume,
+        ["Method", "Scenario", "Year", "Treatment", "center_kL"],
+        "Annual runoff-volume summary for management-period sensitivity",
+    )
+    rows: list[dict[str, object]] = []
+
+    def add_rows(
+        *,
+        outcome: str,
+        period: str,
+        method: str,
+        centers: dict[str, float],
+        unit: str,
+        center_type: str,
+        contrast_type: str,
+        signed_changes: dict[str, float] | None = None,
+    ) -> None:
+        missing = sorted(set(TREATMENTS) - set(centers))
+        if missing:
+            raise ValueError(
+                f"{method} {outcome} {period} is missing treatment centers: {missing}."
+            )
+        calculated_changes = {
+            treatment: percent_change_from_ct(centers["CT"], centers[treatment])
+            for treatment in TREATMENTS
+        }
+        if signed_changes is not None:
+            calculated_changes.update(signed_changes)
+        for treatment in TREATMENTS:
+            rows.append(
+                {
+                    "Outcome": outcome,
+                    "Period": period,
+                    "PeriodStart": MANAGEMENT_PERIODS[period][0],
+                    "PeriodEnd": MANAGEMENT_PERIODS[period][-1],
+                    "Method": method,
+                    "Treatment": treatment,
+                    "Center": float(centers[treatment]),
+                    "Unit": unit,
+                    "PercentChangeFromCT": float(calculated_changes[treatment]),
+                    "PercentChangeDefinition": "100 * (treatment - CT) / CT",
+                    "CenterType": center_type,
+                    "ContrastType": contrast_type,
+                }
+            )
+
+    for period, years in MANAGEMENT_PERIODS.items():
+        volume_period = annual_volume.loc[
+            pd.to_numeric(annual_volume["Year"], errors="raise").astype(int).isin(years)
+        ].copy()
+        for method in COMPARISON_METHODS:
+            scenario = "model_only" if method == "Bayes" else "full_record_model_only"
+            method_volume = volume_period.loc[
+                volume_period["Method"].astype(str).eq(method)
+                & volume_period["Scenario"].astype(str).eq(scenario)
+            ]
+            found_years = sorted(
+                pd.to_numeric(method_volume["Year"], errors="raise").astype(int).unique()
+            )
+            if found_years != list(years):
+                raise ValueError(
+                    f"{method} runoff volume {period} has years {found_years}; "
+                    f"required exactly {list(years)}."
+                )
+            centers = (
+                method_volume.groupby("Treatment")["center_kL"].sum().astype(float).to_dict()
+            )
+            add_rows(
+                outcome="Runoff volume",
+                period=period,
+                method=method,
+                centers=centers,
+                unit="kL/plot",
+                center_type=(
+                    "sum of annual posterior means"
+                    if method == "Bayes"
+                    else "sum of deterministic annual mean-per-plot totals"
+                ),
+                contrast_type="signed percent change calculated from period centers",
+            )
+
+        bayes_period_path = bayes_dir / (
+            "pre_tire_compaction_era_2011_2020_total_loads_kg_with_pct_reductions_"
+            f"{BAYES_VERSION}.csv"
+            if period == "2011-2020"
+            else "tire_compaction_era_2021_2025_total_loads_kg_with_pct_reductions_"
+            f"{BAYES_VERSION}.csv"
+        )
+        bayes_period = read_required(
+            bayes_period_path,
+            f"Bayesian {period} period-total load summary",
+        )
+        require_columns(
+            bayes_period,
+            [
+                "analyte",
+                *[f"{treatment}_mod_load_sum_mean_kg" for treatment in TREATMENTS],
+                "MT_pct_red_mean",
+                "ST_pct_red_mean",
+            ],
+            f"Bayesian {period} period-total load summary",
+        )
+
+        for outcome in PRIMARY_MANUSCRIPT_ANALYTES:
+            bayes_row = bayes_period.loc[
+                bayes_period["analyte"].astype(str).eq(outcome)
+            ]
+            if len(bayes_row) != 1:
+                raise ValueError(
+                    f"Bayesian {period} period summary requires one {outcome} row; "
+                    f"found {len(bayes_row)}."
+                )
+            bayes_values = bayes_row.iloc[0]
+            bayes_centers = {
+                treatment: float(bayes_values[f"{treatment}_mod_load_sum_mean_kg"])
+                for treatment in TREATMENTS
+            }
+            add_rows(
+                outcome=outcome,
+                period=period,
+                method="Bayes",
+                centers=bayes_centers,
+                unit="kg/plot",
+                center_type="posterior mean of period-total mean-per-plot draws",
+                contrast_type="posterior mean of draw-wise signed percent change from CT",
+                signed_changes={
+                    "MT": -float(bayes_values["MT_pct_red_mean"]),
+                    "ST": -float(bayes_values["ST_pct_red_mean"]),
+                },
+            )
+
+            ml_period = annual_load.loc[
+                annual_load["Method"].astype(str).eq("ML")
+                & annual_load["Scenario"].astype(str).eq("full_record_model_only")
+                & annual_load["Analyte"].astype(str).eq(outcome)
+                & pd.to_numeric(annual_load["Year"], errors="raise").astype(int).isin(years)
+            ]
+            found_years = sorted(
+                pd.to_numeric(ml_period["Year"], errors="raise").astype(int).unique()
+            )
+            if found_years != list(years):
+                raise ValueError(
+                    f"ML {outcome} {period} has years {found_years}; "
+                    f"required exactly {list(years)}."
+                )
+            ml_centers = (
+                ml_period.groupby("Treatment")["primary_center"]
+                .sum()
+                .astype(float)
+                .to_dict()
+            )
+            add_rows(
+                outcome=outcome,
+                period=period,
+                method="ML",
+                centers=ml_centers,
+                unit="kg/plot",
+                center_type="sum of deterministic annual mean-per-plot totals",
+                contrast_type="signed percent change calculated from period centers",
+            )
+
+    output = pd.DataFrame(rows)
+    expected_rows = (
+        len(MANAGEMENT_OUTCOMES)
+        * len(MANAGEMENT_PERIODS)
+        * len(COMPARISON_METHODS)
+        * len(TREATMENTS)
+    )
+    key = ["Outcome", "Period", "Method", "Treatment"]
+    if len(output) != expected_rows or output.duplicated(key).any():
+        raise ValueError(
+            "Management-period sensitivity table must contain one row per "
+            f"Outcome x Period x Method x Treatment ({expected_rows} rows)."
+        )
+    output["_outcome_order"] = output["Outcome"].map(
+        {value: index for index, value in enumerate(MANAGEMENT_OUTCOMES)}
+    )
+    output["_period_order"] = output["Period"].map(
+        {value: index for index, value in enumerate(MANAGEMENT_PERIODS)}
+    )
+    output["_method_order"] = output["Method"].map(
+        {value: index for index, value in enumerate(COMPARISON_METHODS)}
+    )
+    output["_treatment_order"] = output["Treatment"].map(
+        {value: index for index, value in enumerate(TREATMENTS)}
+    )
+    return (
+        output.sort_values(
+            ["_outcome_order", "_period_order", "_method_order", "_treatment_order"]
+        )
+        .drop(columns=[
+            "_outcome_order", "_period_order", "_method_order", "_treatment_order"
+        ])
+        .reset_index(drop=True)
+    )
 
 
 def figure_slug(value: object) -> str:
@@ -2136,42 +3006,392 @@ def plot_cumulative_comparison(cumulative: pd.DataFrame, figure_dir: Path) -> No
 
 
 def plot_ct_relative(ct_summary: pd.DataFrame, figure_dir: Path) -> None:
-    primary = ct_summary.loc[
-        ((ct_summary["Method"] == "Bayes") & (ct_summary["Scenario"] == "model_only"))
-        | ((ct_summary["Method"] == "ML") & (ct_summary["Scenario"] == "full_record_model_only"))
-    ].copy()
-    colors = {"Bayes": "#1f77b4", "ML": "#ff7f0e"}
-    offsets = {"Bayes": -0.09, "ML": 0.09}
-    comparisons = ["MT", "ST"]
-    figure, axes = plt.subplots(5, 2, figsize=(14, 24))
-    for axis, analyte in zip(axes.flat, PUBLICATION_ANALYTES):
-        group = primary.loc[primary["Analyte"].eq(analyte)]
-        for method in ["Bayes", "ML"]:
-            rows = group.loc[group["Method"].eq(method)].set_index("ComparisonTreatment").reindex(comparisons)
-            center_column = "primary_center" if "primary_center" in rows else "median"
-            center = pd.to_numeric(rows[center_column], errors="coerce").to_numpy(dtype=float)
+    primary = primary_ct_relative_plot_data(ct_summary)
+    colors = {"MT": "#2A7F62", "ST": "#2E6EAA"}
+    offsets = {"MT": -0.09, "ST": 0.09}
+    figure, axes = plt.subplots(1, 3, figsize=(8.3, 3.25), sharey=False)
+    for axis, analyte in zip(axes.flat, PRIMARY_MANUSCRIPT_ANALYTES):
+        group = primary.loc[primary["Analyte"].astype(str).eq(analyte)]
+        for treatment in ["MT", "ST"]:
+            rows = (
+                group.loc[
+                    group["ComparisonTreatment"].astype(str).eq(treatment)
+                ]
+                .set_index("Method")
+                .reindex(COMPARISON_METHODS)
+            )
+            center = pd.to_numeric(
+                rows["primary_center"], errors="coerce"
+            ).to_numpy(dtype=float)
             lower = pd.to_numeric(rows["lower_95"], errors="coerce").to_numpy(dtype=float)
             upper = pd.to_numeric(rows["upper_95"], errors="coerce").to_numpy(dtype=float)
-            x = np.arange(len(comparisons), dtype=float) + offsets[method]
+            x = np.arange(len(COMPARISON_METHODS), dtype=float) + offsets[treatment]
             axis.errorbar(
                 x, center, yerr=np.vstack([np.maximum(center - lower, 0), np.maximum(upper - center, 0)]),
-                fmt="o", color=colors[method], capsize=3, elinewidth=1.4, label=method,
+                fmt="o", markersize=5.2, color=colors[treatment], capsize=3,
+                elinewidth=1.4, label=treatment, zorder=3,
             )
-        axis.axhline(0, color="0.35", linewidth=1)
-        axis.set_title(analyte)
-        axis.set_xticks(np.arange(len(comparisons)), ["MT vs CT", "ST vs CT"])
-        axis.set_ylabel("Percent difference relative to CT")
-        axis.grid(True, axis="y", alpha=0.22)
-    figure.suptitle(
-        "CT-relative treatment differences\n"
-        "Bayes posterior medians; ML mean-per-plot totals; 95% intervals",
-        fontsize=15,
+        axis.axhline(0, color="#4B5563", linewidth=1.0, zorder=1)
+        axis.set_title(analyte, fontsize=11, weight="bold", color="#1F4D78")
+        axis.set_xticks(np.arange(len(COMPARISON_METHODS)), ["Bayesian", "ML"])
+        axis.tick_params(axis="both", labelsize=8.5)
+        axis.grid(True, axis="y", color="#D9DEE5", linewidth=0.55, zorder=0)
+        axis.spines[["top", "right"]].set_visible(False)
+        axis.spines[["left", "bottom"]].set_color("#AAB2BD")
+    axes.flat[0].set_ylabel("Percent difference from CT", fontsize=9.5)
+    handles = [
+        Line2D([0], [0], marker="o", color=colors[treatment], linewidth=1.4,
+               markersize=5.2, label=treatment)
+        for treatment in ["MT", "ST"]
+    ]
+    figure.legend(
+        handles=handles,
+        loc="upper center",
+        ncol=2,
+        frameon=False,
+        bbox_to_anchor=(0.5, 0.995),
+        fontsize=9,
     )
-    axes.flat[0].legend(loc="best")
     save_figure(
-        figure, figure_dir / "postprocessing" / "treatment_differences_vs_ct",
-        layout_top=0.975,
+        figure,
+        figure_dir / "postprocessing" / "treatment_differences_vs_ct",
+        figure_dir / "postprocessing" / "cumulative_primary_analyte_differences_vs_ct",
+        dpi=300,
+        layout_top=0.86,
     )
+
+
+def plot_annual_signed_ct_relative(
+    annual_ct_summary: pd.DataFrame,
+    figure_dir: Path,
+) -> None:
+    """Plot annual signed treatment-minus-CT percentages for loads and volume."""
+
+    required = [
+        "Method", "Scenario", "Year", "Outcome", "ComparisonTreatment",
+        "primary_center", "lower_95", "upper_95",
+    ]
+    require_columns(annual_ct_summary, required, "Annual signed CT-relative summary")
+    primary = annual_ct_summary.loc[
+        (
+            annual_ct_summary["Method"].eq("Bayes")
+            & annual_ct_summary["Scenario"].eq("model_only")
+        )
+        | (
+            annual_ct_summary["Method"].eq("ML")
+            & annual_ct_summary["Scenario"].eq("full_record_model_only")
+        )
+    ].copy()
+    expected = pd.MultiIndex.from_product(
+        [
+            COMPARISON_METHODS,
+            MANAGEMENT_OUTCOMES,
+            STUDY_YEARS,
+            ["MT", "ST"],
+        ],
+        names=["Method", "Outcome", "Year", "ComparisonTreatment"],
+    )
+    found = pd.MultiIndex.from_frame(
+        primary[["Method", "Outcome", "Year", "ComparisonTreatment"]]
+    )
+    missing = expected.difference(found)
+    if len(missing):
+        raise ValueError(
+            "Annual signed CT-relative figure is missing required rows: "
+            f"{missing.tolist()[:10]}"
+        )
+
+    colors = {"MT": "#2A7F62", "ST": "#2E6EAA"}
+    offsets = {"MT": -0.19, "ST": 0.19}
+    x = np.arange(len(STUDY_YEARS), dtype=float)
+    compaction_boundary = STUDY_YEARS.index(2021) - 0.5
+    figure, axes = plt.subplots(
+        4, 2, figsize=(11.2, 11.0), sharex=True, sharey="row"
+    )
+    for row_index, outcome in enumerate(MANAGEMENT_OUTCOMES):
+        outcome_rows = primary.loc[primary["Outcome"].eq(outcome)]
+        largest_positive_center = max(
+            0.0,
+            float(pd.to_numeric(
+                outcome_rows["primary_center"], errors="coerce"
+            ).max()),
+        )
+        y_min = -110.0
+        y_max = 25.0 * np.ceil(max(110.0, 1.15 * largest_positive_center) / 25.0)
+        for column_index, method in enumerate(COMPARISON_METHODS):
+            axis = axes[row_index, column_index]
+            group = primary.loc[
+                primary["Outcome"].eq(outcome) & primary["Method"].eq(method)
+            ]
+            for treatment in ["MT", "ST"]:
+                rows = (
+                    group.loc[group["ComparisonTreatment"].eq(treatment)]
+                    .set_index("Year")
+                    .reindex(STUDY_YEARS)
+                )
+                center = pd.to_numeric(
+                    rows["primary_center"], errors="coerce"
+                ).to_numpy(dtype=float)
+                lower = pd.to_numeric(
+                    rows["lower_95"], errors="coerce"
+                ).to_numpy(dtype=float)
+                upper = pd.to_numeric(
+                    rows["upper_95"], errors="coerce"
+                ).to_numpy(dtype=float)
+                axis.bar(
+                    x + offsets[treatment],
+                    center,
+                    width=0.36,
+                    color=colors[treatment],
+                    alpha=0.9,
+                    zorder=2,
+                )
+                display_lower = np.maximum(lower, y_min)
+                display_upper = np.minimum(upper, y_max)
+                axis.errorbar(
+                    x + offsets[treatment],
+                    center,
+                    yerr=np.vstack([
+                        np.maximum(center - display_lower, 0),
+                        np.maximum(display_upper - center, 0),
+                    ]),
+                    fmt="none",
+                    ecolor=colors[treatment],
+                    elinewidth=0.95,
+                    capsize=1.5,
+                    capthick=0.95,
+                    zorder=3,
+                )
+                above = np.isfinite(upper) & (upper > y_max)
+                below = np.isfinite(lower) & (lower < y_min)
+                axis.scatter(
+                    (x + offsets[treatment])[above],
+                    np.full(above.sum(), y_max),
+                    marker="^", s=13, facecolor=colors[treatment], edgecolor="none",
+                    clip_on=False, zorder=5,
+                )
+                axis.scatter(
+                    (x + offsets[treatment])[below],
+                    np.full(below.sum(), y_min),
+                    marker="v", s=13, facecolor=colors[treatment], edgecolor="none",
+                    clip_on=False, zorder=5,
+                )
+            axis.axhline(0, color="#424A52", linewidth=0.8, zorder=1)
+            axis.axvline(
+                compaction_boundary,
+                color="#C43B3B",
+                linestyle="--",
+                linewidth=2.0,
+                zorder=4,
+            )
+            axis.grid(True, axis="y", color="#D8DDE3", linewidth=0.6, alpha=0.7)
+            axis.spines[["top", "right"]].set_visible(False)
+            axis.spines[["left", "bottom"]].set_color("#AAB2BD")
+            if row_index == 0:
+                axis.set_title(
+                    "Bayesian" if method == "Bayes" else "Machine learning",
+                    fontsize=10.5,
+                    weight="bold",
+                )
+            if column_index == 0:
+                axis.set_ylabel(
+                    f"{outcome}\nDifference from CT (%)",
+                    fontsize=9,
+                    weight="bold",
+                )
+            if row_index == len(MANAGEMENT_OUTCOMES) - 1:
+                axis.set_xticks(x, [str(year) for year in STUDY_YEARS])
+                axis.tick_params(axis="x", labelrotation=45, labelsize=7.5)
+                axis.set_xlabel("Year", fontsize=9)
+            axis.tick_params(axis="y", labelsize=8)
+            axis.set_ylim(y_min, y_max)
+
+    handles = [
+        Patch(facecolor=colors[treatment], label=treatment)
+        for treatment in ["MT", "ST"]
+    ]
+    handles.append(
+        Line2D(
+            [0], [0], color="#C43B3B", linestyle="--", linewidth=2.0,
+            label="Tire compaction begins (2021)",
+        )
+    )
+    handles.append(
+        Line2D(
+            [0], [0], marker="^", linestyle="none", color="#30363D",
+            markersize=4.5, label="95% interval continues off scale",
+        )
+    )
+    figure.legend(
+        handles=handles,
+        loc="upper center",
+        ncol=4,
+        frameon=False,
+        bbox_to_anchor=(0.5, 0.997),
+        fontsize=9,
+    )
+    save_figure(
+        figure,
+        figure_dir / "postprocessing" / "annual_signed_differences_vs_ct",
+        dpi=300,
+        layout_top=0.955,
+    )
+
+
+def plot_event_concentration_one_to_one(
+    event_points: pd.DataFrame,
+    figure_dir: Path,
+) -> None:
+    """Write one square two-panel measured-versus-modeled figure per analyte."""
+
+    required = [
+        "Method", "PhysicalEventID", "Analyte", "Treatment",
+        "Observed_mg_L", "Modeled_mg_L",
+    ]
+    require_columns(event_points, required, "Event one-to-one plotting table")
+    colors = {"CT": "#6B7280", "MT": "#2A7F62", "ST": "#2E6EAA"}
+    method_titles = {"Bayes": "Bayesian", "ML": "Machine learning"}
+    output_dir = figure_dir / "postprocessing" / "event_concentration_one_to_one"
+
+    for analyte in PUBLICATION_ANALYTES:
+        analyte_rows = event_points.loc[
+            event_points["Analyte"].astype(str).eq(analyte)
+        ].copy()
+        for column in ["Observed_mg_L", "Modeled_mg_L"]:
+            analyte_rows[column] = pd.to_numeric(
+                analyte_rows[column], errors="coerce"
+            )
+        analyte_rows = analyte_rows.dropna(
+            subset=["Observed_mg_L", "Modeled_mg_L"]
+        )
+        if analyte_rows.empty:
+            raise ValueError(f"No finite event one-to-one rows are available for {analyte}.")
+        if (analyte_rows[["Observed_mg_L", "Modeled_mg_L"]].lt(0)).any().any():
+            raise ValueError(
+                f"Event one-to-one plot for {analyte} contains negative concentrations."
+            )
+        maximum = float(
+            analyte_rows[["Observed_mg_L", "Modeled_mg_L"]].max().max()
+        )
+        if not np.isfinite(maximum) or maximum <= 0:
+            raise ValueError(
+                f"Event one-to-one plot for {analyte} has invalid maximum {maximum}."
+            )
+        positive = analyte_rows[["Observed_mg_L", "Modeled_mg_L"]].to_numpy()
+        positive = positive[np.isfinite(positive) & (positive > 0)]
+        if not positive.size:
+            raise ValueError(
+                f"Event one-to-one plot for {analyte} has no positive concentrations."
+            )
+        linear_threshold = max(
+            float(np.quantile(positive, 0.05)),
+            maximum * 1e-4,
+        )
+        axis_maximum = maximum * 1.05
+
+        figure, axes = plt.subplots(1, 2, figsize=(9.2, 4.9))
+        for axis, method in zip(axes, COMPARISON_METHODS):
+            method_rows = analyte_rows.loc[
+                analyte_rows["Method"].astype(str).eq(method)
+            ]
+            if method_rows.empty:
+                raise ValueError(
+                    f"Event one-to-one plot for {analyte} has no {method} rows."
+                )
+            for treatment in TREATMENTS:
+                rows = method_rows.loc[
+                    method_rows["Treatment"].astype(str).eq(treatment)
+                ]
+                axis.scatter(
+                    rows["Observed_mg_L"],
+                    rows["Modeled_mg_L"],
+                    s=18,
+                    alpha=0.58,
+                    color=colors[treatment],
+                    edgecolors="none",
+                    zorder=3,
+                )
+            axis.plot(
+                [0, axis_maximum],
+                [0, axis_maximum],
+                color="#20262E",
+                linestyle="--",
+                linewidth=1.25,
+                zorder=2,
+            )
+            axis.set_xscale(
+                "symlog", linthresh=linear_threshold, linscale=0.8
+            )
+            axis.set_yscale(
+                "symlog", linthresh=linear_threshold, linscale=0.8
+            )
+            axis.set_xlim(0, axis_maximum)
+            axis.set_ylim(0, axis_maximum)
+            axis.set_box_aspect(1)
+            axis.set_title(
+                f"{method_titles[method]} — {analyte}",
+                fontsize=11,
+                weight="bold",
+            )
+            axis.set_xlabel("Measured concentration (mg/L)", fontsize=9)
+            if method == "Bayes":
+                axis.set_ylabel("Modeled concentration (mg/L)", fontsize=9)
+            axis.grid(True, color="#D8DDE3", linewidth=0.55, alpha=0.65)
+            axis.spines[["top", "right"]].set_visible(False)
+            axis.spines[["left", "bottom"]].set_color("#AAB2BD")
+            axis.tick_params(labelsize=7.5)
+
+            errors = (
+                method_rows["Modeled_mg_L"].to_numpy(dtype=float)
+                - method_rows["Observed_mg_L"].to_numpy(dtype=float)
+            )
+            rmse = float(np.sqrt(np.mean(np.square(errors))))
+            mean_bias = float(np.mean(errors))
+            axis.text(
+                0.04,
+                0.96,
+                f"n = {len(method_rows)}\nRMSE = {rmse:.3g} mg/L\nBias = {mean_bias:+.3g} mg/L",
+                transform=axis.transAxes,
+                ha="left",
+                va="top",
+                fontsize=7.5,
+                bbox={
+                    "boxstyle": "round,pad=0.25",
+                    "facecolor": "white",
+                    "edgecolor": "#C8CED6",
+                    "alpha": 0.9,
+                },
+                zorder=5,
+            )
+
+        handles = [
+            Line2D(
+                [0], [0], marker="o", linestyle="none", markersize=5.5,
+                markerfacecolor=colors[treatment], markeredgecolor="none",
+                label=treatment,
+            )
+            for treatment in TREATMENTS
+        ]
+        handles.append(
+            Line2D(
+                [0], [0], color="#20262E", linestyle="--", linewidth=1.25,
+                label="One-to-one",
+            )
+        )
+        figure.legend(
+            handles=handles,
+            loc="upper center",
+            ncol=4,
+            frameon=False,
+            bbox_to_anchor=(0.5, 0.995),
+            fontsize=8.5,
+        )
+        save_figure(
+            figure,
+            output_dir / f"{figure_slug(analyte)}_measured_vs_modeled",
+            dpi=300,
+            layout_top=0.89,
+        )
 
 
 def plot_performance_comparison(performance: pd.DataFrame, figure_dir: Path) -> None:
@@ -2745,6 +3965,105 @@ def plot_feature_importance_comparison(feature_importance: pd.DataFrame, figure_
         save_figure(figure, figure_dir / "postprocessing" / stem)
 
 
+def plot_management_period_sensitivity(
+    period_sensitivity: pd.DataFrame,
+    figure_dir: Path,
+) -> None:
+    """Plot pre/post-2021 treatment totals and signed changes from CT."""
+
+    require_columns(
+        period_sensitivity,
+        ["Outcome", "Period", "Method", "Treatment", "Center", "PercentChangeFromCT"],
+        "Management-period sensitivity table",
+    )
+    colors = {"CT": "#6B7280", "MT": "#2A7F62", "ST": "#2E6EAA"}
+    figure, axes = plt.subplots(4, 2, figsize=(7.2, 8.0))
+    x = np.arange(len(COMPARISON_METHODS))
+    width = 0.22
+
+    for row, outcome in enumerate(MANAGEMENT_OUTCOMES):
+        for column, period in enumerate(MANAGEMENT_PERIODS):
+            axis = axes[row, column]
+            subset = period_sensitivity.loc[
+                period_sensitivity["Outcome"].astype(str).eq(outcome)
+                & period_sensitivity["Period"].astype(str).eq(period)
+            ]
+            if len(subset) != len(COMPARISON_METHODS) * len(TREATMENTS):
+                raise ValueError(
+                    f"Figure input for {outcome} {period} must contain "
+                    f"{len(COMPARISON_METHODS) * len(TREATMENTS)} rows."
+                )
+            maximum = float(pd.to_numeric(subset["Center"], errors="raise").max())
+            if not np.isfinite(maximum) or maximum <= 0:
+                raise ValueError(
+                    f"Figure input for {outcome} {period} has invalid maximum {maximum}."
+                )
+            for treatment_index, treatment in enumerate(TREATMENTS):
+                heights = []
+                changes = []
+                for method in COMPARISON_METHODS:
+                    match = subset.loc[
+                        subset["Method"].astype(str).eq(method)
+                        & subset["Treatment"].astype(str).eq(treatment)
+                    ]
+                    if len(match) != 1:
+                        raise ValueError(
+                            f"Figure input requires one {outcome}/{period}/{method}/"
+                            f"{treatment} row; found {len(match)}."
+                        )
+                    heights.append(float(match["Center"].iloc[0]))
+                    changes.append(float(match["PercentChangeFromCT"].iloc[0]))
+                bars = axis.bar(
+                    x + (treatment_index - 1) * width,
+                    heights,
+                    width=width,
+                    color=colors[treatment],
+                    edgecolor="white",
+                    linewidth=0.7,
+                    zorder=3,
+                )
+                if treatment != "CT":
+                    for bar, change in zip(bars, changes):
+                        label = f"{change:+.0f}%" if abs(change) >= 10 else f"{change:+.1f}%"
+                        axis.text(
+                            bar.get_x() + bar.get_width() / 2,
+                            bar.get_height() + maximum * 0.025,
+                            label,
+                            ha="center",
+                            va="bottom",
+                            fontsize=6.7,
+                            color="#27313D",
+                        )
+            axis.set_xticks(x, COMPARISON_METHODS, fontsize=8)
+            axis.grid(axis="y", color="#D9DEE5", linewidth=0.55, zorder=0)
+            axis.set_axisbelow(True)
+            axis.spines[["top", "right"]].set_visible(False)
+            axis.spines[["left", "bottom"]].set_color("#AAB2BD")
+            axis.tick_params(axis="y", labelsize=7)
+            axis.set_ylim(0, maximum * 1.25)
+            if row == 0:
+                axis.set_title(period, fontsize=10.5, weight="bold", color="#1F4D78")
+            if column == 0:
+                unit = "kL/plot" if outcome == "Runoff volume" else "kg/plot"
+                axis.set_ylabel(f"{outcome}\n({unit})", fontsize=8.5, weight="bold")
+
+    handles = [Patch(facecolor=colors[treatment], label=treatment) for treatment in TREATMENTS]
+    figure.legend(
+        handles=handles,
+        loc="upper center",
+        ncol=3,
+        frameon=False,
+        bbox_to_anchor=(0.5, 0.995),
+        fontsize=8.5,
+    )
+    save_figure(
+        figure,
+        figure_dir / "postprocessing" / "pre_post_2021_management_sensitivity",
+        dpi=300,
+        layout_top=0.93,
+    )
+
+
 def make_figures(
     annual: pd.DataFrame,
     cumulative: pd.DataFrame,
@@ -2756,6 +4075,9 @@ def make_figures(
     feature_importance: pd.DataFrame,
     observed_annual: pd.DataFrame,
     annual_volume: pd.DataFrame,
+    period_sensitivity: pd.DataFrame,
+    annual_ct_relative: pd.DataFrame,
+    event_one_to_one: pd.DataFrame,
     figure_dir: Path,
 ) -> None:
     figure_dir.mkdir(parents=True, exist_ok=True)
@@ -2764,6 +4086,8 @@ def make_figures(
     plot_annual_uncertainty_supplement(annual, observed_annual, figure_dir)
     plot_cumulative_comparison(cumulative, figure_dir)
     plot_ct_relative(ct_summary, figure_dir)
+    plot_annual_signed_ct_relative(annual_ct_relative, figure_dir)
+    plot_event_concentration_one_to_one(event_one_to_one, figure_dir)
     plot_performance_comparison(performance, figure_dir)
     plot_ml_reconstruction_vs_loyo(ml_evaluation_tracks, figure_dir)
     plot_three_track_performance_comparison(
@@ -2771,6 +4095,7 @@ def make_figures(
     )
     plot_coverage_comparison(loyo_coverage, bayes_coverage, figure_dir)
     plot_feature_importance_comparison(feature_importance, figure_dir)
+    plot_management_period_sensitivity(period_sensitivity, figure_dir)
 
 
 def parse_args() -> argparse.Namespace:
@@ -2811,10 +4136,16 @@ def main() -> None:
         expected_years=STUDY_YEARS,
         expected_versions=[BAYES_VERSION, ML_VERSION],
     )
-    annual_volume = annual_volume_comparison(bayes_dir, ml_dir)
-    annual_volume.to_csv(
-        output_dir / "annual_runoff_volume_summary_raw.csv", index=False
-    )
+    if args.figures_only:
+        annual_volume = read_required(
+            output_dir / "annual_runoff_volume_summary_raw.csv",
+            "saved annual runoff-volume summary",
+        )
+    else:
+        annual_volume = annual_volume_comparison(bayes_dir, ml_dir)
+        annual_volume.to_csv(
+            output_dir / "annual_runoff_volume_summary_raw.csv", index=False
+        )
     expected_event_analytes = read_required(
         bayes_dir / f"event_analyte_provenance_bayes_{BAYES_VERSION}.csv",
         "Bayesian event-analyte provenance",
@@ -2944,41 +4275,70 @@ def main() -> None:
         output_dir / "observed_annual_volume_completeness_publication.csv",
         index=False,
     )
-    annual_volume_complete.to_csv(
-        output_dir / "annual_runoff_volume_complete_observed_raw.csv",
-        index=False,
-    )
-    publication_complete_observed_table(
-        annual_volume_complete,
-        value_columns=[
-            "BayesPosteriorMean_kL",
-            "BayesLower95_kL",
-            "BayesUpper95_kL",
-            "MLPointTotal_kL",
-            "MLLower95_kL",
-            "MLUpper95_kL",
-            "ObservedAnnualVolume_kL",
-            "ObservedAnnualVolumeRangeLow_kL",
-            "ObservedAnnualVolumeRangeHigh_kL",
-        ],
-        complete_column="ObservedAnnualVolumeComplete",
-    ).to_csv(
-        output_dir / "annual_runoff_volume_complete_observed_publication.csv",
-        index=False,
-    )
+    if not args.figures_only:
+        annual_volume_complete.to_csv(
+            output_dir / "annual_runoff_volume_complete_observed_raw.csv",
+            index=False,
+        )
+        publication_complete_observed_table(
+            annual_volume_complete,
+            value_columns=[
+                "BayesPosteriorMean_kL",
+                "BayesLower95_kL",
+                "BayesUpper95_kL",
+                "MLPointTotal_kL",
+                "MLLower95_kL",
+                "MLUpper95_kL",
+                "ObservedAnnualVolume_kL",
+                "ObservedAnnualVolumeRangeLow_kL",
+                "ObservedAnnualVolumeRangeHigh_kL",
+            ],
+            complete_column="ObservedAnnualVolumeComplete",
+        ).to_csv(
+            output_dir / "annual_runoff_volume_complete_observed_publication.csv",
+            index=False,
+        )
     (
         performance,
         ml_evaluation_tracks,
         bayes_rows,
         bayes_volume,
         ml_rows,
+        ml_reconstruction,
     ) = build_performance_products(bayes_dir, ml_dir)
     write_performance_products(output_dir, performance, ml_evaluation_tracks)
+    event_one_to_one = event_concentration_one_to_one_table(
+        bayes_rows,
+        ml_reconstruction,
+    )
+    event_one_to_one.to_csv(
+        output_dir / "event_concentration_one_to_one_raw.csv", index=False
+    )
+    compaction_events, compaction_summary = ml_furrow_compaction_predictive_sensitivity(
+        ml_dir
+    )
+    compaction_events.to_csv(
+        output_dir / "ml_furrow_compaction_predictive_sensitivity_events_raw.csv",
+        index=False,
+    )
+    compaction_summary.to_csv(
+        output_dir / "ml_furrow_compaction_predictive_sensitivity_summary_raw.csv",
+        index=False,
+    )
 
     if args.figures_only:
         saved_annual = read_required(
             output_dir / "annual_load_summary_raw.csv",
             "saved annual-load summary",
+        )
+        period_sensitivity = management_period_sensitivity_products(
+            saved_annual,
+            annual_volume,
+            bayes_dir,
+        )
+        period_sensitivity.to_csv(
+            output_dir / "management_period_sensitivity_raw.csv",
+            index=False,
         )
         annual_load_complete = annual_load_complete_observed_comparison(
             saved_annual,
@@ -3006,13 +4366,24 @@ def main() -> None:
             output_dir / "annual_load_complete_observed_publication.csv",
             index=False,
         )
+        saved_ct_relative = read_required(
+            output_dir / "ct_relative_summary_raw.csv", "saved CT-relative summary"
+        )
+        saved_annual_ct_relative = read_required(
+            output_dir / "annual_signed_ct_relative_summary_raw.csv",
+            "saved annual signed CT-relative summary",
+        )
+        primary_ct_relative_plot_data(saved_ct_relative).to_csv(
+            output_dir / "cumulative_primary_ct_relative_plot_raw.csv",
+            index=False,
+        )
         make_figures(
             saved_annual,
             read_required(
                 output_dir / "cumulative_load_2011_2025_raw.csv",
                 "saved cumulative-load summary",
             ),
-            read_required(output_dir / "ct_relative_summary_raw.csv", "saved CT-relative summary"),
+            saved_ct_relative,
             performance,
             ml_evaluation_tracks,
             read_required(
@@ -3029,6 +4400,9 @@ def main() -> None:
             ),
             complete_observed_loads,
             annual_volume_for_figures,
+            period_sensitivity,
+            saved_annual_ct_relative,
+            event_one_to_one,
             figure_dir,
         )
         update_saved_comparison_manifest(output_dir)
@@ -3041,13 +4415,21 @@ def main() -> None:
             "Bayesian event ledger",
         ), "Bayes", "model_only",
     )
-    ml_loyo = normalize_ledger(
-        read_required(
-            ml_dir / f"event_analyte_draw_ledger_ml_{ML_TAG}.csv",
-            "ML LOYO event ledger",
-        ),
-        "ML", "loyo_model_only", require_complete_years=False,
-    )
+    # The LOYO event-draw ledger is intentionally gitignored and is not used in
+    # the study-period comparison calculations. Use its compact saved annual
+    # summary only to record LOYO year/analyte coverage in the manifest.
+    ml_loyo = read_required(
+        ml_dir / "annual_load_summary_model_only_loyo.csv",
+        "ML LOYO annual summary",
+    ).rename(columns={"analyte": "Analyte"})
+    require_columns(ml_loyo, ["Year", "Analyte"], "ML LOYO annual summary")
+    ml_loyo["Year"] = pd.to_numeric(ml_loyo["Year"], errors="raise").astype(int)
+    unexpected_loyo_years = sorted(set(ml_loyo["Year"]) - set(STUDY_YEARS))
+    if unexpected_loyo_years:
+        raise ValueError(
+            "ML LOYO annual summary contains years outside the study period: "
+            f"{unexpected_loyo_years}."
+        )
     ml_full = normalize_ledger(
         read_required(
             ml_dir / "event_analyte_draw_ledger_full_record_model_only.csv",
@@ -3066,7 +4448,7 @@ def main() -> None:
         bayes_ledger, "Bayesian ledger", require_all=True
     )
     ml_loyo, ml_loyo_extra_analytes = restrict_publication_analytes(
-        ml_loyo, "ML LOYO ledger", require_all=False
+        ml_loyo, "ML LOYO annual summary", require_all=False
     )
     ml_full, ml_full_extra_analytes = restrict_publication_analytes(
         ml_full, "ML full-record ledger", require_all=True
@@ -3090,6 +4472,57 @@ def main() -> None:
         annual_points,
         keys=["Method", "Scenario", "Year", "Analyte", "Treatment"],
         point_column="PointTotal_kg",
+    )
+    load_ct_draws = (
+        annual_draws.loc[
+            annual_draws["Analyte"].isin(PRIMARY_MANUSCRIPT_ANALYTES),
+            [
+                "Method", "Scenario", "Year", "Analyte", "Treatment", "Draw",
+                "Load_kg",
+            ],
+        ]
+        .rename(columns={"Analyte": "Outcome", "Load_kg": "ModeledAnnualTotal"})
+    )
+    load_ct_points = (
+        annual_points.loc[
+            annual_points["Analyte"].isin(PRIMARY_MANUSCRIPT_ANALYTES),
+            [
+                "Method", "Scenario", "Year", "Analyte", "Treatment",
+                "PointTotal_kg",
+            ],
+        ]
+        .rename(columns={"Analyte": "Outcome", "PointTotal_kg": "PointAnnualTotal"})
+    )
+    volume_ct_draws, volume_ct_points = annual_volume_draw_products(
+        all_ledgers,
+        ml_full_points,
+    )
+    annual_ct_raw, annual_ct_summary = annual_signed_ct_relative_products(
+        pd.concat(
+            [
+                load_ct_draws,
+                volume_ct_draws[[
+                    "Method", "Scenario", "Year", "Outcome", "Treatment", "Draw",
+                    "ModeledAnnualTotal",
+                ]],
+            ],
+            ignore_index=True,
+        ),
+        pd.concat(
+            [
+                load_ct_points,
+                volume_ct_points[[
+                    "Method", "Scenario", "Year", "Outcome", "Treatment",
+                    "PointAnnualTotal",
+                ]],
+            ],
+            ignore_index=True,
+        ),
+    )
+    period_sensitivity = management_period_sensitivity_products(
+        annual_summary,
+        annual_volume,
+        bayes_dir,
     )
     cumulative_draws, cumulative_summary = cumulative_products(annual_draws)
     cumulative_points = cumulative_point_products(annual_points)
@@ -3156,6 +4589,16 @@ def main() -> None:
     annual_draws.to_csv(output_dir / "annual_load_draws_raw.csv", index=False)
     annual_points.to_csv(output_dir / "annual_load_point_totals_raw.csv", index=False)
     annual_summary.to_csv(output_dir / "annual_load_summary_raw.csv", index=False)
+    annual_ct_raw.to_csv(
+        output_dir / "annual_signed_ct_relative_draws_raw.csv", index=False
+    )
+    annual_ct_summary.to_csv(
+        output_dir / "annual_signed_ct_relative_summary_raw.csv", index=False
+    )
+    period_sensitivity.to_csv(
+        output_dir / "management_period_sensitivity_raw.csv",
+        index=False,
+    )
     publication_load_table(annual_summary, "Central_95_interval_kg").to_csv(
         output_dir / "annual_load_summary_publication.csv", index=False
     )
@@ -3189,6 +4632,9 @@ def main() -> None:
     ct_raw.to_csv(output_dir / "ct_relative_draws_raw.csv", index=False)
     ct_points.to_csv(output_dir / "ct_relative_point_totals_raw.csv", index=False)
     ct_summary.to_csv(output_dir / "ct_relative_summary_raw.csv", index=False)
+    primary_ct_relative_plot_data(ct_summary).to_csv(
+        output_dir / "cumulative_primary_ct_relative_plot_raw.csv", index=False
+    )
     publication_load_table(ct_summary, "Central_95_interval_percent").to_csv(
         output_dir / "ct_relative_summary_publication.csv", index=False
     )
@@ -3312,6 +4758,9 @@ def main() -> None:
             feature_importance,
             complete_observed_loads,
             annual_volume_for_figures,
+            period_sensitivity,
+            annual_ct_summary,
+            event_one_to_one,
             figure_dir,
         )
 
@@ -3404,6 +4853,7 @@ def main() -> None:
             ]
         ),
         **metric_manifest_fields(),
+        **management_period_manifest_fields(),
         "loyo_ledger_role": "diagnostics_only_because_years_without_observed_volume_are_absent",
         "loyo_ledger_years_present": sorted(ml_loyo["Year"].unique().astype(int).tolist()),
         "primary_manuscript_analytes": PRIMARY_MANUSCRIPT_ANALYTES,
